@@ -22,6 +22,8 @@ pub mod keys {
     pub const LOG_RETENTION_DAYS: &str = "logRetentionDays";
     pub const TESTING_ENABLED: &str = "testingEnabled";
     pub const FEEDBACK_FREQUENCY: &str = "feedbackFrequency";
+    pub const TESTING_CORRECT_KEY: &str = "testingCorrectKey";
+    pub const TESTING_WRONG_KEY: &str = "testingWrongKey";
     pub const LAST_VERSION: &str = "lastVersion";
 }
 
@@ -115,6 +117,15 @@ impl Snapshot {
         self.get(keys::TESTING_ENABLED)
             .and_then(Value::as_bool)
             .unwrap_or(false)
+    }
+
+    /// Whether both keys that answer the testing prompt are set. A missing
+    /// key means the default; only "off", the frontend's value for a removed
+    /// key, leaves one unset.
+    pub fn testing_keys_set(&self) -> bool {
+        [keys::TESTING_CORRECT_KEY, keys::TESTING_WRONG_KEY]
+            .iter()
+            .all(|key| self.get(key).and_then(Value::as_str) != Some("off"))
     }
 
     pub fn feedback_frequency(&self) -> FeedbackFrequency {
@@ -467,6 +478,20 @@ mod tests {
         assert!(snapshot.testing_enabled());
         assert_eq!(snapshot.log_retention_days(), 4);
         assert_eq!(snapshot.feedback_frequency(), FeedbackFrequency::OncePerRun);
+    }
+
+    #[test]
+    fn testing_keys_count_as_set_unless_one_is_removed() {
+        let settings = scratch("testing-keys");
+        assert!(
+            settings.snapshot().testing_keys_set(),
+            "missing keys are the defaults"
+        );
+        write(
+            &settings,
+            r#"{"testingCorrectKey":"F1","testingWrongKey":"off"}"#,
+        );
+        assert!(!settings.snapshot().testing_keys_set());
     }
 
     #[test]

@@ -86,12 +86,14 @@ export interface EventMap {
   /** Short backend status line for the app header and the in-game status window. */
   "status-line": string;
   /** Scoped Page Up/Page Down prompt after a completed testing flow. */
-  "testing-feedback": { visible: true; flow: FlowKind } | { visible: false };
-  /**
-   * Opt-in testing results: a run's report was saved (`path`), or `error` says why a reported flow ("flow") or a
-   * run's report ("run") could not be stored.
-   */
-  "test-report": { reason: "run"; path: string; error: null } | { reason: "flow" | "run"; path: null; error: string };
+  /** `timeoutMs`: how long the prompt stays up unanswered. */
+  "testing-feedback": { visible: true; flow: FlowKind; timeoutMs: number } | { visible: false };
+  /** A short in-game confirmation of a testing answer. */
+  "testing-notice": { text: string; tone: "success" | "danger" };
+  /** A reported testing flow could not be stored. */
+  "test-report": { error: string };
+  /** How many reported testing flows wait for an export. */
+  "test-report-flows": number;
   /** The relic selection screen opened: which relics to run. */
   "relic-pick-open": RelicPick;
   "relic-pick-close": unknown;

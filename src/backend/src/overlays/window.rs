@@ -24,7 +24,7 @@ const RIVEN_WIDTH: f64 = 300.0;
 const STATUS_WIDTH: f64 = 440.0;
 const STATUS_HEIGHT: f64 = 52.0;
 const TESTING_FEEDBACK_WIDTH: f64 = 620.0;
-const TESTING_FEEDBACK_HEIGHT: f64 = 82.0;
+const TESTING_FEEDBACK_HEIGHT: f64 = 100.0;
 
 /// One overlay's saved x/y offset (logical pixels) from settings.json.
 /// Missing settings or missing axes mean 0, which keeps the built-in placement.

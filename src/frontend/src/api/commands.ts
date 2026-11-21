@@ -216,6 +216,14 @@ export interface CommandMap {
   set_overlay_manual: { args: { enabled: boolean }; result: null };
   /** The key that shows or hides the overlays, as a Windows virtual-key code (0 for none). */
   set_overlay_key: { args: { vk: number }; result: null };
+  /** The two keys (virtual-key codes) that answer the testing prompt; they must differ. */
+  set_testing_keys: { args: { correct: number; wrong: number }; result: null };
+  /** How many reported testing flows wait for an export. */
+  test_report_flows: { args: undefined; result: number };
+  /** Writes every reported testing flow into one zip in Downloads and returns its path. */
+  export_test_report: { args: undefined; result: string };
+  /** Removes every reported testing flow without writing a report. */
+  discard_test_report: { args: undefined; result: null };
   /** Save the screen title capture on each overlay key press, shown in the activity console. */
   set_overlay_key_capture: { args: { enabled: boolean }; result: null };
   set_overlay_screenshot: { args: { enabled: boolean }; result: null };

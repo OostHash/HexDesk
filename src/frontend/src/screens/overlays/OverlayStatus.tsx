@@ -1,17 +1,22 @@
-import { useEffect, useState } from "react";
+import { CircleAlert, CircleCheck } from "lucide-react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { isTauri } from "../../api/env";
-import { onEvent, useEvent } from "../../api/events";
+import { onEvent, useEvent, type EventMap } from "../../api/events";
 import { invoke } from "../../api/invoke";
-import { ignoreCurrentWindowCursor, overlayPrefsFrom } from "../../api/overlays";
+import { fitWindowHeight, ignoreCurrentWindowCursor, overlayPrefsFrom } from "../../api/overlays";
 import { useSettings } from "../../api/settings";
+import { keyLabel, type TestingKeys } from "../../domain/overlayKey";
+import { Icon, ProgressBar } from "../../primitives/display";
 import { FLOW_LABEL, type FlowKind } from "../../domain/testing";
+import { usePreferences } from "../../state/preferences";
 
 /** Click-through status text centred above the game window. */
 export function OverlayStatus() {
   const [text, setText] = useState("");
-  const [feedback, setFeedback] = useState<FlowKind | null>(null);
+  const [feedback, setFeedback] = useState<{ flow: FlowKind; until: number; timeoutMs: number } | null>(null);
   const saved = useSettings();
-  const settings = overlayPrefsFrom(saved.data).status;
+  const prefs = overlayPrefsFrom(saved.data);
+  const settings = prefs.status;
 
   useEffect(() => {
     if (!isTauri() || !saved.isSuccess) return;
@@ -38,30 +43,115 @@ export function OverlayStatus() {
     };
   }, [saved.isSuccess, settings.durationSeconds, settings.enabled]);
 
-  // The testing prompt shows even when the ordinary status line is off.
+  // The testing prompt and its confirmations show even when the ordinary status line is off.
   useEvent("testing-feedback", (next) => {
-    setFeedback(next.visible ? next.flow : null);
+    setFeedback(next.visible ? { flow: next.flow, timeoutMs: next.timeoutMs, until: Date.now() + next.timeoutMs } : null);
   });
+  const [notice, setNotice] = useState<EventMap["testing-notice"] | null>(null);
+  useEvent("testing-notice", setNotice);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => {
+      setNotice(null);
+    }, NOTICE_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [notice]);
 
   if (feedback) {
-    return (
-      <main aria-label="Testing feedback" className="flex h-full items-start justify-center pt-2 text-text">
-        <div role="status" className="max-w-full rounded-md border border-accent/50 bg-bg/95 px-4 py-2 text-center shadow-2">
-          <p className="font-semibold">Was the {FLOW_LABEL[feedback]} result correct?</p>
-          <p className="mt-1 text-xs text-muted">
-            <kbd className="font-semibold text-text">Page Up</kbd> correct · discard &nbsp; <kbd className="font-semibold text-text">Page Down</kbd>{" "}
-            wrong · keep for report
-          </p>
-        </div>
-      </main>
-    );
+    return <TestingPrompt flow={feedback.flow} until={feedback.until} timeoutMs={feedback.timeoutMs} keys={prefs.testingKeys} />;
   }
+  if (notice) return <TestingNotice text={notice.text} tone={notice.tone} />;
   if (!settings.enabled || !text) return null;
   return (
     <main aria-label="Overlay status" className="flex h-full items-start justify-center pt-2 text-text">
       <p role="status" className="max-w-full rounded-md border border-accent/40 bg-bg/95 px-3 py-1.5 text-center text-sm font-medium shadow-2">
         {text}
       </p>
+    </main>
+  );
+}
+
+/** How long a testing confirmation stays in the game. */
+const NOTICE_MS = 5000;
+
+/** Keeps the window as tall as `el`'s content: the backend does not know the text size. */
+function useFitHeight(el: RefObject<HTMLElement | null>) {
+  const { textScale } = usePreferences();
+  useEffect(() => {
+    const box = el.current;
+    if (!box || !isTauri()) return;
+    const fit = () => {
+      // The top padding of <main> above the box and room for its shadow below.
+      void fitWindowHeight(box.offsetTop + box.offsetHeight + 8, textScale).catch(() => undefined);
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(box);
+    return () => {
+      observer.disconnect();
+    };
+  }, [el, textScale]);
+}
+
+/** What happened to an answer or a run's report, confirmed in the game. */
+function TestingNotice({ text, tone }: EventMap["testing-notice"]) {
+  const box = useRef<HTMLParagraphElement>(null);
+  useFitHeight(box);
+  return (
+    <main aria-label="Testing result" className="flex h-full items-start justify-center pt-2 text-text">
+      <p
+        ref={box}
+        role="status"
+        className={
+          tone === "success"
+            ? "flex max-w-full items-center gap-2 rounded-md border border-success/50 bg-bg/95 px-3 py-1.5 text-sm font-medium shadow-2"
+            : "flex max-w-full items-center gap-2 rounded-md border border-danger/50 bg-bg/95 px-3 py-1.5 text-sm font-medium shadow-2"
+        }
+      >
+        <Icon icon={tone === "success" ? CircleCheck : CircleAlert} size="sm" className={tone === "success" ? "text-success" : "text-danger"} />
+        {text}
+      </p>
+    </main>
+  );
+}
+
+/** The question after a completed flow, with a bar that runs out when the backend stops waiting for an answer. */
+function TestingPrompt({ flow, until, timeoutMs, keys }: { flow: FlowKind; until: number; timeoutMs: number; keys: TestingKeys }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(Date.now());
+    }, 100);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [until]);
+  const left = Math.max(0, until - now);
+  const box = useRef<HTMLDivElement>(null);
+  // Follows the content, so a larger text size or a long key name never cuts the prompt off.
+  useFitHeight(box);
+  return (
+    <main aria-label="Testing feedback" className="flex h-full items-start justify-center pt-2 text-text">
+      <div
+        ref={box}
+        role="status"
+        className="flex max-w-full flex-col items-center gap-1.5 rounded-md border border-accent/50 bg-bg/95 px-4 py-2 text-center shadow-2"
+      >
+        <p className="font-semibold">Was the {FLOW_LABEL[flow]} result correct?</p>
+        <p className="text-xs text-muted">
+          <kbd className="font-semibold text-text">{keyLabel(keys.correct)}</kbd> correct · discard &nbsp;{" "}
+          <kbd className="font-semibold text-text">{keyLabel(keys.wrong)}</kbd> wrong · keep for report
+        </p>
+        <ProgressBar
+          className="w-full justify-center"
+          value={left}
+          max={timeoutMs}
+          name="Time left to answer"
+          label={`${String(Math.ceil(left / 1000))} s`}
+        />
+      </div>
     </main>
   );
 }

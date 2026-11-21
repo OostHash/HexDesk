@@ -2,17 +2,19 @@ import { Bug, ExternalLink, FileArchive, Gamepad2, Keyboard, Lightbulb, Megaphon
 import type { ReactNode } from "react";
 import discordQr from "../../../assets/welcome/discord-qr.svg";
 import { openExternal } from "../../../api/links";
+import { useOverlayPrefs } from "../../../api/overlays";
+import { keyLabel } from "../../../domain/overlayKey";
 import { DiscordMark } from "../../../patterns/DiscordMark";
 import { Button } from "../../../primitives/actions";
 import { Icon } from "../../../primitives/display";
-import { DensityRow, OcrModelsRow, TestingRows, TextSizeRow, ThemeRow } from "../controls";
+import { DensityRow, ManualModeRow, OcrModelsRow, OverlayKeyRow, TestingRows, TextSizeRow, ThemeRow } from "../controls";
 import { SettingsCard, SettingsGroup } from "../parts";
 
 /** The invite `src/frontend/src/assets/welcome/discord-qr.svg` encodes; regenerate the image when it changes. */
 const DISCORD_URL = "https://discord.gg/GTCrhPMPQY";
 
 /** The setup pages after the welcome page, in order. */
-export const SETUP_STEPS = [AppearanceStep, TestingStep, CommunityStep] as const;
+export const SETUP_STEPS = [AppearanceStep, OverlaysStep, TestingStep, CommunityStep] as const;
 
 function StepHeading({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -49,7 +51,23 @@ function AppearanceStep() {
   );
 }
 
+function OverlaysStep() {
+  return (
+    <div className="flex flex-col gap-6">
+      <StepHeading title="Overlays in the game">
+        When you open the relic selection, the fissure rewards or a riven, HexDesk shows prices and details over the game. Pick the key that controls
+        them.
+      </StepHeading>
+      <SettingsCard>
+        <OverlayKeyRow />
+        <ManualModeRow />
+      </SettingsCard>
+    </div>
+  );
+}
+
 function TestingStep() {
+  const keys = useOverlayPrefs().testingKeys;
   return (
     <div className="flex flex-col gap-6">
       <StepHeading title="Help improve HexDesk">
@@ -61,11 +79,13 @@ function TestingStep() {
           After you pick a relic reward, refine a relic or look at a riven, HexDesk asks over the game whether it read the screen correctly.
         </HowStep>
         <HowStep number={2} icon={Keyboard} title="Answer with one key">
-          <kbd className="font-semibold text-text">Page Up</kbd> if it was right; HexDesk forgets those screens.{" "}
-          <kbd className="font-semibold text-text">Page Down</kbd> if something was wrong; HexDesk keeps them for your report.
+          <kbd className="font-semibold text-text">{keyLabel(keys.correct)}</kbd> if it was right; HexDesk forgets those screens.{" "}
+          <kbd className="font-semibold text-text">{keyLabel(keys.wrong)}</kbd> if something was wrong; HexDesk keeps them for your report. You choose
+          both keys below.
         </HowStep>
-        <HowStep number={3} icon={FileArchive} title="Get a zip after the run">
-          When the run ends, the screens you marked wrong are saved as one zip in your Downloads folder, and HexDesk tells you where.
+        <HowStep number={3} icon={FileArchive} title="Export when you are done">
+          The screens you marked wrong wait at the top of HexDesk, next to your account. Export them as one zip in your Downloads folder whenever you
+          like, or discard them.
         </HowStep>
         <HowStep number={4} icon={Send} title="Send it to us">
           Post the zip in the HexDesk Discord, or attach it to an issue on GitHub. That is how a wrong read gets fixed.

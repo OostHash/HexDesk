@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { clearMocks, mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-react";
 import { WelcomeScreen } from "./WelcomeScreen";
 
@@ -40,7 +40,7 @@ const mount = (client: QueryClient) =>
     </QueryClientProvider>,
   );
 
-it("opens on the welcome page, then walks through appearance, testing and the community", async () => {
+it("opens on the welcome page, then walks through appearance, overlays, testing and the community", async () => {
   const { client, saved } = setup();
   await mount(client);
 
@@ -52,11 +52,24 @@ it("opens on the welcome page, then walks through appearance, testing and the co
   expect(localStorage.getItem("ff-theme")).toBe("light");
 
   await page.getByRole("button", { name: "Continue" }).click();
+  await expect.element(page.getByRole("heading", { name: "Overlays in the game" })).toBeVisible();
+  await page.getByRole("button", { name: "Overlay key", exact: true }).click();
+  await userEvent.keyboard("{F8}");
+  await page.getByRole("switch", { name: "Manual mode" }).click();
+
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect.element(page.getByRole("heading", { name: "Help improve HexDesk" })).toBeVisible();
   const testing = page.getByRole("switch", { name: "Help test HexDesk" });
   await expect.element(testing).not.toBeChecked();
   await testing.click();
   await page.getByRole("combobox", { name: "Ask for feedback" }).selectOptions("once-per-run");
+  await page.getByRole("button", { name: "Correct key" }).click();
+  await userEvent.keyboard("{PageDown}");
+  await expect.element(page.getByText("Page Down is already the wrong key.")).toBeVisible();
+  await page.getByRole("button", { name: "Wrong key" }).click();
+  await userEvent.keyboard("{End}");
+  // The how-it-works steps name the chosen key.
+  await expect.element(page.getByRole("list").getByText("End", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Continue" }).click();
   await expect.element(page.getByRole("heading", { name: "Join the HexDesk community" })).toBeVisible();
@@ -66,8 +79,12 @@ it("opens on the welcome page, then walks through appearance, testing and the co
   await vi.waitFor(() => {
     expect(saved()).toMatchObject({
       onboardingCompleted: true,
+      overlayKey: "F8",
+      overlayManual: true,
       testingEnabled: true,
       feedbackFrequency: "once-per-run",
+      testingCorrectKey: "PageUp",
+      testingWrongKey: "End",
     });
   });
 });

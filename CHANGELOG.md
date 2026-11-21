@@ -9,20 +9,29 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
-- A full-page welcome setup for new installations covers appearance, optional
-  small-text OCR, local diagnostic data and the explicit opt-in for testing.
-  Existing installations continue normally, and Settings → General can start
-  the welcome flow again.
+- A welcome screen for new installations: a welcome page, then appearance and
+  optional small-text OCR, the overlay key and manual mode, the opt-in for
+  testing with an explanation of how a test report works, and a way to join
+  the HexDesk Discord, with a QR code for your phone. Existing installations
+  continue normally, and Settings → General can show it again.
 - Diagnostic logs can be kept for one to five days, with one day as the
-  default. HexDesk removes older daily log files automatically.
+  default, in Settings → Console. HexDesk removes older daily log files
+  automatically.
 - Optional testing groups Relic Pick and Reward, Refinement and Riven reads
-  into completed flows. A short Page Up/Page Down prompt discards correct or
-  unanswered samples and keeps only flows marked wrong. After the mission's
-  inventory update, reported flows are saved as one local zip in Downloads;
-  HexDesk never uploads it automatically.
+  into completed flows. A short prompt over the game asks whether a flow was
+  read correctly; one key discards it and another keeps it for a report. Both
+  keys can be chosen by pressing them and default to Page Up and Page Down;
+  without both, HexDesk asks nothing and says so. A bar shows how long the
+  question stays up, and a short line over the game confirms each answer.
+  Flows marked wrong wait in the header, next to your Mastery Rank and
+  account name, also after HexDesk restarts. From there you export them, from
+  every run since the last export, as one local zip in Downloads, or discard
+  them. HexDesk never writes or uploads a report on its own. A report leaves
+  out black captures and repeated captures of a screen that did not change.
 - **Remove logs** in the activity console clears existing diagnostic logs,
-  saved OCR captures and pending test data after confirmation. Logging then
-  continues in a fresh active-session log without changing log retention.
+  saved OCR captures and test data not yet saved as a report, after
+  confirmation. Logging then continues in a fresh active-session log without
+  changing log retention.
 - An activity console in Settings → Console shows what HexDesk does in the
   background as it happens. Filter by level and by one or more sources, with
   each overlay (overlay key, Relic Pick, Relic Reward, riven check) as its
@@ -75,6 +84,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Changed
 
+- The overlay key is set by clicking its field and pressing the key, instead
+  of picking from a list. Letters, digits, arrows, the numpad and F13 to F24
+  can now be used too. The × in the field or Backspace removes the key, and
+  manual mode warns when there is none.
 - Settings is a full screen instead of a pop-up. Its categories are listed in
   a column next to the navigation, Settings reopens on the category you used
   last, and the changelog and modular window are hidden while it is open.
@@ -149,6 +162,9 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Fixed
 
+- The inventory and the changelog update right after a mission instead of
+  about two minutes later. The account data read then was rejected as
+  incomplete because the game leaves one section out at that moment.
 - "Changed recently" in Inventory no longer shows everything that ever
   changed. By default it shows what changed since HexDesk started.
 - The main window is called HexDesk again in Alt+Tab, the taskbar and Task

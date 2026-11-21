@@ -1,18 +1,20 @@
 //! Opt-in testing feedback: when to ask about a completed screen flow, what
-//! happens to its samples, and when a run's report is ready.
+//! happens to its samples, and which run a reported flow belongs to.
 //!
 //! [`Feedback`] does no I/O of its own. Samples go through a [`SampleStore`],
 //! and everything the app shows or logs comes back as [`Notice`]s, so the
 //! rules can be tested without the game, the disk or a window.
+//!
+//! Reported flows stay in the store until the player exports or discards
+//! them; a report is never written on its own.
 
 use std::path::PathBuf;
 
 use crate::flow::{Flow, FlowId, FlowKind, FlowTracker};
 use crate::screen::Screen;
-use crate::signal::Millis;
 use crate::tracker::VisitId;
 
-/// Identifies one run's report.
+/// Identifies one run; a report groups its reported flows by run.
 pub type RunId = u64;
 
 /// Where the samples of tracker visits are kept until they are discarded or
@@ -26,11 +28,17 @@ pub trait SampleStore {
     fn has_samples(&self, flow: &Flow) -> bool;
     /// Removes the samples of `flow`.
     fn discard(&mut self, flow: &Flow);
-    /// Moves the samples of `flow` into the report of `run`.
+    /// Moves the samples of `flow` to the reported flows of `run`.
     fn keep(&mut self, run: RunId, flow: &Flow) -> Result<(), String>;
-    /// Writes the report of `run` and returns where it was written.
-    fn export(&mut self, run: RunId) -> Result<PathBuf, String>;
-    /// Removes every pending sample and every unexported report.
+    /// How many reported flows wait for an export, including those an
+    /// earlier session left.
+    fn kept(&self) -> usize;
+    /// Writes every reported flow into one report, removes them and returns
+    /// where the report was written.
+    fn export(&mut self) -> Result<PathBuf, String>;
+    /// Removes every reported flow; samples still pending stay.
+    fn discard_reports(&mut self) -> Result<(), String>;
+    /// Removes every pending sample and every reported flow.
     fn remove_all(&mut self) -> Result<(), String>;
 }
 
@@ -91,16 +99,14 @@ pub enum Notice {
         flow: FlowId,
         error: String,
     },
-    RunExported {
-        run: RunId,
-        path: PathBuf,
-        reports: usize,
-    },
-    /// The report of `run` could not be written; its samples stay stored.
-    RunExportFailed {
-        run: RunId,
-        error: String,
-    },
+}
+
+/// A written report.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Export {
+    pub path: PathBuf,
+    /// How many reported flows it holds.
+    pub flows: usize,
 }
 
 /// Counts completed flows towards the next prompt.
@@ -138,15 +144,17 @@ pub struct Feedback<S> {
     cadence: Cadence,
     prompt: Option<Flow>,
     run: RunId,
-    reports: usize,
+    kept: usize,
+    /// The mission ended while a prompt was up; the run changes once that
+    /// prompt is answered or ignored, so its flow stays with the run it
+    /// came from.
     run_ended: bool,
-    inventory_after_end: bool,
-    latest_inventory_at: Option<Millis>,
 }
 
 impl<S: SampleStore> Feedback<S> {
     /// `first_run` must not repeat a run id the store may still hold.
     pub fn new(store: S, config: Config, first_run: RunId) -> Feedback<S> {
+        let kept = store.kept();
         Feedback {
             store,
             config,
@@ -154,11 +162,14 @@ impl<S: SampleStore> Feedback<S> {
             cadence: Cadence::default(),
             prompt: None,
             run: first_run,
-            reports: 0,
+            kept,
             run_ended: false,
-            inventory_after_end: false,
-            latest_inventory_at: None,
         }
+    }
+
+    /// How many reported flows wait for an export.
+    pub fn kept(&self) -> usize {
+        self.kept
     }
 
     pub fn store(&self) -> &S {
@@ -226,7 +237,7 @@ impl<S: SampleStore> Feedback<S> {
         } else {
             match self.store.keep(self.run, &flow) {
                 Ok(()) => {
-                    self.reports += 1;
+                    self.kept += 1;
                     notices.push(Notice::Reported {
                         flow: flow.id,
                         run: self.run,
@@ -241,7 +252,7 @@ impl<S: SampleStore> Feedback<S> {
                 }
             }
         }
-        self.finish_run_if_ready(&mut notices);
+        self.finish_run_if_ready();
         notices
     }
 
@@ -249,7 +260,7 @@ impl<S: SampleStore> Feedback<S> {
     pub fn dismiss(&mut self) -> Vec<Notice> {
         let mut notices = Vec::new();
         self.close_prompt(&mut notices);
-        self.finish_run_if_ready(&mut notices);
+        self.finish_run_if_ready();
         notices
     }
 
@@ -263,40 +274,46 @@ impl<S: SampleStore> Feedback<S> {
         }
     }
 
-    /// The mission ended at `at`. Its report is written once the inventory
-    /// update that follows has arrived and no prompt is waiting.
-    pub fn run_ended(&mut self, at: Millis) -> Vec<Notice> {
+    /// The mission ended. Flows reported from now on belong to the next
+    /// run, except the one a visible prompt asks about.
+    pub fn run_ended(&mut self) -> Vec<Notice> {
         let mut notices = Vec::new();
         if let Some(flow) = self.flows.end_run() {
             self.complete(flow, &mut notices);
         }
         self.run_ended = true;
-        self.inventory_after_end = self.latest_inventory_at.is_some_and(|seen| seen >= at);
         self.cadence.end_run();
-        self.finish_run_if_ready(&mut notices);
+        self.finish_run_if_ready();
         notices
     }
 
-    /// A full inventory update arrived at `at`.
-    pub fn inventory_updated(&mut self, at: Millis) -> Vec<Notice> {
-        let mut notices = Vec::new();
-        self.latest_inventory_at = Some(at);
-        if self.run_ended {
-            self.inventory_after_end = true;
-            self.finish_run_if_ready(&mut notices);
+    /// Writes every reported flow into one report. Nothing is written when
+    /// there is nothing to report; a failed write keeps the reported flows.
+    pub fn export(&mut self) -> Result<Export, String> {
+        if self.kept == 0 {
+            return Err("There are no reported flows to export.".to_string());
         }
-        notices
+        let path = self.store.export()?;
+        let flows = std::mem::take(&mut self.kept);
+        Ok(Export { path, flows })
     }
 
-    /// Removes every pending sample and unexported report. The run goes on;
+    /// Removes every reported flow without writing a report.
+    pub fn discard_reports(&mut self) -> Result<(), String> {
+        self.store.discard_reports()?;
+        self.kept = 0;
+        Ok(())
+    }
+
+    /// Removes every pending sample and reported flow. The run goes on;
     /// later flows are saved as usual.
     pub fn remove_all(&mut self) -> Result<Vec<Notice>, String> {
         let mut notices = Vec::new();
         if self.prompt.take().is_some() {
             notices.push(Notice::PromptHidden);
         }
-        self.reports = 0;
         self.store.remove_all()?;
+        self.kept = 0;
         Ok(notices)
     }
 
@@ -330,27 +347,11 @@ impl<S: SampleStore> Feedback<S> {
         });
     }
 
-    fn finish_run_if_ready(&mut self, notices: &mut Vec<Notice>) {
-        if !self.run_ended || !self.inventory_after_end || self.prompt.is_some() {
-            return;
+    fn finish_run_if_ready(&mut self) {
+        if self.run_ended && self.prompt.is_none() {
+            self.run += 1;
+            self.run_ended = false;
         }
-        if self.reports > 0 {
-            match self.store.export(self.run) {
-                Ok(path) => notices.push(Notice::RunExported {
-                    run: self.run,
-                    path,
-                    reports: self.reports,
-                }),
-                Err(error) => notices.push(Notice::RunExportFailed {
-                    run: self.run,
-                    error,
-                }),
-            }
-        }
-        self.run += 1;
-        self.reports = 0;
-        self.run_ended = false;
-        self.inventory_after_end = false;
     }
 }
 
@@ -365,8 +366,9 @@ mod tests {
         saving: BTreeSet<VisitId>,
         pending: BTreeSet<VisitId>,
         reports: BTreeMap<RunId, Vec<FlowId>>,
-        exported: Vec<RunId>,
+        exported: Vec<BTreeMap<RunId, Vec<FlowId>>>,
         fail_keep: bool,
+        fail_export: bool,
     }
 
     impl MemoryStore {
@@ -402,10 +404,19 @@ mod tests {
             self.reports.entry(run).or_default().push(flow.id);
             Ok(())
         }
-        fn export(&mut self, run: RunId) -> Result<PathBuf, String> {
-            self.reports.remove(&run);
-            self.exported.push(run);
-            Ok(PathBuf::from(format!("run-{run}.zip")))
+        fn kept(&self) -> usize {
+            self.reports.values().map(Vec::len).sum()
+        }
+        fn export(&mut self) -> Result<PathBuf, String> {
+            if self.fail_export {
+                return Err("disk full".to_string());
+            }
+            self.exported.push(std::mem::take(&mut self.reports));
+            Ok(PathBuf::from("report.zip"))
+        }
+        fn discard_reports(&mut self) -> Result<(), String> {
+            self.reports.clear();
+            Ok(())
         }
         fn remove_all(&mut self) -> Result<(), String> {
             self.saving.clear();
@@ -529,51 +540,73 @@ mod tests {
     }
 
     #[test]
-    fn a_run_is_exported_after_its_inventory_update_and_only_with_reports() {
+    fn nothing_is_exported_until_the_player_asks() {
         let mut feedback = feedback(EVERY_FLOW);
         riven_flow(&mut feedback, 1);
         feedback.answer(false);
-        assert!(feedback.run_ended(100).is_empty());
-        let notices = feedback.inventory_updated(150);
-        assert!(matches!(
-            notices[..],
-            [Notice::RunExported {
-                run: 1,
-                reports: 1,
-                ..
-            }]
-        ));
-
-        feedback.run_ended(200);
-        assert!(
-            feedback.inventory_updated(250).is_empty(),
-            "no reports, no zip"
-        );
-        assert_eq!(feedback.store().exported, [1]);
+        assert!(feedback.run_ended().is_empty());
+        assert!(feedback.store().exported.is_empty());
+        assert_eq!(feedback.kept(), 1);
     }
 
     #[test]
-    fn a_waiting_prompt_holds_the_export_until_it_is_answered() {
+    fn one_export_holds_every_run_grouped_by_run() {
         let mut feedback = feedback(EVERY_FLOW);
         riven_flow(&mut feedback, 1);
         feedback.answer(false);
+        feedback.run_ended();
         riven_flow(&mut feedback, 2);
-        feedback.run_ended(100);
-        assert!(feedback.inventory_updated(150).is_empty());
-        let notices = feedback.answer(true);
-        assert!(notices
-            .iter()
-            .any(|notice| matches!(notice, Notice::RunExported { run: 1, .. })));
+        feedback.answer(false);
+
+        let export = feedback.export().expect("two flows were reported");
+        assert_eq!(export.flows, 2);
+        assert_eq!(
+            feedback.store().exported,
+            [BTreeMap::from([(1, vec![1]), (2, vec![2])])]
+        );
+        assert_eq!(feedback.kept(), 0);
+        assert!(feedback.export().is_err(), "nothing left to export");
     }
 
     #[test]
-    fn an_inventory_update_before_the_run_end_does_not_count() {
+    fn a_failed_export_keeps_the_reported_flows() {
         let mut feedback = feedback(EVERY_FLOW);
         riven_flow(&mut feedback, 1);
         feedback.answer(false);
-        feedback.inventory_updated(50);
-        assert!(feedback.run_ended(100).is_empty());
-        assert!(!feedback.inventory_updated(150).is_empty());
+        feedback.store.fail_export = true;
+        assert!(feedback.export().is_err());
+        assert_eq!(feedback.kept(), 1);
+    }
+
+    #[test]
+    fn flows_an_earlier_session_reported_count_as_kept() {
+        let mut store = MemoryStore::default();
+        store.reports.insert(7, vec![1, 2]);
+        let feedback = Feedback::new(store, EVERY_FLOW, 8);
+        assert_eq!(feedback.kept(), 2);
+    }
+
+    #[test]
+    fn discarding_reports_keeps_nothing_and_writes_nothing() {
+        let mut feedback = feedback(EVERY_FLOW);
+        riven_flow(&mut feedback, 1);
+        feedback.answer(false);
+        feedback.discard_reports().expect("memory store never fails");
+        assert_eq!(feedback.kept(), 0);
+        assert!(feedback.store().reports.is_empty());
+        assert!(feedback.store().exported.is_empty());
+    }
+
+    #[test]
+    fn a_prompt_answered_after_the_mission_stays_with_its_run() {
+        let mut feedback = feedback(EVERY_FLOW);
+        riven_flow(&mut feedback, 1);
+        feedback.run_ended();
+        let notices = feedback.answer(false);
+        assert!(notices.contains(&Notice::Reported { flow: 1, run: 1 }));
+        riven_flow(&mut feedback, 2);
+        let notices = feedback.answer(false);
+        assert!(notices.contains(&Notice::Reported { flow: 2, run: 2 }));
     }
 
     #[test]
@@ -582,7 +615,7 @@ mod tests {
         feedback.enter(1, Screen::RelicSelection);
         feedback.store.sample(1);
         feedback.leave(1, Screen::RelicSelection);
-        assert!(shown(&feedback.run_ended(100)));
+        assert!(shown(&feedback.run_ended()));
     }
 
     #[test]
@@ -602,7 +635,7 @@ mod tests {
         riven_flow(&mut feedback, 2);
         let notices = feedback.remove_all().expect("memory store never fails");
         assert_eq!(notices, [Notice::PromptHidden]);
-        feedback.run_ended(100);
-        assert!(feedback.inventory_updated(150).is_empty());
+        assert_eq!(feedback.kept(), 0);
+        assert!(feedback.store().reports.is_empty());
     }
 }

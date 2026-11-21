@@ -610,10 +610,6 @@ fn process_blob(
                 .and_then(|g| g.clone()),
         },
     );
-    // This is a completed account-blob pass, not an idle heartbeat. A test
-    // report waiting on the inventory result of a confirmed run ends here.
-    crate::overlays::inventory_updated();
-
     let detail = format!(
         "{} unique · {} resources · {} mods · {} flavour",
         blob.unique_items.len(),

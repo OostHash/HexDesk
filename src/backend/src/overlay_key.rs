@@ -20,6 +20,10 @@ use crate::overlays::{self, window};
 
 /// Virtual-key code of the key; 0 means no key.
 static KEY: AtomicU32 = AtomicU32::new(0);
+/// The keys that answer the testing prompt; Page Up and Page Down until the
+/// frontend sends the player's choice.
+static CORRECT_KEY: AtomicU32 = AtomicU32::new(0x21);
+static WRONG_KEY: AtomicU32 = AtomicU32::new(0x22);
 /// Hands key presses from the hook to a normal thread, because Windows drops
 /// a low-level hook whose callback takes too long.
 static PRESSED: OnceLock<mpsc::Sender<Press>> = OnceLock::new();
@@ -36,6 +40,35 @@ pub(crate) fn is_overlay_key(vk: u32, configured: u32) -> bool {
     configured != 0 && vk == configured
 }
 
+/// The answer a key press gives to the testing prompt: `Some(true)` for the
+/// correct key, `Some(false)` for the wrong key, `None` for any other key or
+/// a key that is not set (0).
+fn feedback_answer(vk: u32, correct: u32, wrong: u32) -> Option<bool> {
+    if vk == 0 {
+        None
+    } else if vk == correct {
+        Some(true)
+    } else if vk == wrong {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+/// Sets the keys that answer the testing prompt (Windows virtual-key codes,
+/// 0 for none). The prompt is shown with the frontend's names for the same
+/// keys; without both keys, testing asks nothing (`src/backend/src/testing/mod.rs`).
+#[tauri::command]
+pub(crate) fn set_testing_keys(correct: u32, wrong: u32) -> Result<(), String> {
+    if correct != 0 && correct == wrong {
+        return Err("the testing keys must be two different keys".to_string());
+    }
+    CORRECT_KEY.store(correct, Ordering::SeqCst);
+    WRONG_KEY.store(wrong, Ordering::SeqCst);
+    hexdesk_diag::debug!(overlay_key, correct, wrong, "Testing keys set");
+    Ok(())
+}
+
 /// Sets the overlay key (a Windows virtual-key code, 0 for none). The
 /// keyboard hook starts with the first key that is set and keeps running
 /// after that.
@@ -49,7 +82,7 @@ pub(crate) fn set_overlay_key(app: tauri::AppHandle, vk: u32) {
 }
 
 /// Starts the one global keyboard hook used by both the configured overlay
-/// key and the scoped Page Up/Page Down testing prompt.
+/// key and the keys that answer the testing prompt.
 pub(crate) fn ensure_hook(app: tauri::AppHandle) {
     HOOK.call_once(|| start_hook(app));
 }
@@ -105,11 +138,11 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
     let key_up = wparam == WM_KEYUP as WPARAM || wparam == WM_SYSKEYUP as WPARAM;
     if code == HC_ACTION as i32 && (key_down || key_up) {
         let info = &*(lparam as *const KBDLLHOOKSTRUCT);
-        let feedback = match info.vkCode {
-            0x21 => Some(true),  // Page Up: correct and discard.
-            0x22 => Some(false), // Page Down: wrong and keep.
-            _ => None,
-        };
+        let feedback = feedback_answer(
+            info.vkCode,
+            CORRECT_KEY.load(Ordering::Relaxed),
+            WRONG_KEY.load(Ordering::Relaxed),
+        );
         if crate::testing::prompt_visible() && feedback.is_some() {
             if key_down {
                 if let (Some(sender), Some(correct)) = (PRESSED.get(), feedback) {
@@ -254,6 +287,13 @@ mod tests {
     fn only_the_configured_key_counts() {
         assert!(is_overlay_key(VK_HOME, VK_HOME));
         assert!(!is_overlay_key(VK_END, VK_HOME));
+    }
+
+    #[test]
+    fn only_the_two_testing_keys_answer_the_prompt() {
+        assert_eq!(feedback_answer(VK_HOME, VK_HOME, VK_END), Some(true));
+        assert_eq!(feedback_answer(VK_END, VK_HOME, VK_END), Some(false));
+        assert_eq!(feedback_answer(0x21, VK_HOME, VK_END), None);
     }
 
     #[test]

@@ -62,10 +62,11 @@ it("shows the scoped testing prompt even when ordinary status is off", async () 
   await mount(client);
 
   await vi.waitFor(async () => {
-    await emit("testing-feedback", { visible: true, flow: "reward" });
+    await emit("testing-feedback", { visible: true, flow: "reward", timeoutMs: 15_000 });
     expect(page.getByLabelText("Testing feedback").query()).not.toBeNull();
   });
   await expect.element(page.getByText("Was the Relic flow result correct?")).toBeVisible();
+  await expect.element(page.getByRole("progressbar", { name: "Time left to answer" })).toBeVisible();
   await expect.element(page.getByText("Page Up", { exact: true })).toBeVisible();
   await expect.element(page.getByText("Page Down", { exact: true })).toBeVisible();
 
@@ -73,4 +74,27 @@ it("shows the scoped testing prompt even when ordinary status is off", async () 
   await vi.waitFor(() => {
     expect(page.getByLabelText("Testing feedback").query()).toBeNull();
   });
+});
+
+it("names the keys the player chose to answer the testing prompt", async () => {
+  const { client } = setup({ testingCorrectKey: "F1", testingWrongKey: "F2" });
+  await mount(client);
+
+  await vi.waitFor(async () => {
+    await emit("testing-feedback", { visible: true, flow: "riven", timeoutMs: 15_000 });
+    expect(page.getByLabelText("Testing feedback").query()).not.toBeNull();
+  });
+  await expect.element(page.getByText("F1", { exact: true })).toBeVisible();
+  await expect.element(page.getByText("F2", { exact: true })).toBeVisible();
+});
+
+it("confirms a testing answer in the game for a few seconds, even when ordinary status is off", async () => {
+  const { client } = setup({ overlayStatus: { enabled: false } });
+  await mount(client);
+
+  await vi.waitFor(async () => {
+    await emit("testing-notice", { text: "Kept for your test report. Export it from the HexDesk header.", tone: "success" });
+    expect(page.getByLabelText("Testing result").query()).not.toBeNull();
+  });
+  await expect.element(page.getByText("Kept for your test report.", { exact: false })).toBeVisible();
 });

@@ -99,8 +99,6 @@ pub(crate) enum Input {
     TestingFeedback { correct: bool },
     /// An overlay close button also ignores a visible test prompt.
     DismissTestingFeedback,
-    /// A full inventory update arrived after a run.
-    InventoryUpdated(Millis),
     /// Remove logs: drop all pending and reported test data, then answer.
     RemoveTestingData(Sender<Result<(), String>>),
     /// The player changed the testing choices in settings.
@@ -108,6 +106,10 @@ pub(crate) enum Input {
     /// An unanswered prompt expires; the flow id prevents an old timer from
     /// dismissing a newer prompt.
     TestingPromptTimeout(u64),
+    /// Write every reported flow into one zip, then answer with its path.
+    ExportTestReport(Sender<Result<String, String>>),
+    /// Remove every reported flow without a report, then answer.
+    DiscardTestReport(Sender<Result<(), String>>),
 }
 
 static INPUT: OnceLock<Sender<Input>> = OnceLock::new();
@@ -228,11 +230,11 @@ impl Runtime {
                 for (signal, decision) in &step.decisions {
                     self.log_decision(signal, decision);
                 }
-                if let Some(ended_at) = signals.iter().find_map(|signal| {
-                    matches!(signal.kind, SignalKind::Log(LogEvent::MissionEnding))
-                        .then_some(signal.at)
-                }) {
-                    self.testing.run_ended(ended_at);
+                if signals
+                    .iter()
+                    .any(|signal| matches!(signal.kind, SignalKind::Log(LogEvent::MissionEnding)))
+                {
+                    self.testing.run_ended();
                 }
                 CURRENT_VISIT.store(self.tracker.current().map_or(0, |v| v.id), Ordering::SeqCst);
                 for action in step.actions {
@@ -286,12 +288,17 @@ impl Runtime {
             }
             Input::TestingFeedback { correct } => self.testing.answer(correct),
             Input::DismissTestingFeedback => self.testing.dismiss(),
-            Input::InventoryUpdated(at) => self.testing.inventory_updated(at),
             Input::RemoveTestingData(reply) => {
                 let _ = reply.send(self.testing.remove_all());
             }
             Input::TestingConfig(config) => self.testing.set_config(config),
             Input::TestingPromptTimeout(flow) => self.testing.prompt_timeout(flow),
+            Input::ExportTestReport(reply) => {
+                let _ = reply.send(self.testing.export());
+            }
+            Input::DiscardTestReport(reply) => {
+                let _ = reply.send(self.testing.discard_reports());
+            }
         }
     }
 
@@ -839,24 +846,50 @@ pub(crate) fn overlay_closed() {
     )]));
 }
 
-/// Reports the full account update that follows a completed run.
-pub(crate) fn inventory_updated() {
-    send(Input::InventoryUpdated(now()));
-}
-
 /// Removes all test data on the runtime thread, so no prompt, report or
 /// flow move is in progress while the folders go.
 pub(crate) fn remove_testing_data() -> Result<(), String> {
-    let Some(sender) = INPUT.get() else {
+    if INPUT.get().is_none() {
         return crate::testing::remove_all_files();
-    };
+    }
+    ask(Input::RemoveTestingData)
+}
+
+/// Sends `input` to the runtime thread and waits for its answer.
+fn ask<T>(input: impl FnOnce(Sender<Result<T, String>>) -> Input) -> Result<T, String> {
+    let sender = INPUT
+        .get()
+        .ok_or_else(|| "the overlay runtime has not started".to_string())?;
     let (reply, answer) = mpsc::channel();
     sender
-        .send(Input::RemoveTestingData(reply))
+        .send(input(reply))
         .map_err(|_| "the overlay runtime has stopped".to_string())?;
     answer
         .recv_timeout(Duration::from_secs(10))
         .map_err(|_| "the overlay runtime did not answer".to_string())?
+}
+
+/// How many reported testing flows wait for an export.
+#[tauri::command]
+pub(crate) fn test_report_flows() -> usize {
+    crate::testing::kept()
+}
+
+/// Writes every reported testing flow into one zip in Downloads and returns
+/// its path. Runs off the main thread, since writing the zip takes a moment.
+#[tauri::command]
+pub(crate) async fn export_test_report() -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(|| ask(Input::ExportTestReport))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+/// Removes every reported testing flow without writing a report.
+#[tauri::command]
+pub(crate) async fn discard_test_report() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| ask(Input::DiscardTestReport))
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 /// Runs a riven check: "Check Riven" in the app and "New roll" in the

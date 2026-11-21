@@ -20,7 +20,7 @@ function TestingGroup() {
   return (
     <SettingsGroup title="Testing">
       <TestingRows />
-      <SettingRow label="Welcome screen" description="Go through the welcome screen again: appearance, testing and the community.">
+      <SettingRow label="Welcome screen" description="Go through the welcome screen again: appearance, overlays, testing and the community.">
         <Button
           size="sm"
           onClick={() => {

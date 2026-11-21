@@ -7,7 +7,7 @@ import boundaries from "eslint-plugin-boundaries";
 import betterTailwind from "eslint-plugin-better-tailwindcss";
 import globals from "globals";
 
-/** Layers of src/ (vault plan, 5.2). Lowest first. */
+/** Layers of src/ (. Lowest first. */
 const ELEMENTS = [
   { type: "lib", pattern: "src/lib" },
   { type: "theme", pattern: "src/theme" },
@@ -26,7 +26,7 @@ const allow = (from, ...to) => ({
   allow: { to: { element: { type: to } } },
 });
 
-/** Tailwind classes that undo the theme system (plan 6.5 and 9.1). */
+/** Tailwind classes that undo the theme system. */
 const RESTRICTED_CLASSES = [
   { pattern: "^(.*:)?dark:.*$", message: "Do not use dark: variants; themes use data-theme and tokens." },
   { pattern: "^(.*:)?light:.*$", message: "Do not use light: variants; themes use data-theme and tokens." },
@@ -34,7 +34,7 @@ const RESTRICTED_CLASSES = [
   { pattern: String.raw`^(.*:)?[a-z-]+-\[(#|rgb|hsl|oklch|color-mix).*\]$`, message: "Do not use arbitrary colors; use a semantic role." },
   {
     pattern: String.raw`^(.*:)?-?(p|px|py|pt|pr|pb|pl|ps|pe|m|mx|my|mt|mr|mb|ml|ms|me|gap|gap-x|gap-y|space-x|space-y|rounded|rounded-[a-z]+|text|leading|tracking)-\[.*\]$`,
-    message: "Do not use arbitrary sizes; use Tailwind's standard scale (plan 6.5).",
+    message: "Do not use arbitrary sizes; use Tailwind's standard scale.",
   },
 ];
 
@@ -78,7 +78,7 @@ export default tseslint.config(
         "error",
         {
           default: "disallow",
-          message: "Layer {{ from.element.type }} may not import {{ to.element.type }} (plan 5.2).",
+          message: "Layer {{ from.element.type }} may not import {{ to.element.type }}.",
           policies: [
             allow("lib", "lib"),
             allow("theme", "theme"),
@@ -136,7 +136,7 @@ export default tseslint.config(
         {
           patterns: [
             { group: ["**/../src/**", "../../src/*", "../../../src/*"], message: "The frontend may not import files outside its own package." },
-            { group: ["@tauri-apps/*"], message: "Use Tauri only through api/ or app/ (plan 5.2)." },
+            { group: ["@tauri-apps/*"], message: "Use Tauri only through api/ or app/ ." },
           ],
         },
       ],
