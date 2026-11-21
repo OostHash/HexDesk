@@ -12,7 +12,7 @@ use tauri::Manager;
 use windows_sys::Win32::Foundation::{LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, GetMessageW, SetWindowsHookExW, HC_ACTION, KBDLLHOOKSTRUCT, MSG,
-    WH_KEYBOARD_LL, WM_KEYDOWN, WM_SYSKEYDOWN,
+    WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
 };
 
 use crate::app_state::AppState;
@@ -22,8 +22,14 @@ use crate::overlays::{self, window};
 static KEY: AtomicU32 = AtomicU32::new(0);
 /// Hands key presses from the hook to a normal thread, because Windows drops
 /// a low-level hook whose callback takes too long.
-static PRESSED: OnceLock<mpsc::Sender<()>> = OnceLock::new();
+static PRESSED: OnceLock<mpsc::Sender<Press>> = OnceLock::new();
 static HOOK: Once = Once::new();
+
+#[derive(Clone, Copy)]
+enum Press {
+    Overlay,
+    TestingFeedback { correct: bool },
+}
 
 /// Whether a key press with virtual-key code `vk` is the key `configured`.
 pub(crate) fn is_overlay_key(vk: u32, configured: u32) -> bool {
@@ -38,8 +44,14 @@ pub(crate) fn set_overlay_key(app: tauri::AppHandle, vk: u32) {
     KEY.store(vk, Ordering::SeqCst);
     hexdesk_diag::debug!(overlay_key, vk, "Overlay key set");
     if vk != 0 {
-        HOOK.call_once(|| start_hook(app));
+        ensure_hook(app);
     }
+}
+
+/// Starts the one global keyboard hook used by both the configured overlay
+/// key and the scoped Page Up/Page Down testing prompt.
+pub(crate) fn ensure_hook(app: tauri::AppHandle) {
+    HOOK.call_once(|| start_hook(app));
 }
 
 /// Turns saving what OCR reads on screen on or off.
@@ -52,12 +64,21 @@ fn start_hook(app: tauri::AppHandle) {
     let (sender, presses) = mpsc::channel();
     let _ = PRESSED.set(sender);
     std::thread::spawn(move || {
-        for (n, ()) in (1u64..).zip(presses) {
-            // Each press is its own operation, and its lines carry the press
-            // number, so the log never folds two presses into one repeat.
-            let press = format!("{n} since start");
-            let _op = hexdesk_diag::op!(overlay_key, "Overlay key press").entered();
-            on_key(&app, &press);
+        let mut overlay_presses = 0u64;
+        for pressed in presses {
+            match pressed {
+                Press::Overlay => {
+                    overlay_presses += 1;
+                    // Each press is its own operation, and its lines carry the
+                    // number, so the log never folds two presses into one repeat.
+                    let press = format!("{overlay_presses} since start");
+                    let _op = hexdesk_diag::op!(overlay_key, "Overlay key press").entered();
+                    on_key(&app, &press);
+                }
+                Press::TestingFeedback { correct } => {
+                    overlays::send(overlays::Input::TestingFeedback { correct });
+                }
+            }
         }
     });
     std::thread::spawn(|| {
@@ -81,11 +102,29 @@ fn start_hook(app: tauri::AppHandle) {
 
 unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     let key_down = wparam == WM_KEYDOWN as WPARAM || wparam == WM_SYSKEYDOWN as WPARAM;
-    if code == HC_ACTION as i32 && key_down {
+    let key_up = wparam == WM_KEYUP as WPARAM || wparam == WM_SYSKEYUP as WPARAM;
+    if code == HC_ACTION as i32 && (key_down || key_up) {
         let info = &*(lparam as *const KBDLLHOOKSTRUCT);
+        let feedback = match info.vkCode {
+            0x21 => Some(true),  // Page Up: correct and discard.
+            0x22 => Some(false), // Page Down: wrong and keep.
+            _ => None,
+        };
+        if crate::testing::prompt_visible() && feedback.is_some() {
+            if key_down {
+                if let (Some(sender), Some(correct)) = (PRESSED.get(), feedback) {
+                    let _ = sender.send(Press::TestingFeedback { correct });
+                }
+            }
+            // While the prompt is visible these keys belong to HexDesk, not
+            // the game. Suppress both halves of the key press.
+            return 1;
+        }
         if is_overlay_key(info.vkCode, KEY.load(Ordering::Relaxed)) {
-            if let Some(sender) = PRESSED.get() {
-                let _ = sender.send(());
+            if key_down {
+                if let Some(sender) = PRESSED.get() {
+                    let _ = sender.send(Press::Overlay);
+                }
             }
         }
     }
@@ -100,6 +139,15 @@ fn on_key(app: &tauri::AppHandle, press: &str) {
             overlay_key,
             press,
             "Overlay key did nothing: overlays are turned off"
+        );
+        return;
+    }
+    if crate::testing::prompt_visible() {
+        overlays::send(overlays::Input::DismissTestingFeedback);
+        hexdesk_diag::info!(
+            overlay_key,
+            press,
+            "Overlay key dismissed the testing prompt"
         );
         return;
     }
@@ -175,7 +223,7 @@ fn on_key(app: &tauri::AppHandle, press: &str) {
         op: tracing::Span::current(),
     });
     let action = match screen {
-        Some(Screen::RelicSelection) => "sent to the Relic Pick overlay",
+        Some(Screen::RelicSelection | Screen::RelicRefinement) => "sent to the Relic Pick overlay",
         Some(Screen::RewardChoice) => "sent to the Relic Reward overlay",
         Some(Screen::Riven) => "sent to the riven overlay",
         None => "none",

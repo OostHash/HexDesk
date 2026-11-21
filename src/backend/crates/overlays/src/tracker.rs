@@ -476,7 +476,7 @@ fn log_effect(event: LogEvent) -> Effect {
             Effect::Leave(&[RelicSelection])
         }
         LogEvent::LevelLoading | LogEvent::MissionEnding => {
-            Effect::Leave(&[RelicSelection, RewardChoice, Riven])
+            Effect::Leave(&[RelicSelection, RelicRefinement, RewardChoice, Riven])
         }
         LogEvent::RewardScreenOpened => Effect::Enter(RewardChoice),
         LogEvent::RewardsRequested => Effect::Confirm(RewardChoice),

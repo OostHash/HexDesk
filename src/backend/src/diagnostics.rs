@@ -33,6 +33,22 @@ pub(crate) fn get_recent_logs(limit: Option<usize>) -> Vec<Entry> {
     hexdesk_diag::recent(limit.unwrap_or(usize::MAX))
 }
 
+/// Removes local diagnostic history, captures and pending test samples while
+/// keeping logging active and leaving every setting unchanged.
+#[tauri::command]
+pub(crate) fn remove_logs() -> Result<(), String> {
+    crate::captures::remove_all()?;
+    crate::testing::clear_active();
+    let testing = crate::paths::state_dir().join("testing");
+    if testing.exists() {
+        std::fs::remove_dir_all(testing).map_err(|error| error.to_string())?;
+    }
+    crate::overlays::testing_data_removed();
+    let files = crate::logging::clear_files()?;
+    info!(app, files, "Diagnostic logs and captures removed");
+    Ok(())
+}
+
 thread_local! {
     /// Set while an entry is being forwarded. Emitting can log in turn; those
     /// entries are not forwarded again, so forwarding never recurses.

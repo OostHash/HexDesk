@@ -288,9 +288,13 @@ async fn read_until_trusted(
                 catalog = fallback;
             }
         }
-        let captured =
-            capture_reward_items(Arc::clone(&catalog), Arc::clone(&squad), Arc::clone(&names))
-                .await;
+        let captured = capture_reward_items(
+            visit,
+            Arc::clone(&catalog),
+            Arc::clone(&squad),
+            Arc::clone(&names),
+        )
+        .await;
         if let Some(saved) = captured.as_ref().and_then(|c| c.saved.as_ref()) {
             info!(relic_reward, visit, attempt, capture = %saved, "Reward area recorded");
         }
@@ -603,6 +607,7 @@ pub(crate) struct RewardCapture {
 /// Captures the reward area and reads the cards, with the squad size and
 /// player names EE.log gave so far. None when the game window was not found.
 pub(crate) async fn capture_reward_items(
+    visit: VisitId,
     catalog: std::sync::Arc<Vec<(String, String)>>,
     squad_size: std::sync::Arc<std::sync::Mutex<Option<usize>>>,
     squad_names: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
@@ -616,6 +621,9 @@ pub(crate) async fn capture_reward_items(
         let read =
             crate::ocr::recognize(crate::ocr::Reader::Rewards, &bmp, frame.width, frame.height);
         let ocr_ms = started.elapsed().as_millis() as u64 - capture_ms;
+        if let Ok(read) = &read {
+            crate::testing::save_read(visit, "relic-reward", &bmp, read);
+        }
         let saved = match &read {
             Ok(read) if crate::captures::enabled() => {
                 crate::captures::save_read("relic-reward", &bmp, read)

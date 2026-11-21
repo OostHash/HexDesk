@@ -23,6 +23,8 @@ const RIVEN_WIDTH: f64 = 300.0;
 
 const STATUS_WIDTH: f64 = 440.0;
 const STATUS_HEIGHT: f64 = 52.0;
+const TESTING_FEEDBACK_WIDTH: f64 = 620.0;
+const TESTING_FEEDBACK_HEIGHT: f64 = 82.0;
 
 /// One overlay's saved x/y offset (logical pixels) from settings.json.
 /// Missing settings or missing axes mean 0, which keeps the built-in placement.
@@ -136,11 +138,24 @@ fn status_bounds(game: [i32; 4], scale: f64, offset: (f64, f64)) -> (i32, i32, u
 /// Places the click-through status line at the top centre of the game window.
 #[tauri::command]
 pub(crate) fn show_overlay_status_window(app: tauri::AppHandle) -> Result<(), String> {
+    show_status(&app, STATUS_WIDTH, STATUS_HEIGHT)
+}
+
+/// Places the persistent Page Up/Page Down prompt over the game.
+pub(crate) fn show_testing_feedback(app: &tauri::AppHandle) -> Result<(), String> {
+    show_status(app, TESTING_FEEDBACK_WIDTH, TESTING_FEEDBACK_HEIGHT)
+}
+
+fn show_status(app: &tauri::AppHandle, width: f64, height: f64) -> Result<(), String> {
     let win = app
         .get_webview_window(STATUS)
         .ok_or("its window does not exist")?;
     let (game, scale) = game_area(&win)?;
-    let (x, y, width, height) = status_bounds(game, scale, saved_offset(&app, "status"));
+    let mut bounds = status_bounds(game, scale, saved_offset(app, "status"));
+    bounds.0 -= (((width - STATUS_WIDTH) * scale) / 2.0).round() as i32;
+    bounds.2 = (width * scale).round() as u32;
+    bounds.3 = (height * scale).round() as u32;
+    let (x, y, width, height) = bounds;
     let _ = win.set_size(tauri::Size::Physical(tauri::PhysicalSize { width, height }));
     let _ = win.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
     let _ = win.set_always_on_top(true);

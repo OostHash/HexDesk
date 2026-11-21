@@ -122,3 +122,15 @@ it("saves the capture choice and shows a saved capture in the entry details", as
   await expect.element(page.getByRole("img", { name: "Screen capture given to OCR" })).toBeInTheDocument();
   expect(calls.find((c) => c.cmd === "get_capture")?.args).toEqual({ name: "overlay-key-1.bmp" });
 });
+
+it("removes logs only after confirmation", async () => {
+  const calls: Array<{ cmd: string; args: unknown }> = [];
+  await mount(RECENT, calls);
+
+  await page.getByRole("button", { name: "Remove logs" }).click();
+  expect(calls.some((call) => call.cmd === "remove_logs")).toBe(false);
+  await page.getByRole("dialog", { name: "Remove logs and captures?" }).getByRole("button", { name: "Remove logs" }).click();
+
+  await expect.poll(() => calls.some((call) => call.cmd === "remove_logs")).toBe(true);
+  await expect.element(page.getByText("Logs and captures removed. Logging continues for this session.")).toBeVisible();
+});

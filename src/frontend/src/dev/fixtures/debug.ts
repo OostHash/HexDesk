@@ -94,6 +94,7 @@ const RECENT_LOGS: LogEntry[] = [
 
 export const debugFixtures = {
   get_recent_logs: { default: () => RECENT_LOGS, empty: () => [] } satisfies Fixture<LogEntry[], { limit?: number }>,
+  remove_logs: noResult(),
   export_diagnostics: {
     alwaysDefault: true,
     default: () => "C:/Users/Tenno/Downloads/hexdesk-diagnostics-2026-11-18-150312.zip",

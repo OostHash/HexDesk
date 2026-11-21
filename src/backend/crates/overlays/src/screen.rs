@@ -3,9 +3,10 @@
 /// A game screen with an overlay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Screen {
-    /// A list of relics of one era: "VOID FISSURE/SELECT RELIC" before or
-    /// during a fissure mission, or "VOID RELICS/REFINEMENT".
+    /// "VOID FISSURE/SELECT RELIC" before or during a fissure mission.
     RelicSelection,
+    /// "VOID RELICS/REFINEMENT" in the orbiter.
+    RelicRefinement,
     /// "VOID FISSURE/REWARDS": the squad's reward cards after a relic opened.
     RewardChoice,
     /// A riven card: the reroll screen, or "INVENTORY/MODS".
@@ -14,12 +15,17 @@ pub enum Screen {
 
 impl Screen {
     /// Every screen, in a fixed order.
-    pub const ALL: [Screen; 3] = [Screen::RelicSelection, Screen::RewardChoice, Screen::Riven];
+    pub const ALL: [Screen; 4] = [
+        Screen::RelicSelection,
+        Screen::RelicRefinement,
+        Screen::RewardChoice,
+        Screen::Riven,
+    ];
 
     /// The overlay shown on this screen.
     pub const fn overlay(self) -> Overlay {
         match self {
-            Screen::RelicSelection => Overlay::RelicPick,
+            Screen::RelicSelection | Screen::RelicRefinement => Overlay::RelicPick,
             Screen::RewardChoice => Overlay::RelicReward,
             Screen::Riven => Overlay::Riven,
         }
@@ -29,6 +35,7 @@ impl Screen {
     pub const fn name(self) -> &'static str {
         match self {
             Screen::RelicSelection => "relic selection",
+            Screen::RelicRefinement => "relic refinement",
             Screen::RewardChoice => "fissure rewards",
             Screen::Riven => "riven",
         }
@@ -41,6 +48,7 @@ impl Screen {
     pub const fn time_limit_ms(self) -> i64 {
         match self {
             Screen::RelicSelection => 120_000,
+            Screen::RelicRefinement => 600_000,
             Screen::RewardChoice => 60_000,
             Screen::Riven => 600_000,
         }

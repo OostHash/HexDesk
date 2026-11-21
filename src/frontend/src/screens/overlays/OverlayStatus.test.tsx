@@ -56,3 +56,20 @@ it("stays hidden when the status overlay is turned off", async () => {
   expect(page.getByRole("status").query()).toBeNull();
   expect(calls).not.toContain("show_overlay_status_window");
 });
+
+it("shows the scoped testing prompt even when ordinary status is off", async () => {
+  const { client } = setup({ overlayStatus: { enabled: false } });
+  await mount(client);
+
+  await vi.waitFor(async () => {
+    await emit("testing-feedback", { visible: true, flow: "reward" });
+    expect(page.getByLabelText("Testing feedback").query()).not.toBeNull();
+  });
+  await expect.element(page.getByText("Page Up", { exact: true })).toBeVisible();
+  await expect.element(page.getByText("Page Down", { exact: true })).toBeVisible();
+
+  await emit("testing-feedback", { visible: false });
+  await vi.waitFor(() => {
+    expect(page.getByLabelText("Testing feedback").query()).toBeNull();
+  });
+});

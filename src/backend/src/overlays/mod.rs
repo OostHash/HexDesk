@@ -20,9 +20,11 @@ use std::sync::mpsc::{self, Sender};
 use std::sync::OnceLock;
 use std::time::Duration;
 
+use hexdesk_overlays::ee_log::LogEvent;
 use hexdesk_overlays::tracker::CloseReason;
 use hexdesk_overlays::{
-    Action, Decision, HideBy, Millis, Overlay, Screen, Signal, SignalKind, Tracker, Visit, VisitId,
+    Action, Decision, Flow, FlowTracker, HideBy, Millis, Overlay, Screen, Signal, SignalKind,
+    Tracker, Visit, VisitId,
 };
 use tauri::{Emitter, Manager};
 use tracing::Span;
@@ -94,6 +96,17 @@ pub(crate) enum Input {
     },
     /// Time is up for a window to confirm a view.
     RenderCheck { overlay: Overlay, view: u64 },
+    /// Page Up (correct) or Page Down (wrong) while the test prompt is shown.
+    TestingFeedback { correct: bool },
+    /// An overlay close button also ignores a visible test prompt.
+    DismissTestingFeedback,
+    /// A full inventory update arrived after a run.
+    InventoryUpdated(Millis),
+    /// Remove logs also cleared all pending and reported test data.
+    TestingDataRemoved,
+    /// An unanswered prompt expires; the flow id prevents an old timer from
+    /// dismissing a newer prompt.
+    TestingPromptTimeout(u64),
 }
 
 static INPUT: OnceLock<Sender<Input>> = OnceLock::new();
@@ -153,6 +166,7 @@ pub(crate) fn start(app: tauri::AppHandle) {
         return;
     }
     sync_switches(&app.state::<AppState>());
+    crate::overlay_key::ensure_hook(app.clone());
     std::thread::spawn(move || {
         let mut runtime = Runtime::new(app);
         for input in inputs {
@@ -173,6 +187,8 @@ struct Shown {
 struct Runtime {
     app: tauri::AppHandle,
     tracker: Tracker,
+    flows: FlowTracker,
+    testing: crate::testing::Runtime,
     /// The log operation of each visit that has not ended.
     ops: HashMap<VisitId, Span>,
     shown: HashMap<Overlay, Shown>,
@@ -185,9 +201,12 @@ struct Runtime {
 
 impl Runtime {
     fn new(app: tauri::AppHandle) -> Runtime {
+        let settings_path = app.state::<AppState>().settings_path.clone();
         Runtime {
             app,
             tracker: Tracker::new(),
+            flows: FlowTracker::new(),
+            testing: crate::testing::Runtime::new(settings_path),
             ops: HashMap::new(),
             shown: HashMap::new(),
             next_view: 1,
@@ -202,6 +221,15 @@ impl Runtime {
                 let step = self.tracker.handle(&signals);
                 for (signal, decision) in &step.decisions {
                     self.log_decision(signal, decision);
+                }
+                if let Some(ended_at) = signals.iter().find_map(|signal| {
+                    matches!(signal.kind, SignalKind::Log(LogEvent::MissionEnding))
+                        .then_some(signal.at)
+                }) {
+                    if let Some(flow) = self.flows.end_run() {
+                        self.log_completed_flow(flow);
+                    }
+                    self.testing.run_ended(&self.app, ended_at);
                 }
                 CURRENT_VISIT.store(self.tracker.current().map_or(0, |v| v.id), Ordering::SeqCst);
                 for action in step.actions {
@@ -253,6 +281,11 @@ impl Runtime {
                     }
                 }
             }
+            Input::TestingFeedback { correct } => self.testing.answer(&self.app, correct),
+            Input::DismissTestingFeedback => self.testing.dismiss_prompt(&self.app),
+            Input::InventoryUpdated(at) => self.testing.inventory_updated(&self.app, at),
+            Input::TestingDataRemoved => self.testing.data_removed(&self.app),
+            Input::TestingPromptTimeout(flow) => self.testing.prompt_timeout(&self.app, flow),
         }
     }
 
@@ -266,10 +299,11 @@ impl Runtime {
             self.ops.insert(visit.id, op.clone());
             return op;
         }
-        let span = match visit.screen.overlay() {
-            Overlay::RelicPick => hexdesk_diag::op!(relic_pick, "Relic selection"),
-            Overlay::RelicReward => hexdesk_diag::op!(relic_reward, "Fissure rewards"),
-            Overlay::Riven => hexdesk_diag::op!(riven, "Riven screen"),
+        let span = match visit.screen {
+            Screen::RelicSelection => hexdesk_diag::op!(relic_pick, "Relic selection"),
+            Screen::RelicRefinement => hexdesk_diag::op!(relic_pick, "Relic refinement"),
+            Screen::RewardChoice => hexdesk_diag::op!(relic_reward, "Fissure rewards"),
+            Screen::Riven => hexdesk_diag::op!(riven, "Riven screen"),
         };
         self.ops.insert(visit.id, span.clone());
         span
@@ -286,6 +320,10 @@ impl Runtime {
         match decision {
             Decision::Entered { visit, overlay_on } => {
                 self.log_entered(visit, *overlay_on, &by, late_ms);
+                for flow in self.flows.enter(visit.id, visit.screen) {
+                    self.log_completed_flow(flow);
+                }
+                self.testing.visit_started(&self.app, visit.id);
             }
             Decision::Left {
                 visit,
@@ -305,8 +343,15 @@ impl Runtime {
                         "Screen left"
                     )
                 });
+                if let Some(flow) = self.flows.leave(visit.id, visit.screen) {
+                    self.log_completed_flow(flow);
+                }
                 if let Some(next) = next {
                     self.log_entered(next, *next_overlay_on, &by, late_ms);
+                    for flow in self.flows.enter(next.id, next.screen) {
+                        self.log_completed_flow(flow);
+                    }
+                    self.testing.visit_started(&self.app, next.id);
                 }
             }
             Decision::Hidden { visit } | Decision::ShownAgain { visit } => {
@@ -338,6 +383,17 @@ impl Runtime {
                 }
             }
         }
+    }
+
+    fn log_completed_flow(&mut self, flow: Flow) {
+        hexdesk_diag::debug!(
+            overlay,
+            flow = flow.id,
+            kind = flow.kind.name(),
+            visits = ?flow.visits,
+            "Testing flow completed"
+        );
+        self.testing.flow_completed(&self.app, flow);
     }
 
     fn log_entered(&mut self, visit: &Visit, overlay_on: bool, by: &str, late_ms: Millis) {
@@ -434,6 +490,15 @@ impl Runtime {
     }
 
     fn pick_ready(&mut self, visit: VisitId, pick: Option<pick::PickView>) {
+        if let Some(screen) = pick.as_ref().and_then(|pick| pick.screen) {
+            self.flows.reclassify(visit, screen);
+            hexdesk_diag::debug!(
+                overlay,
+                visit,
+                screen = screen.name(),
+                "Relic-list flow classified from OCR title"
+            );
+        }
         let span = self.op(visit);
         let _guard = span.enter();
         let current = self.tracker.current().copied();
@@ -470,16 +535,21 @@ impl Runtime {
             status(&self.app, "Could not show the Relic Pick overlay");
             return;
         }
+        let pick::PickView {
+            era,
+            screen: _,
+            relics,
+            mut payload,
+        } = pick;
         let view = self.track_view(Overlay::RelicPick, visit);
-        let mut payload = pick.payload;
         payload["view"] = serde_json::json!(view);
         let _ = self.app.emit(events::RELIC_PICK_OPEN, payload);
         hexdesk_diag::info!(
             relic_pick,
             visit,
             view,
-            era = pick.era,
-            relics = pick.relics,
+            era,
+            relics,
             "Relic Pick overlay ready"
         );
         status(&self.app, "Relic Pick overlay ready");
@@ -706,8 +776,8 @@ impl Runtime {
                 visit
             }
         };
-        if crate::captures::screenshots() {
-            screenshot(overlay, self.op(visit));
+        if crate::captures::screenshots() || crate::testing::capturing(visit) {
+            screenshot(overlay, visit, self.op(visit));
         }
     }
 }
@@ -717,7 +787,7 @@ impl Runtime {
 const SCREENSHOT_LATE: Duration = Duration::from_millis(1500);
 
 /// Saves the game's monitor, game and overlay together, in the background.
-fn screenshot(overlay: Overlay, op: Span) {
+fn screenshot(overlay: Overlay, visit: VisitId, op: Span) {
     let drawn = std::time::Instant::now();
     std::thread::spawn(move || {
         let _guard = op.enter();
@@ -734,8 +804,12 @@ fn screenshot(overlay: Overlay, op: Span) {
         match shot {
             Ok(frame) => {
                 let prefix = format!("screenshot-{}", overlay.name().replace('_', "-"));
-                if let Some(capture) = crate::captures::save(&prefix, &frame.to_bmp()) {
-                    info_for!(overlay, after_ms, capture = %capture, "Screenshot saved");
+                let bmp = frame.to_bmp();
+                crate::testing::save_overlay(visit, &prefix, &bmp);
+                if crate::captures::screenshots() {
+                    if let Some(capture) = crate::captures::save(&prefix, &bmp) {
+                        info_for!(overlay, after_ms, capture = %capture, "Screenshot saved");
+                    }
                 }
             }
             Err(reason) => info_for!(overlay, reason = %reason, "Screenshot not saved"),
@@ -771,10 +845,21 @@ fn overlay_source(overlay: Overlay) -> hexdesk_diag::Source {
 /// Reports that the player closed an overlay with its close button.
 #[tauri::command]
 pub(crate) fn overlay_closed() {
+    send(Input::DismissTestingFeedback);
     send(Input::Signals(vec![Signal::hide(
         now(),
         HideBy::CloseButton,
     )]));
+}
+
+/// Reports the full account update that follows a completed run.
+pub(crate) fn inventory_updated() {
+    send(Input::InventoryUpdated(now()));
+}
+
+/// Synchronizes the runtime after Remove logs deleted its testing folders.
+pub(crate) fn testing_data_removed() {
+    send(Input::TestingDataRemoved);
 }
 
 /// Runs a riven check: "Check Riven" in the app and "New roll" in the

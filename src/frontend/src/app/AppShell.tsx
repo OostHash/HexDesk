@@ -1,5 +1,8 @@
-import { useCallback, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useState, type ComponentType } from "react";
+import { onEvent } from "../api/events";
+import { useSettings } from "../api/settings";
 import { cn } from "../primitives/cn";
+import { toast } from "../primitives/overlay";
 import { FoundryScreen } from "../screens/foundry/FoundryScreen";
 import { ItemWindowHost } from "../screens/market/ItemWindow";
 import { MarketScreen } from "../screens/market/MarketScreen";
@@ -8,6 +11,7 @@ import { SettingsScreen, type SettingsTab } from "../screens/settings/SettingsSc
 import { InventoryScreen } from "../screens/inventory/InventoryScreen";
 import { RelicsScreen } from "../screens/relics/RelicsScreen";
 import { TimersScreen } from "../screens/timers/TimersScreen";
+import { WelcomeScreen } from "../screens/welcome/WelcomeScreen";
 import { AppLifecycle } from "./AppLifecycle";
 import { ChangeLogDock } from "./ChangeLogDock";
 import { FissureAlerts } from "./FissureAlerts";
@@ -34,6 +38,7 @@ const SCREENS: readonly ScreenDef[] = [
 
 /** Main window: navigation on the left, the active screen on the right. */
 export function AppShell() {
+  const { data: settings } = useSettings();
   const [screen, setScreen] = useState("inventory");
   // Kept while the app runs, so Settings reopens on the category used last.
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
@@ -47,6 +52,32 @@ export function AppShell() {
     if (tab) setSettingsTab(tab);
     setScreen("settings");
   };
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void onEvent("test-report", ({ path, error }) => {
+      if (path) {
+        toast({ title: "Test report saved", description: path, tone: "success" }, { timeout: 10_000 });
+      } else if (error) {
+        toast({ title: "Could not save test report", description: `${error} The reported samples were kept locally.`, tone: "danger" });
+      }
+    }).then((fn) => {
+      if (disposed) fn();
+      else unlisten = fn;
+    });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
+  if (settings?.onboardingCompleted === false) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <WindowTitleBar />
+        <WelcomeScreen />
+      </div>
+    );
+  }
   return (
     <div className="flex h-full min-h-0 flex-col">
       <AppLifecycle />

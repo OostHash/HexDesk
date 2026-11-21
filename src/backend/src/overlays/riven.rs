@@ -12,7 +12,7 @@ use super::{send, Input};
 pub(super) fn check(visit: VisitId, roll: u32, op: Span) {
     tauri::async_runtime::spawn(
         async move {
-            let view = match crate::rivens::read_riven_card().await {
+            let view = match crate::rivens::read_riven_card(visit).await {
                 Ok(card) => {
                     let analysis = analyse(&card);
                     result(&card, analysis, roll)

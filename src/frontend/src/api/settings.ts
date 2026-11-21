@@ -27,6 +27,9 @@ export function useSettings() {
   });
 }
 
+/** Saves some top-level settings without changing the query cache. */
+export const saveSettings = (patch: SettingsFile) => invoke("save_settings", { json: JSON.stringify(patch) });
+
 /**
  * Saves some top-level keys. Updates the cache optimistically, so a toggle
  * reacts immediately; on failure the cache is restored. The settings-updated
@@ -35,7 +38,7 @@ export function useSettings() {
 export function useSaveSettings() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (patch: SettingsFile) => invoke("save_settings", { json: JSON.stringify(patch) }),
+    mutationFn: saveSettings,
     onMutate: async (patch) => {
       await queryClient.cancelQueries({ queryKey: settingsKeys.all });
       const previous = queryClient.getQueryData<SettingsFile>(settingsKeys.all);

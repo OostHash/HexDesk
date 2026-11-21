@@ -6,6 +6,36 @@ use crate::cache::atomic_write;
 use crate::events;
 use crate::paths;
 
+pub(crate) const DEFAULT_LOG_RETENTION_DAYS: u64 = 1;
+pub(crate) const MAX_LOG_RETENTION_DAYS: u64 = 5;
+
+/// Adds settings whose absence has different meanings for a fresh install and
+/// an upgrade. Existing values always win.
+pub(crate) fn initialize_installation(
+    path: &std::path::Path,
+    fresh_install: bool,
+) -> Result<(), String> {
+    merge_settings(path, |map| {
+        map.entry("onboardingCompleted")
+            .or_insert(serde_json::Value::Bool(!fresh_install));
+        map.entry("logRetentionDays")
+            .or_insert(DEFAULT_LOG_RETENTION_DAYS.into());
+        map.entry("testingEnabled").or_insert(false.into());
+        map.entry("feedbackFrequency")
+            .or_insert("every-flow".into());
+    })
+}
+
+/// The supported log-retention range, with a safe default for missing or
+/// malformed settings.
+pub(crate) fn log_retention_days(path: &std::path::Path) -> u64 {
+    read_settings_map(path)
+        .ok()
+        .and_then(|map| map.get("logRetentionDays").and_then(|value| value.as_u64()))
+        .unwrap_or(DEFAULT_LOG_RETENTION_DAYS)
+        .clamp(DEFAULT_LOG_RETENTION_DAYS, MAX_LOG_RETENTION_DAYS)
+}
+
 /// Wipe all app data and restart — factory reset.
 /// Wipes all user data and restarts the app into a clean state.
 ///
@@ -102,6 +132,9 @@ pub(crate) fn save_settings(
 ) -> Result<(), String> {
     // Merge over existing file so geometry fields written by save_window_state are never erased
     let new_vals: serde_json::Value = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+    let retention_changed = new_vals
+        .as_object()
+        .is_some_and(|map| map.contains_key("logRetentionDays"));
     merge_settings(&state.settings_path, |existing| {
         if let serde_json::Value::Object(new_map) = new_vals {
             for (k, v) in new_map {
@@ -109,6 +142,11 @@ pub(crate) fn save_settings(
             }
         }
     })?;
+    if retention_changed {
+        if let Err(error) = crate::logging::reload_retention() {
+            warn!(error = %error, "log retention could not be applied to the active logger");
+        }
+    }
     app.emit(events::SETTINGS_UPDATED, ()).ok();
     Ok(())
 }
@@ -242,7 +280,7 @@ pub(crate) fn restore_window_state(
 
 #[cfg(test)]
 mod settings_merge_tests {
-    use super::{merge_settings, read_settings_map};
+    use super::{initialize_installation, log_retention_days, merge_settings, read_settings_map};
     use std::path::PathBuf;
 
     /// Each test gets its own file so they can run in parallel.
@@ -338,5 +376,47 @@ mod settings_merge_tests {
                 assert!(map.contains_key(&format!("k{t}_{i}")), "lost k{t}_{i}");
             }
         }
+    }
+
+    #[test]
+    fn only_a_fresh_install_waits_for_onboarding() {
+        let fresh = scratch("fresh-onboarding");
+        initialize_installation(&fresh, true).expect("fresh settings are initialized");
+        let fresh_map = read_settings_map(&fresh).expect("fresh settings parse");
+        assert_eq!(fresh_map["onboardingCompleted"], serde_json::json!(false));
+        assert_eq!(fresh_map["testingEnabled"], serde_json::json!(false));
+        assert_eq!(fresh_map["logRetentionDays"], serde_json::json!(1));
+
+        let upgrade = scratch("upgrade-onboarding");
+        std::fs::write(&upgrade, r#"{"favorites":["a"]}"#).expect("scratch file is writable");
+        initialize_installation(&upgrade, false).expect("upgrade settings are initialized");
+        let upgrade_map = read_settings_map(&upgrade).expect("upgrade settings parse");
+        assert_eq!(upgrade_map["onboardingCompleted"], serde_json::json!(true));
+        assert_eq!(upgrade_map["favorites"], serde_json::json!(["a"]));
+    }
+
+    #[test]
+    fn installation_defaults_never_replace_a_saved_choice() {
+        let path = scratch("onboarding-choice");
+        std::fs::write(
+            &path,
+            r#"{"onboardingCompleted":false,"testingEnabled":true,"logRetentionDays":4,"feedbackFrequency":"once-per-run"}"#,
+        )
+        .expect("scratch file is writable");
+
+        initialize_installation(&path, false).expect("settings are initialized");
+        let map = read_settings_map(&path).expect("settings parse");
+        assert_eq!(map["onboardingCompleted"], serde_json::json!(false));
+        assert_eq!(map["testingEnabled"], serde_json::json!(true));
+        assert_eq!(map["logRetentionDays"], serde_json::json!(4));
+        assert_eq!(map["feedbackFrequency"], serde_json::json!("once-per-run"));
+    }
+
+    #[test]
+    fn log_retention_is_clamped_to_the_supported_range() {
+        let path = scratch("retention");
+        assert_eq!(log_retention_days(&path), 1);
+        std::fs::write(&path, r#"{"logRetentionDays":99}"#).expect("scratch file is writable");
+        assert_eq!(log_retention_days(&path), 5);
     }
 }

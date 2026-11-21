@@ -82,6 +82,10 @@ export interface EventMap {
   "overlays-disabled": unknown;
   /** Short backend status line for the app header and the in-game status window. */
   "status-line": string;
+  /** Scoped Page Up/Page Down prompt after a completed testing flow. */
+  "testing-feedback": { visible: boolean; flow?: "reward" | "refinement" | "riven" };
+  /** Result of writing the opt-in per-run report. */
+  "test-report": { path: string | null; error: string | null };
   /** The relic selection screen opened: which relics to run. */
   "relic-pick-open": RelicPick;
   "relic-pick-close": unknown;

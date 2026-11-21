@@ -5,9 +5,10 @@ import { setOcrModels, settingsKeys, type SettingsFile } from "../../api/setting
 import { useClock } from "../../api/statistics";
 import { Button } from "../../primitives/actions";
 import { ocrModelsFrom } from "../../domain/settings";
+import { FEEDBACK_FREQUENCIES, feedbackFrequencyFrom, LOG_RETENTION_DAYS, logRetentionDaysFrom } from "../../domain/testing";
 import { clockFormatFrom, type ClockFormat } from "../../domain/statistics";
 import { Badge } from "../../primitives/display";
-import { FormField, RadioGroup, Slider } from "../../primitives/forms";
+import { FormField, RadioGroup, Select, Slider } from "../../primitives/forms";
 import {
   availableChoices,
   clampTextScale,
@@ -30,6 +31,65 @@ const CLOCK_OPTIONS: ReadonlyArray<{ value: ClockFormat; label: string }> = [
 const DENSITY_OPTIONS = DENSITY_CHOICES.map((value) => ({ value, label: DENSITY_LABEL[value] }));
 
 const percent = (scale: number) => `${String(Math.round(scale * 100))}%`;
+
+/** Local diagnostics, optional testing and a way back into onboarding. */
+function PrivacyTestingGroup() {
+  const { settings, set } = useSettingsFile();
+  const testingEnabled = settings.testingEnabled === true;
+  return (
+    <SettingsGroup title="Privacy and testing">
+      <FormField
+        layout="row"
+        label="Keep diagnostic logs for"
+        description="Logs stay on this computer and are never uploaded automatically. Older daily files are removed automatically."
+      >
+        <Select
+          value={logRetentionDaysFrom(settings.logRetentionDays)}
+          onChange={(event) => {
+            set({ logRetentionDays: Number(event.target.value) });
+          }}
+        >
+          {LOG_RETENTION_DAYS.map((days) => (
+            <option key={days} value={days}>
+              {days === 1 ? "1 day" : `${String(days)} days`}
+            </option>
+          ))}
+        </Select>
+      </FormField>
+      <SwitchRow
+        label="Help test HexDesk"
+        description="Ask whether completed screen flows were read correctly. Page Up discards a correct flow; Page Down keeps a wrong flow for a local report. Nothing is uploaded automatically."
+        checked={testingEnabled}
+        onCheckedChange={(testing) => {
+          set({ testingEnabled: testing });
+        }}
+      />
+      {testingEnabled && (
+        <SettingRow group={false} label="Ask for feedback">
+          <RadioGroup
+            legend="Ask for feedback"
+            hideLegend
+            value={feedbackFrequencyFrom(settings.feedbackFrequency)}
+            options={FEEDBACK_FREQUENCIES}
+            onValueChange={(feedbackFrequency) => {
+              set({ feedbackFrequency });
+            }}
+          />
+        </SettingRow>
+      )}
+      <SettingRow label="Welcome and privacy" description="Review appearance, local data and testing choices from the beginning.">
+        <Button
+          size="sm"
+          onClick={() => {
+            set({ onboardingCompleted: false });
+          }}
+        >
+          Show welcome screen again
+        </Button>
+      </SettingRow>
+    </SettingsGroup>
+  );
+}
 
 /**
  * HexDesk reads the screen with Windows OCR. The ocrs models, downloaded once, read what Windows OCR misses; the
@@ -225,6 +285,7 @@ export function GeneralTab() {
   return (
     <>
       <UpdatesGroup />
+      <PrivacyTestingGroup />
       <OcrGroup />
       <SettingsGroup
         title="Memory scanner"

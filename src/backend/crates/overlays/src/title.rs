@@ -9,29 +9,53 @@ use crate::screen::Screen;
 
 /// The screen a title read from the top-left corner belongs to.
 pub fn screen_from_title(title: &str) -> Option<Screen> {
-    let letters: Vec<u8> = title
+    let letters = title_letters(title);
+    if let Some(screen) = relic_list_screen(&letters) {
+        return Some(screen);
+    }
+    let has = |word: &str| title_has(&letters, word);
+    // The era line is only on relic lists. Without a readable title it cannot
+    // prove refinement, so keep the EE.log-compatible selection fallback.
+    if has("ERA") && has("COLLECTED") && has("RADIANT") {
+        Some(Screen::RelicSelection)
+    } else if has("FISSURE") && has("REWARD") {
+        Some(Screen::RewardChoice)
+    } else if has("INVENTORY") && has("MODS") {
+        Some(Screen::Riven)
+    } else {
+        None
+    }
+}
+
+/// Classifies only an explicit relic-list title. Unlike [`screen_from_title`],
+/// the era counters alone do not guess that an unreadable title is selection.
+pub fn relic_list_screen_from_title(title: &str) -> Option<Screen> {
+    relic_list_screen(&title_letters(title))
+}
+
+fn title_letters(title: &str) -> Vec<u8> {
+    title
         .bytes()
         .filter_map(|c| match c.to_ascii_uppercase() {
             b'0' => Some(b'O'),
             c if c.is_ascii_alphabetic() => Some(c),
             _ => None,
         })
-        .collect();
-    let has = |word: &str| {
-        let allowed = if word.len() >= 5 { 1 } else { 0 };
-        contains_within(&letters, word.as_bytes(), allowed)
-    };
+        .collect()
+}
+
+fn title_has(letters: &[u8], word: &str) -> bool {
+    let allowed = if word.len() >= 5 { 1 } else { 0 };
+    contains_within(letters, word.as_bytes(), allowed)
+}
+
+fn relic_list_screen(letters: &[u8]) -> Option<Screen> {
+    let has = |word: &str| title_has(letters, word);
     // "REFINE" rather than "REFINEMENT": OCR often garbles the word's end.
-    // The era line under the title ("NEO ERA COLLECTED 6/196 RADIANT 0/196")
-    // is only on the relic lists, and OCR reads it when it misses the title.
-    if (has("RELIC") && (has("SELECT") || has("REFINE")))
-        || (has("ERA") && has("COLLECTED") && has("RADIANT"))
-    {
+    if has("RELIC") && has("REFINE") {
+        Some(Screen::RelicRefinement)
+    } else if has("RELIC") && has("SELECT") {
         Some(Screen::RelicSelection)
-    } else if has("FISSURE") && has("REWARD") {
-        Some(Screen::RewardChoice)
-    } else if has("INVENTORY") && has("MODS") {
-        Some(Screen::Riven)
     } else {
         None
     }
@@ -115,11 +139,11 @@ mod tests {
         // Text as OCR read it in the game, garbled end included.
         assert_eq!(
             screen_from_title("RELICS/REFINEMENT LITH ERA COLLECTED 9/202 RADIANT 1/202"),
-            Some(Screen::RelicSelection)
+            Some(Screen::RelicRefinement)
         );
         assert_eq!(
             screen_from_title("LITH ERA RELICS/REFINEMEIT COLLECTED 9/202 RADIANT 1/202"),
-            Some(Screen::RelicSelection)
+            Some(Screen::RelicRefinement)
         );
     }
 
@@ -128,6 +152,22 @@ mod tests {
         assert_eq!(
             screen_from_title("evil o NEO ERA ECOLLECTED 6/196 RADIANT 0/196"),
             Some(Screen::RelicSelection)
+        );
+        assert_eq!(
+            relic_list_screen_from_title("evil o NEO ERA ECOLLECTED 6/196 RADIANT 0/196"),
+            None
+        );
+    }
+
+    #[test]
+    fn explicit_relic_titles_can_be_classified_without_the_fallback() {
+        assert_eq!(
+            relic_list_screen_from_title("VOID FISSURE/SELECT RELIC"),
+            Some(Screen::RelicSelection)
+        );
+        assert_eq!(
+            relic_list_screen_from_title("RELICS/REFINEMEIT"),
+            Some(Screen::RelicRefinement)
         );
     }
 

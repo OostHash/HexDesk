@@ -20,6 +20,12 @@ impl Bundle {
         Self::default()
     }
 
+    /// Adds an already-sanitized binary file. Used for screenshots whose
+    /// bytes must not be interpreted as text by the redactor.
+    pub fn add_bytes(&mut self, name: &str, bytes: Vec<u8>) {
+        self.files.push((name.to_string(), bytes));
+    }
+
     /// Adds a text file, redacted.
     pub fn add_text(&mut self, name: &str, text: &str) {
         self.files

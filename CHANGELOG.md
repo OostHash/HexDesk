@@ -9,6 +9,20 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- A full-page welcome setup for new installations covers appearance, optional
+  small-text OCR, local diagnostic data and the explicit opt-in for testing.
+  Existing installations continue normally, and Settings → General can start
+  the welcome flow again.
+- Diagnostic logs can be kept for one to five days, with one day as the
+  default. HexDesk removes older daily log files automatically.
+- Optional testing groups Relic Pick and Reward, Refinement and Riven reads
+  into completed flows. A short Page Up/Page Down prompt discards correct or
+  unanswered samples and keeps only flows marked wrong. After the mission's
+  inventory update, reported flows are saved as one local zip in Downloads;
+  HexDesk never uploads it automatically.
+- **Remove logs** in the activity console clears existing diagnostic logs,
+  saved OCR captures and pending test data after confirmation. Logging then
+  continues in a fresh active-session log without changing log retention.
 - An activity console in Settings → Console shows what HexDesk does in the
   background as it happens. Filter by level and by one or more sources, with
   each overlay (overlay key, Relic Pick, Relic Reward, riven check) as its

@@ -119,6 +119,25 @@ it("downloads the OCR models when the player allows them", async () => {
   await expect.element(toggle).toBeChecked();
 });
 
+it("stores privacy choices and can start the welcome flow again", async () => {
+  const { client, saved } = setup({ settings: { onboardingCompleted: true } });
+  await mount(client);
+
+  await page.getByRole("combobox", { name: "Keep diagnostic logs for" }).selectOptions("5");
+  await page.getByRole("switch", { name: "Help test HexDesk" }).click();
+  await page.getByRole("group", { name: "Ask for feedback" }).getByText("Every 3 completed screen flows", { exact: true }).click();
+  await page.getByRole("button", { name: "Show welcome screen again" }).click();
+
+  await vi.waitFor(() => {
+    expect(saved()).toMatchObject({
+      onboardingCompleted: false,
+      logRetentionDays: 5,
+      testingEnabled: true,
+      feedbackFrequency: "every-3-flows",
+    });
+  });
+});
+
 it("keeps the OCR models of an older settings file that chose ocrs", async () => {
   const { client } = setup({ settings: { ocrEngines: { title: "windows", relicList: "ocrs" } } });
   await mount(client);

@@ -7,6 +7,7 @@ import { readScenario } from "./scenario";
 describe("mock IPC", () => {
   afterEach(() => {
     clearMocks();
+    sessionStorage.clear();
   });
 
   it("answers commands with the default fixture", async () => {
@@ -23,6 +24,17 @@ describe("mock IPC", () => {
   it("rejects in the error scenario", async () => {
     installMocks("?scenario=error");
     await expect(invoke("fetch_worldstate")).rejects.toThrow(/scenario=error/);
+  });
+
+  it("serves fresh-install settings in the onboarding scenario", async () => {
+    installMocks("?scenario=onboarding");
+    const settings = JSON.parse(await invoke("load_settings")) as Record<string, unknown>;
+    expect(settings).toMatchObject({
+      onboardingCompleted: false,
+      testingEnabled: false,
+      logRetentionDays: 1,
+      feedbackFrequency: "every-flow",
+    });
   });
 
   it("falls back to default for unknown scenarios", () => {

@@ -95,6 +95,16 @@ fn dir() -> PathBuf {
     crate::paths::state_dir().join("captures")
 }
 
+/// Removes every OCR capture and its saved read. The folder is recreated by
+/// the next capture that is enabled.
+pub(crate) fn remove_all() -> Result<(), String> {
+    let path = dir();
+    if path.exists() {
+        std::fs::remove_dir_all(path).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
 /// Whether `name` is a plain capture file name, so it cannot reach outside
 /// the captures folder.
 pub(crate) fn valid_name(name: &str) -> bool {

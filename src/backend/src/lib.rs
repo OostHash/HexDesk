@@ -49,6 +49,7 @@ mod rivens;
 mod settings;
 mod stats;
 mod syndicates;
+mod testing;
 mod trade_log;
 mod updater;
 mod wfcd;
@@ -467,8 +468,6 @@ pub fn run() {
     let inventory_state_cache_path = cache_dir.join("inventory_state_cache.json");
     let settings_path = config_dir.join("settings.json");
 
-    ocr::load_models_setting(&read_settings_map(&settings_path).unwrap_or_default());
-
     let wfm_top_cache_path = cache_dir.join("wfm_top_cache.json");
     let syndicate_catalog_path = cache_dir.join("syndicate_catalog.json");
     let img_cache_dir = cache_dir.join("img_cache");
@@ -484,6 +483,14 @@ pub fn run() {
             let _ = std::fs::remove_file(data_dir.join(suffix));
         }
     }
+
+    // A factory reset removes both files before this check, so it behaves like
+    // a new install. An upgrade already has at least one of them and must not
+    // interrupt the player with onboarding.
+    let fresh_install = !settings_path.exists() && !db_path.exists();
+    settings::initialize_installation(&settings_path, fresh_install)
+        .expect("settings directory was just created");
+    ocr::load_models_setting(&read_settings_map(&settings_path).unwrap_or_default());
 
     // ── Database ───────────────────────────────────────────────────────────
     let conn = db::init_db(&db_path).expect("Failed to initialize database");
@@ -672,6 +679,7 @@ pub fn run() {
             diagnostics::export_diagnostics,
             diagnostics::show_diagnostics_export,
             diagnostics::get_recent_logs,
+            diagnostics::remove_logs,
             start_monitor,
             monitor::stop_monitor,
             monitor::poke_scan,

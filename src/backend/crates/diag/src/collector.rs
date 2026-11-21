@@ -85,6 +85,25 @@ impl Collector {
         self
     }
 
+    /// Replaces the file writer. Logging can keep using the same collector
+    /// while its current log file is removed and reopened.
+    pub fn set_sink(&self, sink: impl Write + Send + 'static) {
+        *self.sink.lock().unwrap_or_else(|e| e.into_inner()) = Some(Box::new(sink));
+    }
+
+    /// Drops the current file writer after pending entries have been flushed.
+    pub fn take_sink(&self) {
+        self.sink.lock().unwrap_or_else(|e| e.into_inner()).take();
+    }
+
+    /// Clears the activity console and repeat bookkeeping without changing
+    /// the next entry id.
+    pub fn clear(&self) {
+        let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        inner.buffer.clear();
+        inner.sources.clear();
+    }
+
     /// Calls `listener` for every entry that is written, for example to push
     /// it to the activity console. Replaces an earlier listener.
     pub fn set_listener(&self, listener: impl Fn(&Entry) + Send + Sync + 'static) {
@@ -395,5 +414,18 @@ mod tests {
         c.record(timed("One", 15, 0, 1));
         c.record(timed("Two", 15, 0, 2));
         assert_eq!(*seen.lock().unwrap(), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn clearing_forgets_recent_entries_and_repeat_state() {
+        let c = Collector::new(Config::default());
+        c.record(timed("One", 15, 0, 0));
+        c.record(timed("One", 15, 0, 1));
+        c.clear();
+        assert!(c.recent(10).is_empty());
+
+        let written = c.record(timed("One", 15, 0, 2));
+        assert_eq!(written.len(), 1);
+        assert_eq!(written[0].id, 2);
     }
 }

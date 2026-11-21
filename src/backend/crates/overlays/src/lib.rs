@@ -11,12 +11,14 @@
 //! which keeps every scenario reproducible in a unit test.
 
 pub mod ee_log;
+pub mod flow;
 pub mod read;
 pub mod screen;
 pub mod signal;
 pub mod title;
 pub mod tracker;
 
+pub use flow::{Flow, FlowId, FlowKind, FlowTracker};
 pub use screen::{Overlay, Screen};
 pub use signal::{HideBy, Millis, Signal, SignalKind};
 pub use tracker::{Action, Decision, Ignored, LeaveReason, Step, Tracker, Visit, VisitId};

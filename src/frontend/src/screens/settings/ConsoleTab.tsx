@@ -1,6 +1,6 @@
-import { ChevronDown, ChevronRight, Copy } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Trash2 } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
-import { useConsoleEntries } from "../../api/console";
+import { removeLogs, useConsoleEntries } from "../../api/console";
 import { invoke } from "../../api/invoke";
 import { overlayPrefsFrom } from "../../api/overlays";
 import {
@@ -21,6 +21,7 @@ import { Button } from "../../primitives/actions";
 import { Badge, Chip, Icon } from "../../primitives/display";
 import type { Tone } from "../../primitives/display/tone";
 import { Checkbox, SearchInput } from "../../primitives/forms";
+import { ConfirmDialog } from "../../primitives/overlay";
 import { ExportDiagnosticsButtons, useDiagnosticsExport } from "./ExportDiagnostics";
 import { ResultText, SettingsGroup, useSettingsFile } from "./parts";
 
@@ -219,9 +220,12 @@ function Filters({ filter, sources, onChange }: { filter: ConsoleFilter; sources
 
 /** Live background activity: what HexDesk does and why something failed. */
 export function ConsoleTab() {
-  const entries = useConsoleEntries();
+  const { entries, reload } = useConsoleEntries();
   const { settings, set } = useSettingsFile();
   const [filter, setFilter] = useState<ConsoleFilter>(DEFAULT_FILTER);
+  const [confirmingRemoval, setConfirmingRemoval] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removalResult, setRemovalResult] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
   const exporting = useDiagnosticsExport();
   const sources = useMemo(() => sourcesOf(entries), [entries]);
   const shown = useMemo(() => filterEntries(entries, filter), [entries, filter]);
@@ -264,6 +268,17 @@ export function ConsoleTab() {
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
+                variant="danger"
+                leadingIcon={Trash2}
+                onClick={() => {
+                  setRemovalResult(null);
+                  setConfirmingRemoval(true);
+                }}
+              >
+                Remove logs
+              </Button>
+              <Button
+                size="sm"
                 variant="ghost"
                 leadingIcon={Copy}
                 disabled={shown.length === 0}
@@ -277,6 +292,7 @@ export function ConsoleTab() {
             </div>
           </div>
           {exporting.result && <ResultText tone={exporting.result.tone}>{exporting.result.text}</ResultText>}
+          {removalResult && <ResultText tone={removalResult.tone}>{removalResult.text}</ResultText>}
         </div>
         {newestFirst.length === 0 ? (
           <p className="text-sm text-muted">{entries.length === 0 ? "Nothing logged yet." : "No entries match these filters."}</p>
@@ -294,6 +310,32 @@ export function ConsoleTab() {
           </ol>
         )}
       </SettingsGroup>
+      <ConfirmDialog
+        open={confirmingRemoval}
+        onClose={() => {
+          setConfirmingRemoval(false);
+        }}
+        title="Remove logs and captures?"
+        description="Existing diagnostic logs, saved OCR captures and pending test data are removed. HexDesk immediately starts a fresh log for this session. Your retention setting stays unchanged."
+        confirmLabel="Remove logs"
+        destructive
+        busy={removing}
+        onConfirm={() => {
+          setRemoving(true);
+          removeLogs()
+            .then(async () => {
+              await reload();
+              setRemovalResult({ tone: "success", text: "Logs and captures removed. Logging continues for this session." });
+            })
+            .catch((error: unknown) => {
+              setRemovalResult({ tone: "danger", text: `Could not remove logs: ${String(error)}` });
+            })
+            .finally(() => {
+              setRemoving(false);
+              setConfirmingRemoval(false);
+            });
+        }}
+      />
     </>
   );
 }
