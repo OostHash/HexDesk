@@ -11,7 +11,7 @@ use hexdesk_capture::Provider;
 use tauri::{Emitter, State};
 
 use crate::app_state::AppState;
-use crate::{events, settings};
+use crate::events;
 
 /// Whether the player allowed the ocrs models: then ocrs reads what Windows
 /// OCR could not.
@@ -42,7 +42,7 @@ pub(crate) async fn set_ocr_models(
             .await
             .map_err(|e| format!("prepare the OCR models: {e}"))??;
     }
-    settings::merge_settings(&state.settings_path, |map| {
+    state.settings.merge(|map| {
         map.insert("ocrModels".to_string(), serde_json::Value::Bool(enabled));
     })?;
     MODELS_ALLOWED.store(enabled, Ordering::Release);

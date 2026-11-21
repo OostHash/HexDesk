@@ -1,0 +1,22 @@
+[package]
+name = "hexdesk-logging"
+version = "1.0.1"
+description = "HexDesk logging: subscriber setup and the daily log files"
+authors = ["HexDesk contributors"]
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/OostHash/HexDesk"
+publish = false
+
+[lib]
+name = "hexdesk_logging"
+
+# Same versions and features as the backend crate, so the lock file gains no
+# new packages.
+[dependencies]
+dirs = "5"
+hexdesk-diag = { path = "../diag" }
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-log = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

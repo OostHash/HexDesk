@@ -1,0 +1,17 @@
+[package]
+name = "hexdesk-persist"
+version = "1.0.1"
+description = "HexDesk persistence: crash-safe file writes and the settings store"
+authors = ["HexDesk contributors"]
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/OostHash/HexDesk"
+publish = false
+
+[lib]
+name = "hexdesk_persist"
+
+# Same versions as the backend crate, so the lock file gains no new packages.
+[dependencies]
+serde_json = "1"
+tracing = "0.1"

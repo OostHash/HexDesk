@@ -23,8 +23,7 @@ use std::time::Duration;
 use hexdesk_overlays::ee_log::LogEvent;
 use hexdesk_overlays::tracker::CloseReason;
 use hexdesk_overlays::{
-    Action, Decision, Flow, FlowTracker, HideBy, Millis, Overlay, Screen, Signal, SignalKind,
-    Tracker, Visit, VisitId,
+    Action, Decision, HideBy, Millis, Overlay, Screen, Signal, SignalKind, Tracker, Visit, VisitId,
 };
 use tauri::{Emitter, Manager};
 use tracing::Span;
@@ -102,8 +101,10 @@ pub(crate) enum Input {
     DismissTestingFeedback,
     /// A full inventory update arrived after a run.
     InventoryUpdated(Millis),
-    /// Remove logs also cleared all pending and reported test data.
-    TestingDataRemoved,
+    /// Remove logs: drop all pending and reported test data, then answer.
+    RemoveTestingData(Sender<Result<(), String>>),
+    /// The player changed the testing choices in settings.
+    TestingConfig(hexdesk_overlays::feedback::Config),
     /// An unanswered prompt expires; the flow id prevents an old timer from
     /// dismissing a newer prompt.
     TestingPromptTimeout(u64),
@@ -166,6 +167,13 @@ pub(crate) fn start(app: tauri::AppHandle) {
         return;
     }
     sync_switches(&app.state::<AppState>());
+    app.state::<AppState>()
+        .settings
+        .on_change(|changes, written| {
+            if crate::testing::config_changed(changes) {
+                send(Input::TestingConfig(crate::testing::config(written)));
+            }
+        });
     crate::overlay_key::ensure_hook(app.clone());
     std::thread::spawn(move || {
         let mut runtime = Runtime::new(app);
@@ -187,8 +195,7 @@ struct Shown {
 struct Runtime {
     app: tauri::AppHandle,
     tracker: Tracker,
-    flows: FlowTracker,
-    testing: crate::testing::Runtime,
+    testing: crate::testing::Testing,
     /// The log operation of each visit that has not ended.
     ops: HashMap<VisitId, Span>,
     shown: HashMap<Overlay, Shown>,
@@ -201,12 +208,11 @@ struct Runtime {
 
 impl Runtime {
     fn new(app: tauri::AppHandle) -> Runtime {
-        let settings_path = app.state::<AppState>().settings_path.clone();
+        let testing_config = crate::testing::config(&app.state::<AppState>().settings.snapshot());
         Runtime {
+            testing: crate::testing::Testing::new(app.clone(), testing_config),
             app,
             tracker: Tracker::new(),
-            flows: FlowTracker::new(),
-            testing: crate::testing::Runtime::new(settings_path),
             ops: HashMap::new(),
             shown: HashMap::new(),
             next_view: 1,
@@ -226,10 +232,7 @@ impl Runtime {
                     matches!(signal.kind, SignalKind::Log(LogEvent::MissionEnding))
                         .then_some(signal.at)
                 }) {
-                    if let Some(flow) = self.flows.end_run() {
-                        self.log_completed_flow(flow);
-                    }
-                    self.testing.run_ended(&self.app, ended_at);
+                    self.testing.run_ended(ended_at);
                 }
                 CURRENT_VISIT.store(self.tracker.current().map_or(0, |v| v.id), Ordering::SeqCst);
                 for action in step.actions {
@@ -281,11 +284,14 @@ impl Runtime {
                     }
                 }
             }
-            Input::TestingFeedback { correct } => self.testing.answer(&self.app, correct),
-            Input::DismissTestingFeedback => self.testing.dismiss_prompt(&self.app),
-            Input::InventoryUpdated(at) => self.testing.inventory_updated(&self.app, at),
-            Input::TestingDataRemoved => self.testing.data_removed(&self.app),
-            Input::TestingPromptTimeout(flow) => self.testing.prompt_timeout(&self.app, flow),
+            Input::TestingFeedback { correct } => self.testing.answer(correct),
+            Input::DismissTestingFeedback => self.testing.dismiss(),
+            Input::InventoryUpdated(at) => self.testing.inventory_updated(at),
+            Input::RemoveTestingData(reply) => {
+                let _ = reply.send(self.testing.remove_all());
+            }
+            Input::TestingConfig(config) => self.testing.set_config(config),
+            Input::TestingPromptTimeout(flow) => self.testing.prompt_timeout(flow),
         }
     }
 
@@ -320,10 +326,7 @@ impl Runtime {
         match decision {
             Decision::Entered { visit, overlay_on } => {
                 self.log_entered(visit, *overlay_on, &by, late_ms);
-                for flow in self.flows.enter(visit.id, visit.screen) {
-                    self.log_completed_flow(flow);
-                }
-                self.testing.visit_started(&self.app, visit.id);
+                self.testing.enter(visit.id, visit.screen);
             }
             Decision::Left {
                 visit,
@@ -343,15 +346,10 @@ impl Runtime {
                         "Screen left"
                     )
                 });
-                if let Some(flow) = self.flows.leave(visit.id, visit.screen) {
-                    self.log_completed_flow(flow);
-                }
+                self.testing.leave(visit.id, visit.screen);
                 if let Some(next) = next {
                     self.log_entered(next, *next_overlay_on, &by, late_ms);
-                    for flow in self.flows.enter(next.id, next.screen) {
-                        self.log_completed_flow(flow);
-                    }
-                    self.testing.visit_started(&self.app, next.id);
+                    self.testing.enter(next.id, next.screen);
                 }
             }
             Decision::Hidden { visit } | Decision::ShownAgain { visit } => {
@@ -383,17 +381,6 @@ impl Runtime {
                 }
             }
         }
-    }
-
-    fn log_completed_flow(&mut self, flow: Flow) {
-        hexdesk_diag::debug!(
-            overlay,
-            flow = flow.id,
-            kind = flow.kind.name(),
-            visits = ?flow.visits,
-            "Testing flow completed"
-        );
-        self.testing.flow_completed(&self.app, flow);
     }
 
     fn log_entered(&mut self, visit: &Visit, overlay_on: bool, by: &str, late_ms: Millis) {
@@ -491,7 +478,7 @@ impl Runtime {
 
     fn pick_ready(&mut self, visit: VisitId, pick: Option<pick::PickView>) {
         if let Some(screen) = pick.as_ref().and_then(|pick| pick.screen) {
-            self.flows.reclassify(visit, screen);
+            self.testing.reclassify(visit, screen);
             hexdesk_diag::debug!(
                 overlay,
                 visit,
@@ -857,9 +844,19 @@ pub(crate) fn inventory_updated() {
     send(Input::InventoryUpdated(now()));
 }
 
-/// Synchronizes the runtime after Remove logs deleted its testing folders.
-pub(crate) fn testing_data_removed() {
-    send(Input::TestingDataRemoved);
+/// Removes all test data on the runtime thread, so no prompt, report or
+/// flow move is in progress while the folders go.
+pub(crate) fn remove_testing_data() -> Result<(), String> {
+    let Some(sender) = INPUT.get() else {
+        return crate::testing::remove_all_files();
+    };
+    let (reply, answer) = mpsc::channel();
+    sender
+        .send(Input::RemoveTestingData(reply))
+        .map_err(|_| "the overlay runtime has stopped".to_string())?;
+    answer
+        .recv_timeout(Duration::from_secs(10))
+        .map_err(|_| "the overlay runtime did not answer".to_string())?
 }
 
 /// Runs a riven check: "Check Riven" in the app and "New roll" in the

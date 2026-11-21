@@ -12,9 +12,9 @@ use catalogue::load_items_cache;
 use image_cache::serve_image_files;
 use inventory_state::{is_unique_path, load_inventory_state_cache, load_recipes_cache};
 use pricing::{fetch_relics_run_data, load_relics_run_cache};
-use settings::{merge_settings, read_settings_map, restore_window_state, save_window_state};
 use wfcd::SyndicateOffer;
 use wfm::Wfm;
+use window_state::{restore_window_state, save_window_state};
 
 // ─── Modules ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,7 @@ mod diagnostics;
 mod events;
 mod image_cache;
 mod inventory_state;
+mod lifecycle;
 mod log_watcher;
 mod logging;
 mod mem_regions;
@@ -57,6 +58,7 @@ mod wfm;
 mod wfm_commands;
 mod wfm_queue;
 mod wfm_top;
+mod window_state;
 mod worldstate;
 
 // ─── Structs ──────────────────────────────────────────────────────────────────
@@ -268,7 +270,15 @@ fn load_initial_state(paths: InitialCachePaths<'_>) -> InitialState {
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     use tauri::Manager;
 
-    logging::init();
+    let settings = Arc::clone(&app.state::<AppState>().settings);
+    logging::init(settings.snapshot().log_retention_days());
+    settings.on_change(|changes, written| {
+        if changes.contains(hexdesk_persist::settings::keys::LOG_RETENTION_DAYS) {
+            if let Err(error) = logging::set_retention(written.log_retention_days()) {
+                tracing::warn!(error = %error, "log retention could not be applied to the active logger");
+            }
+        }
+    });
     diagnostics::forward_entries_to(app.handle().clone());
     diagnostics::remove_old_debug_files(&paths::cache_dir(), &std::env::temp_dir());
 
@@ -298,14 +308,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         window.set_icon(icon).map_err(|e| e.to_string())?;
 
         let state = app.state::<AppState>();
-        restore_window_state(
-            app.handle(),
-            &window,
-            &state.settings_path,
-            "window",
-            400,
-            300,
-        );
+        restore_window_state(app.handle(), &window, &state.settings, "window", 400, 300);
         let _ = window.show();
     }
 
@@ -467,6 +470,7 @@ pub fn run() {
     let quantities_cache_path = cache_dir.join("quantities_cache.json");
     let inventory_state_cache_path = cache_dir.join("inventory_state_cache.json");
     let settings_path = config_dir.join("settings.json");
+    let settings = Arc::new(hexdesk_persist::Settings::new(&settings_path));
 
     let wfm_top_cache_path = cache_dir.join("wfm_top_cache.json");
     let syndicate_catalog_path = cache_dir.join("syndicate_catalog.json");
@@ -488,9 +492,10 @@ pub fn run() {
     // a new install. An upgrade already has at least one of them and must not
     // interrupt the player with onboarding.
     let fresh_install = !settings_path.exists() && !db_path.exists();
-    settings::initialize_installation(&settings_path, fresh_install)
+    settings
+        .initialize_installation(fresh_install)
         .expect("settings directory was just created");
-    ocr::load_models_setting(&read_settings_map(&settings_path).unwrap_or_default());
+    ocr::load_models_setting(settings.snapshot().map());
 
     // ── Database ───────────────────────────────────────────────────────────
     let conn = db::init_db(&db_path).expect("Failed to initialize database");
@@ -498,11 +503,7 @@ pub fn run() {
     // ── Version-based cache invalidation ───────────────────────────────────
     {
         const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
-        let last_version = read_settings_map(&settings_path).ok().and_then(|m| {
-            m.get("lastVersion")
-                .and_then(|v| v.as_str().map(String::from))
-        });
-        if last_version.as_deref() != Some(CURRENT_VERSION) {
+        if settings.snapshot().last_version() != Some(CURRENT_VERSION) {
             for path in &[
                 &items_cache_path,
                 &recipes_cache_path,
@@ -512,9 +513,9 @@ pub fn run() {
                 let _ = std::fs::remove_file(path);
             }
             wfcd::clear_cached_etags();
-            let _ = merge_settings(&settings_path, |map| {
+            let _ = settings.merge(|map| {
                 map.insert(
-                    "lastVersion".to_string(),
+                    hexdesk_persist::settings::keys::LAST_VERSION.to_string(),
                     serde_json::Value::String(CURRENT_VERSION.to_string()),
                 );
             });
@@ -552,7 +553,7 @@ pub fn run() {
             relic_rewards_cache_path,
             quantities_cache_path,
             inventory_state_cache_path,
-            settings_path,
+            settings,
             conn: Mutex::new(conn),
             wfcd_items: Mutex::new(initial.items),
             recipes: Mutex::new(initial.recipes),
@@ -615,7 +616,7 @@ pub fn run() {
             settings::load_settings,
             settings::save_settings,
             ocr::set_ocr_models,
-            settings::force_quit,
+            lifecycle::force_quit,
             catalogue::get_weapon_catalog,
             catalogue::get_craftable_items,
             catalogue::get_recipes_bulk,
@@ -631,7 +632,7 @@ pub fn run() {
             pricing::get_bulk_prices,
             updater::check_for_update,
             updater::install_update,
-            settings::factory_reset,
+            lifecycle::factory_reset,
             wfm_commands::wfm_set_status,
             rivens::save_riven_roll,
             rivens::get_saved_riven_rolls,
@@ -721,7 +722,7 @@ pub fn run() {
                         let app = window.app_handle();
                         if let Some(wv) = app.get_webview_window(&label) {
                             let state = app.state::<AppState>();
-                            save_window_state(&wv, &state.settings_path, prefix);
+                            save_window_state(&wv, &state.settings, prefix);
                         }
                     }
                     tauri::WindowEvent::CloseRequested { .. } => {

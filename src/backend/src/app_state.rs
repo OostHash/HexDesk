@@ -60,7 +60,7 @@ pub struct AppState {
     pub relic_rewards_cache_path: PathBuf,
     pub quantities_cache_path: PathBuf,
     pub inventory_state_cache_path: PathBuf,
-    pub settings_path: PathBuf,
+    pub settings: Arc<hexdesk_persist::Settings>,
     pub conn: Mutex<rusqlite::Connection>,
     pub wfcd_items: Mutex<Vec<WfcdItem>>,
     /// parent unique_name → recipe component tree

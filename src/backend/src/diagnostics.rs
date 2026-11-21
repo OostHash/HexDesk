@@ -38,13 +38,8 @@ pub(crate) fn get_recent_logs(limit: Option<usize>) -> Vec<Entry> {
 #[tauri::command]
 pub(crate) fn remove_logs() -> Result<(), String> {
     crate::captures::remove_all()?;
-    crate::testing::clear_active();
-    let testing = crate::paths::state_dir().join("testing");
-    if testing.exists() {
-        std::fs::remove_dir_all(testing).map_err(|error| error.to_string())?;
-    }
-    crate::overlays::testing_data_removed();
-    let files = crate::logging::clear_files()?;
+    crate::overlays::remove_testing_data()?;
+    let files = crate::logging::clear()?;
     info!(app, files, "Diagnostic logs and captures removed");
     Ok(())
 }
@@ -203,8 +198,10 @@ pub(crate) async fn export_diagnostics(
         bundle.add_json("system.json", system_facts(&app, ocr_languages));
     }
     if parts.settings {
-        let settings = crate::settings::read_settings_map(&state.settings_path)
-            .map(serde_json::Value::Object)
+        let settings = state
+            .settings
+            .read()
+            .map(|snapshot| serde_json::Value::Object(snapshot.into_map()))
             .unwrap_or_else(|e| serde_json::json!({ "_error": e }));
         bundle.add_json("settings.json", settings);
     }

@@ -4,12 +4,12 @@ use std::sync::atomic::Ordering;
 use tauri::{Emitter, State};
 
 use crate::app_state::AppState;
-use crate::cache::atomic_write;
 use crate::catalogue::fix_category;
 use crate::events;
 use crate::inventory_state::{load_inventory_state_cache, CachedItem};
 use crate::resolver::{self, ItemResolver};
 use crate::wfm::to_wfm_slug;
+use hexdesk_persist::atomic_write;
 
 // ─── WFM price queue ──────────────────────────────────────────────────────────
 // All warframe.market price fetches are routed through a single background

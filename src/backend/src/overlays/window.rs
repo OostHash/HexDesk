@@ -32,10 +32,8 @@ pub(crate) fn saved_offset(app: &tauri::AppHandle, prefix: &str) -> (f64, f64) {
     let Some(state) = app.try_state::<AppState>() else {
         return (0.0, 0.0);
     };
-    let Ok(map) = crate::settings::read_settings_map(&state.settings_path) else {
-        return (0.0, 0.0);
-    };
-    let Some(obj) = map.get("overlayOffsets").and_then(|v| v.as_object()) else {
+    let settings = state.settings.snapshot();
+    let Some(obj) = settings.get("overlayOffsets").and_then(|v| v.as_object()) else {
         return (0.0, 0.0);
     };
     let axis = |suffix: &str| -> f64 {

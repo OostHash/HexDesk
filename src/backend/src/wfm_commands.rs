@@ -1,11 +1,11 @@
 use tauri::State;
 
 use crate::app_state::AppState;
-use crate::cache::atomic_write;
 use crate::catalogue::fix_category;
 use crate::inventory_state::{load_inventory_state_cache, CachedItem};
 use crate::resolver::ItemResolver;
 use crate::wfm::{to_wfm_slug, WfmItem, WfmRivenAttribute};
+use hexdesk_persist::atomic_write;
 // Moved to credentials.rs in the credentials batch.
 use crate::credentials::wfm_delete_credentials;
 use hexdesk_diag::{DiagError, Kind, Source};
