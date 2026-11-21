@@ -1,9 +1,12 @@
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useEffect, useRef } from "react";
+import { isTauri } from "./env";
 import type { CacheStatuses } from "../domain/cache";
 import type { LogEntry } from "../domain/console";
 import type { ChangeEntry } from "../domain/inventory";
 import type { RelicPick } from "../domain/relicPick";
 import type { RivenView } from "../domain/rivenOverlay";
+import type { FlowKind } from "../domain/testing";
 import type { TradeCompleted } from "../domain/trading";
 
 /**
@@ -83,9 +86,12 @@ export interface EventMap {
   /** Short backend status line for the app header and the in-game status window. */
   "status-line": string;
   /** Scoped Page Up/Page Down prompt after a completed testing flow. */
-  "testing-feedback": { visible: boolean; flow?: "reward" | "refinement" | "riven" };
-  /** Result of writing the opt-in per-run report. */
-  "test-report": { path: string | null; error: string | null };
+  "testing-feedback": { visible: true; flow: FlowKind } | { visible: false };
+  /**
+   * Opt-in testing results: a run's report was saved (`path`), or `error` says why a reported flow ("flow") or a
+   * run's report ("run") could not be stored.
+   */
+  "test-report": { reason: "run"; path: string; error: null } | { reason: "flow" | "run"; path: null; error: string };
   /** The relic selection screen opened: which relics to run. */
   "relic-pick-open": RelicPick;
   "relic-pick-close": unknown;
@@ -113,6 +119,32 @@ export function onEvent<E extends EventName>(event: E, handler: (payload: EventM
   return listen<EventMap[E]>(event, (e) => {
     handler(e.payload);
   });
+}
+
+/**
+ * Calls `handler` for every `event` while the component is mounted. The latest `handler` is used, so it may
+ * change between renders without subscribing again.
+ */
+export function useEvent<E extends EventName>(event: E, handler: (payload: EventMap[E]) => void) {
+  const latest = useRef(handler);
+  useEffect(() => {
+    latest.current = handler;
+  });
+  useEffect(() => {
+    if (!isTauri()) return;
+    let disposed = false;
+    let unlisten: UnlistenFn | undefined;
+    void onEvent(event, (payload) => {
+      latest.current(payload);
+    }).then((fn) => {
+      if (disposed) fn();
+      else unlisten = fn;
+    });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [event]);
 }
 
 /** Tells every window something changed (e.g. trades-updated after logging a trade). */

@@ -1,25 +1,11 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { useAppVersion, useCheckForUpdate, useInstallUpdate, usePendingUpdate } from "../../api/app";
-import { setOcrModels, settingsKeys, type SettingsFile } from "../../api/settings";
 import { useClock } from "../../api/statistics";
 import { Button } from "../../primitives/actions";
-import { ocrModelsFrom } from "../../domain/settings";
-import { FEEDBACK_FREQUENCIES, feedbackFrequencyFrom, LOG_RETENTION_DAYS, logRetentionDaysFrom } from "../../domain/testing";
 import { clockFormatFrom, type ClockFormat } from "../../domain/statistics";
 import { Badge } from "../../primitives/display";
-import { FormField, RadioGroup, Select, Slider } from "../../primitives/forms";
-import {
-  availableChoices,
-  clampTextScale,
-  CONTRAST_LABEL,
-  DENSITY_CHOICES,
-  DENSITY_LABEL,
-  setPreferences,
-  TEXT_SCALE_RANGE,
-  THEME_LABEL,
-  usePreferences,
-} from "../../state/preferences";
+import { RadioGroup } from "../../primitives/forms";
+import { availableChoices, CONTRAST_LABEL, setPreferences, usePreferences } from "../../state/preferences";
+import { DensityRow, LogRetentionRow, OcrModelsRow, TestingRows, TextSizeRow, ThemeRow } from "./controls";
 import { NotificationsGroup } from "./NotificationsGroup";
 import { ResultText, SettingRow, SettingsGroup, SwitchRow, useSettingsFile } from "./parts";
 
@@ -28,55 +14,13 @@ const CLOCK_OPTIONS: ReadonlyArray<{ value: ClockFormat; label: string }> = [
   { value: "12h", label: "12h" },
   { value: "24h", label: "24h" },
 ];
-const DENSITY_OPTIONS = DENSITY_CHOICES.map((value) => ({ value, label: DENSITY_LABEL[value] }));
-
-const percent = (scale: number) => `${String(Math.round(scale * 100))}%`;
-
 /** Local diagnostics, optional testing and a way back into onboarding. */
 function PrivacyTestingGroup() {
-  const { settings, set } = useSettingsFile();
-  const testingEnabled = settings.testingEnabled === true;
+  const { set } = useSettingsFile();
   return (
     <SettingsGroup title="Privacy and testing">
-      <FormField
-        layout="row"
-        label="Keep diagnostic logs for"
-        description="Logs stay on this computer and are never uploaded automatically. Older daily files are removed automatically."
-      >
-        <Select
-          value={logRetentionDaysFrom(settings.logRetentionDays)}
-          onChange={(event) => {
-            set({ logRetentionDays: Number(event.target.value) });
-          }}
-        >
-          {LOG_RETENTION_DAYS.map((days) => (
-            <option key={days} value={days}>
-              {days === 1 ? "1 day" : `${String(days)} days`}
-            </option>
-          ))}
-        </Select>
-      </FormField>
-      <SwitchRow
-        label="Help test HexDesk"
-        description="Ask whether completed screen flows were read correctly. Page Up discards a correct flow; Page Down keeps a wrong flow for a local report. Nothing is uploaded automatically."
-        checked={testingEnabled}
-        onCheckedChange={(testing) => {
-          set({ testingEnabled: testing });
-        }}
-      />
-      {testingEnabled && (
-        <SettingRow group={false} label="Ask for feedback">
-          <RadioGroup
-            legend="Ask for feedback"
-            hideLegend
-            value={feedbackFrequencyFrom(settings.feedbackFrequency)}
-            options={FEEDBACK_FREQUENCIES}
-            onValueChange={(feedbackFrequency) => {
-              set({ feedbackFrequency });
-            }}
-          />
-        </SettingRow>
-      )}
+      <LogRetentionRow />
+      <TestingRows />
       <SettingRow label="Welcome and privacy" description="Review appearance, local data and testing choices from the beginning.">
         <Button
           size="sm"
@@ -91,49 +35,10 @@ function PrivacyTestingGroup() {
   );
 }
 
-/**
- * HexDesk reads the screen with Windows OCR. The ocrs models, downloaded once, read what Windows OCR misses; the
- * player decides whether they may be downloaded.
- */
 function OcrGroup() {
-  const { settings } = useSettingsFile();
-  const queryClient = useQueryClient();
-  const allowed = ocrModelsFrom(settings);
-  const [pending, setPending] = useState<boolean | null>(null);
-  const [result, setResult] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
-
-  const choose = async (enabled: boolean) => {
-    setPending(enabled);
-    setResult(null);
-    try {
-      await setOcrModels(enabled);
-      queryClient.setQueryData<SettingsFile>(settingsKeys.all, (current = {}) => ({ ...current, ocrModels: enabled }));
-      if (enabled) setResult({ tone: "success", text: "The OCR models are downloaded and in use." });
-    } catch (error) {
-      setResult({ tone: "danger", text: `Could not download the OCR models: ${String(error)}` });
-    } finally {
-      setPending(null);
-    }
-  };
-
   return (
     <SettingsGroup title="OCR">
-      <SwitchRow
-        label="Read small text more accurately"
-        description="Downloads about 12 MB of OCR models once. They read what Windows OCR misses, such as relic counts and refinement tags, which can make a read slightly slower."
-        checked={pending ?? allowed}
-        disabled={pending !== null}
-        onCheckedChange={(enabled) => {
-          void choose(enabled);
-        }}
-      />
-      {pending ? (
-        <p role="status" className="text-xs text-muted">
-          Downloading and preparing the OCR models…
-        </p>
-      ) : result ? (
-        <ResultText tone={result.tone}>{result.text}</ResultText>
-      ) : null}
+      <OcrModelsRow />
     </SettingsGroup>
   );
 }
@@ -148,20 +53,7 @@ function AppearanceGroup() {
   const choices = availableChoices();
   return (
     <SettingsGroup title="Appearance">
-      {choices.themes.length > 1 && (
-        <SettingRow group={false} label="Theme">
-          <RadioGroup
-            legend="Theme"
-            hideLegend
-            appearance="segmented"
-            value={prefs.theme}
-            options={choices.themes.map((value) => ({ value, label: THEME_LABEL[value] }))}
-            onValueChange={(theme) => {
-              setPreferences({ theme });
-            }}
-          />
-        </SettingRow>
-      )}
+      <ThemeRow />
       {choices.contrasts.length > 1 && (
         <SettingRow group={false} label="Contrast">
           <RadioGroup
@@ -184,31 +76,8 @@ function AppearanceGroup() {
           setPreferences({ cvd: on });
         }}
       />
-      <SettingRow group={false} label="Density" description="Height of buttons, fields and table rows. Text size stays as set.">
-        <RadioGroup
-          legend="Density"
-          hideLegend
-          appearance="segmented"
-          value={prefs.density}
-          options={DENSITY_OPTIONS}
-          onValueChange={(density) => {
-            setPreferences({ density });
-          }}
-        />
-      </SettingRow>
-      <FormField layout="row" label="Text size">
-        <Slider
-          className="w-56"
-          value={prefs.textScale}
-          min={TEXT_SCALE_RANGE.min}
-          max={TEXT_SCALE_RANGE.max}
-          step={TEXT_SCALE_RANGE.step}
-          formatValue={percent}
-          onValueChange={(value) => {
-            setPreferences({ textScale: clampTextScale(value) });
-          }}
-        />
-      </FormField>
+      <DensityRow />
+      <TextSizeRow />
       <SettingRow
         group={false}
         label="Clock format"

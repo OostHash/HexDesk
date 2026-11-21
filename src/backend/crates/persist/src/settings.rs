@@ -60,6 +60,13 @@ impl FeedbackFrequency {
         }
     }
 
+    pub const ALL: [FeedbackFrequency; 4] = [
+        FeedbackFrequency::EveryFlow,
+        FeedbackFrequency::Every3Flows,
+        FeedbackFrequency::Every5Flows,
+        FeedbackFrequency::OncePerRun,
+    ];
+
     /// Asks after every n-th completed flow, or `None` for once per run.
     pub const fn every_n_flows(self) -> Option<u64> {
         match self {
@@ -474,12 +481,7 @@ mod tests {
 
     #[test]
     fn feedback_frequency_round_trips_and_defaults_to_every_flow() {
-        for frequency in [
-            FeedbackFrequency::EveryFlow,
-            FeedbackFrequency::Every3Flows,
-            FeedbackFrequency::Every5Flows,
-            FeedbackFrequency::OncePerRun,
-        ] {
+        for frequency in FeedbackFrequency::ALL {
             assert_eq!(
                 FeedbackFrequency::parse(frequency.as_str()),
                 Some(frequency)
@@ -491,5 +493,37 @@ mod tests {
             settings.snapshot().feedback_frequency(),
             FeedbackFrequency::EveryFlow
         );
+    }
+
+    /// The frontend offers these choices from its own list; both sides must
+    /// store the same values.
+    #[test]
+    fn the_frontend_offers_the_same_choices() {
+        let frontend = include_str!("../../../../frontend/src/domain/testing.ts");
+        let quoted_after = |marker: &str| -> Vec<String> {
+            frontend
+                .split(marker)
+                .skip(1)
+                .filter_map(|rest| rest.split('"').next().map(str::to_string))
+                .collect()
+        };
+        let frequencies = quoted_after("{ value: \"");
+        let expected: Vec<String> = FeedbackFrequency::ALL
+            .iter()
+            .map(|frequency| frequency.as_str().to_string())
+            .collect();
+        assert_eq!(frequencies, expected);
+
+        let days = frontend
+            .split("LOG_RETENTION_DAYS = [")
+            .nth(1)
+            .and_then(|rest| rest.split(']').next())
+            .expect("the frontend lists its retention choices");
+        let days: Vec<u64> = days
+            .split(',')
+            .map(|day| day.trim().parse().expect("a whole number of days"))
+            .collect();
+        let expected: Vec<u64> = (DEFAULT_LOG_RETENTION_DAYS..=MAX_LOG_RETENTION_DAYS).collect();
+        assert_eq!(days, expected);
     }
 }

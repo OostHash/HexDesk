@@ -166,7 +166,7 @@ impl Testing {
             Notice::ReportFailed { flow, error } => {
                 let _ = self.app.emit(
                     events::TEST_REPORT,
-                    serde_json::json!({ "path": null, "error": error }),
+                    serde_json::json!({ "reason": "flow", "path": null, "error": error }),
                 );
                 hexdesk_diag::info!(
                     overlay,
@@ -179,7 +179,7 @@ impl Testing {
                 let path_text = path.to_string_lossy().into_owned();
                 let _ = self.app.emit(
                     events::TEST_REPORT,
-                    serde_json::json!({ "path": path_text, "error": null }),
+                    serde_json::json!({ "reason": "run", "path": path_text, "error": null }),
                 );
                 let _ = self
                     .app
@@ -199,7 +199,7 @@ impl Testing {
             Notice::RunExportFailed { run, error } => {
                 let _ = self.app.emit(
                     events::TEST_REPORT,
-                    serde_json::json!({ "path": null, "error": error }),
+                    serde_json::json!({ "reason": "run", "path": null, "error": error }),
                 );
                 hexdesk_diag::info!(
                     overlay,

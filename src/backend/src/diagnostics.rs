@@ -33,8 +33,8 @@ pub(crate) fn get_recent_logs(limit: Option<usize>) -> Vec<Entry> {
     hexdesk_diag::recent(limit.unwrap_or(usize::MAX))
 }
 
-/// Removes local diagnostic history, captures and pending test samples while
-/// keeping logging active and leaving every setting unchanged.
+/// Removes local diagnostic history, captures and test data not yet saved as
+/// a report, while keeping logging active and leaving every setting unchanged.
 #[tauri::command]
 pub(crate) fn remove_logs() -> Result<(), String> {
     crate::captures::remove_all()?;

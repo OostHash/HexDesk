@@ -1,8 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { clockFormatFrom, displayItemName, type ClockFormat, type TopItem, type TopProgress, type TrackedItem } from "../domain/statistics";
-import { isTauri } from "./env";
-import { onEvent, type EventMap } from "./events";
+import { useEvent } from "./events";
 import { invoke } from "./invoke";
 import { useSettings } from "./settings";
 
@@ -21,29 +20,6 @@ export function useTrades() {
     queryKey: statsKeys.trades,
     queryFn: async () => (await invoke("get_trades")).map((t) => ({ ...t, item_name: displayItemName(t.item_name) })),
   });
-}
-
-/** Subscribes to one event while mounted; the latest handler is used. */
-function useEvent<E extends "wfm-top-progress" | "wfm-top-updated">(event: E, handler: (payload: EventMap[E]) => void) {
-  const latest = useRef(handler);
-  useEffect(() => {
-    latest.current = handler;
-  });
-  useEffect(() => {
-    if (!isTauri()) return;
-    let disposed = false;
-    let unlisten: (() => void) | null = null;
-    void onEvent(event, (payload) => {
-      latest.current(payload);
-    }).then((fn) => {
-      if (disposed) fn();
-      else unlisten = fn;
-    });
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, [event]);
 }
 
 /** The 7-day top list plus scan progress (events from the backend scan). */

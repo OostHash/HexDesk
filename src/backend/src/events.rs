@@ -35,7 +35,8 @@ pub const CACHE_STATUS: &str = "cache-status";
 pub const STATUS_LINE: &str = "status-line";
 /// A Page Up/Page Down testing prompt shown over the game.
 pub const TESTING_FEEDBACK: &str = "testing-feedback";
-/// A per-run testing report was saved, or could not be written.
+/// A per-run testing report was saved, or a reported flow (`reason: "flow"`)
+/// or a run's report (`reason: "run"`) could not be stored.
 pub const TEST_REPORT: &str = "test-report";
 pub const PLAYER_NAME: &str = "player-name";
 

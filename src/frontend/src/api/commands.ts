@@ -240,7 +240,7 @@ export interface CommandMap {
   // ── Diagnostics (Settings → Debugging, Settings → Console) ──
   /** The most recent log entries, oldest first (activity console); new ones follow as diag-entry events. */
   get_recent_logs: { args: { limit?: number }; result: LogEntry[] };
-  /** Removes diagnostic logs, OCR captures and pending test samples, then starts a fresh active-session log. */
+  /** Removes diagnostic logs, OCR captures and test data not yet saved as a report, then starts a fresh active-session log. */
   remove_logs: { args: undefined; result: null };
   /** Writes the diagnostics zip (logs, system facts, settings; redacted) and returns its path. */
   export_diagnostics: { args: { parts: DiagnosticsParts }; result: string };

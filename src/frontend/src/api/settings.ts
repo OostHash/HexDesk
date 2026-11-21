@@ -27,8 +27,7 @@ export function useSettings() {
   });
 }
 
-/** Saves some top-level settings without changing the query cache. */
-export const saveSettings = (patch: SettingsFile) => invoke("save_settings", { json: JSON.stringify(patch) });
+const saveSettings = (patch: SettingsFile) => invoke("save_settings", { json: JSON.stringify(patch) });
 
 /**
  * Saves some top-level keys. Updates the cache optimistically, so a toggle
@@ -51,5 +50,31 @@ export function useSaveSettings() {
   });
 }
 
+/**
+ * Saves some top-level keys and updates the cache only once the save succeeded. For saves that change which
+ * screen is shown, such as finishing the welcome screen, where an optimistic update would unmount the screen
+ * that reports a failure.
+ */
+export function useSaveSettingsConfirmed() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: saveSettings,
+    onSuccess: (_result, patch) => {
+      queryClient.setQueryData<SettingsFile>(settingsKeys.all, (current = {}) => ({ ...current, ...patch }));
+    },
+  });
+}
+
+export const ocrModelsMutationKey = ["settings", "ocr-models"] as const;
+
 /** Allows the ocrs models (downloading them first) or stops using them. */
-export const setOcrModels = (enabled: boolean) => invoke("set_ocr_models", { enabled });
+export function useOcrModels() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ocrModelsMutationKey,
+    mutationFn: (enabled: boolean) => invoke("set_ocr_models", { enabled }),
+    onSuccess: (_result, enabled) => {
+      queryClient.setQueryData<SettingsFile>(settingsKeys.all, (current = {}) => ({ ...current, ocrModels: enabled }));
+    },
+  });
+}

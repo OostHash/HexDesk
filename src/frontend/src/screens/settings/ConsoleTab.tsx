@@ -316,7 +316,7 @@ export function ConsoleTab() {
           setConfirmingRemoval(false);
         }}
         title="Remove logs and captures?"
-        description="Existing diagnostic logs, saved OCR captures and pending test data are removed. HexDesk immediately starts a fresh log for this session. Your retention setting stays unchanged."
+        description="Existing diagnostic logs, saved OCR captures and test data that has not been saved as a report yet are removed. HexDesk immediately starts a fresh log for this session. Your retention setting stays unchanged."
         confirmLabel="Remove logs"
         destructive
         busy={removing}
