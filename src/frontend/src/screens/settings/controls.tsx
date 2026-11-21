@@ -92,7 +92,11 @@ export function TextSizeRow() {
  * HexDesk reads the screen with Windows OCR. The ocrs models, downloaded once, read what Windows OCR misses; the
  * player decides whether they may be downloaded.
  */
-export function OcrModelsRow() {
+export function OcrModelsRow({
+  description = "Downloads about 12 MB of OCR models once. They read what Windows OCR misses, such as relic counts and refinement tags, which can make a read slightly slower.",
+}: {
+  description?: string;
+}) {
   const { settings } = useSettingsFile();
   const ocr = useOcrModels();
   const pending = ocr.isPending ? ocr.variables : null;
@@ -100,7 +104,7 @@ export function OcrModelsRow() {
     <div className="flex flex-col gap-1.5">
       <SwitchRow
         label="Read small text more accurately"
-        description="Downloads about 12 MB of OCR models once. They read what Windows OCR misses, such as relic counts and refinement tags, which can make a read slightly slower."
+        description={description}
         checked={pending ?? ocrModelsFrom(settings)}
         disabled={ocr.isPending}
         onCheckedChange={(enabled) => {
@@ -152,24 +156,27 @@ export function TestingRows() {
     <>
       <SwitchRow
         label="Help test HexDesk"
-        description="Optional and off by default. HexDesk asks whether completed screen flows were read correctly. Page Up discards a correct flow; Page Down keeps a wrong flow for a local report. Nothing is uploaded automatically."
+        description="After a completed screen flow, HexDesk asks whether it was read correctly. Page Up discards the flow; Page Down keeps it for a local report. Nothing is uploaded automatically."
         checked={enabled}
         onCheckedChange={(testingEnabled) => {
           set({ testingEnabled });
         }}
       />
       {enabled && (
-        <SettingRow group={false} label="Ask for feedback">
-          <RadioGroup
-            legend="Ask for feedback"
-            hideLegend
+        <FormField layout="row" label="Ask for feedback">
+          <Select
             value={feedbackFrequencyFrom(settings.feedbackFrequency)}
-            options={FEEDBACK_FREQUENCIES}
-            onValueChange={(feedbackFrequency) => {
-              set({ feedbackFrequency });
+            onChange={(event) => {
+              set({ feedbackFrequency: feedbackFrequencyFrom(event.target.value) });
             }}
-          />
-        </SettingRow>
+          >
+            {FEEDBACK_FREQUENCIES.map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
       )}
     </>
   );

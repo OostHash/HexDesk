@@ -23,6 +23,7 @@ import type { Tone } from "../../primitives/display/tone";
 import { Checkbox, SearchInput } from "../../primitives/forms";
 import { ConfirmDialog } from "../../primitives/overlay";
 import { ExportDiagnosticsButtons, useDiagnosticsExport } from "./ExportDiagnostics";
+import { LogRetentionRow } from "./controls";
 import { ResultText, SettingsGroup, useSettingsFile } from "./parts";
 
 /** Rendering every one of 2000 rows is slow; the newest are what matters. */
@@ -233,6 +234,9 @@ export function ConsoleTab() {
 
   return (
     <>
+      <SettingsGroup title="Log files">
+        <LogRetentionRow />
+      </SettingsGroup>
       <SettingsGroup title="Activity">
         <div className="flex flex-col gap-3">
           <Filters filter={filter} sources={sources} onChange={setFilter} />

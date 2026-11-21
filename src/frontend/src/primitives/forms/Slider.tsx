@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import { useEffect, useRef, type ComponentProps } from "react";
 import { cn } from "../cn";
 import { useFieldControl } from "./FormField";
 
@@ -6,7 +6,10 @@ type Props = Omit<ComponentProps<"input">, "type" | "value" | "onChange" | "min"
   value: number;
   /** Every step while the thumb moves. */
   onValueChange: (value: number) => void;
-  /** Once the pointer is released or a key step ends, for changes too heavy to apply while dragging. */
+  /**
+   * When the browser commits a value: on release after a drag or a track click, and after each keyboard step.
+   * For changes too heavy to apply while dragging.
+   */
   onValueCommit?: (value: number) => void;
   min: number;
   max: number;
@@ -19,9 +22,29 @@ type Props = Omit<ComponentProps<"input">, "type" | "value" | "onChange" | "min"
 export function Slider({ value, onValueChange, onValueCommit, min, max, step = 1, formatValue, id, className, ...rest }: Props) {
   const field = useFieldControl({ id });
   const text = formatValue?.(value);
+  const input = useRef<HTMLInputElement>(null);
+  const commit = useRef(onValueCommit);
+  useEffect(() => {
+    commit.current = onValueCommit;
+  });
+  // React's onChange follows the input event, every step of a drag. The
+  // native change event fires once the value is committed, whatever the
+  // input device.
+  useEffect(() => {
+    const element = input.current;
+    if (!element) return;
+    const committed = () => {
+      commit.current?.(Number(element.value));
+    };
+    element.addEventListener("change", committed);
+    return () => {
+      element.removeEventListener("change", committed);
+    };
+  }, []);
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <input
+        ref={input}
         type="range"
         min={min}
         max={max}
@@ -30,12 +53,6 @@ export function Slider({ value, onValueChange, onValueCommit, min, max, step = 1
         aria-valuetext={text}
         onChange={(event) => {
           onValueChange(Number(event.target.value));
-        }}
-        onPointerUp={(event) => {
-          onValueCommit?.(Number(event.currentTarget.value));
-        }}
-        onKeyUp={(event) => {
-          onValueCommit?.(Number(event.currentTarget.value));
         }}
         className="h-control-sm min-w-0 flex-1 cursor-pointer accent-accent disabled:cursor-not-allowed"
         {...field}

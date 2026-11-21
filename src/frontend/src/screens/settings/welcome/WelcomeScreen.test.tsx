@@ -33,36 +33,39 @@ function setup(initial: Record<string, unknown> = { onboardingCompleted: false }
   return { client, saved: () => settings };
 }
 
-it("walks through appearance, privacy and explicit testing consent", async () => {
-  const { client, saved } = setup();
-  await render(
+const mount = (client: QueryClient) =>
+  render(
     <QueryClientProvider client={client}>
       <WelcomeScreen />
     </QueryClientProvider>,
   );
 
-  await expect.element(page.getByRole("heading", { name: "Make HexDesk comfortable" })).toBeVisible();
+it("opens on the welcome page, then walks through appearance, testing and the community", async () => {
+  const { client, saved } = setup();
+  await mount(client);
+
+  await expect.element(page.getByRole("heading", { name: "Welcome to HexDesk" })).toBeVisible();
+  await page.getByRole("button", { name: "Get started" }).click();
+
+  await expect.element(page.getByRole("heading", { name: "Make it yours" })).toBeVisible();
   await page.getByRole("group", { name: "Theme" }).getByText("Light", { exact: true }).click();
   expect(localStorage.getItem("ff-theme")).toBe("light");
 
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect.element(page.getByRole("heading", { name: "Your data stays under your control" })).toBeVisible();
-  await page.getByRole("combobox", { name: "Keep diagnostic logs for" }).selectOptions("4");
-
-  await page.getByRole("button", { name: "Continue" }).click();
+  await expect.element(page.getByRole("heading", { name: "Help improve HexDesk" })).toBeVisible();
   const testing = page.getByRole("switch", { name: "Help test HexDesk" });
   await expect.element(testing).not.toBeChecked();
   await testing.click();
-  await page.getByRole("group", { name: "Ask for feedback" }).getByText("Once per run", { exact: true }).click();
+  await page.getByRole("combobox", { name: "Ask for feedback" }).selectOptions("once-per-run");
 
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect.element(page.getByRole("heading", { name: "You are ready" })).toBeVisible();
+  await expect.element(page.getByRole("heading", { name: "Join the HexDesk community" })).toBeVisible();
+  await expect.element(page.getByRole("img", { name: "QR code for the HexDesk Discord invite" })).toBeVisible();
   await page.getByRole("button", { name: "Start using HexDesk" }).click();
 
   await vi.waitFor(() => {
     expect(saved()).toMatchObject({
       onboardingCompleted: true,
-      logRetentionDays: 4,
       testingEnabled: true,
       feedbackFrequency: "once-per-run",
     });
@@ -71,12 +74,9 @@ it("walks through appearance, privacy and explicit testing consent", async () =>
 
 it("downloads the optional small-text reader from setup", async () => {
   const { client, saved } = setup();
-  await render(
-    <QueryClientProvider client={client}>
-      <WelcomeScreen />
-    </QueryClientProvider>,
-  );
+  await mount(client);
 
+  await page.getByRole("button", { name: "Get started" }).click();
   await page.getByRole("switch", { name: "Read small text more accurately" }).click();
   await vi.waitFor(() => {
     expect(saved().ocrModels).toBe(true);

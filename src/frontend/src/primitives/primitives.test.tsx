@@ -131,7 +131,7 @@ describe("Checkbox, Switch, Slider", () => {
     await expect.element(slider).toHaveAttribute("aria-valuetext", "90%");
   });
 
-  it("Slider commits only when a key or the pointer is released", async () => {
+  it("Slider commits each keyboard step through the native change event", async () => {
     const onCommit = vi.fn();
     function Controlled() {
       const [value, setValue] = useState(1);
@@ -145,10 +145,10 @@ describe("Checkbox, Switch, Slider", () => {
     const slider = screen.getByRole("slider", { name: "Text size" });
     await userEvent.click(slider);
     onCommit.mockClear();
-    await userEvent.keyboard("{ArrowRight>}");
-    expect(onCommit).not.toHaveBeenCalled();
-    await userEvent.keyboard("{/ArrowRight}");
-    expect(onCommit).toHaveBeenCalledTimes(1);
+    await userEvent.keyboard("{Home}{ArrowRight}");
+    await vi.waitFor(() => {
+      expect(onCommit).toHaveBeenLastCalledWith(expect.closeTo(0.9));
+    });
   });
 });
 

@@ -5,7 +5,7 @@ import { clockFormatFrom, type ClockFormat } from "../../domain/statistics";
 import { Badge } from "../../primitives/display";
 import { RadioGroup } from "../../primitives/forms";
 import { availableChoices, CONTRAST_LABEL, setPreferences, usePreferences } from "../../state/preferences";
-import { DensityRow, LogRetentionRow, OcrModelsRow, TestingRows, TextSizeRow, ThemeRow } from "./controls";
+import { DensityRow, OcrModelsRow, TestingRows, TextSizeRow, ThemeRow } from "./controls";
 import { NotificationsGroup } from "./NotificationsGroup";
 import { ResultText, SettingRow, SettingsGroup, SwitchRow, useSettingsFile } from "./parts";
 
@@ -14,14 +14,13 @@ const CLOCK_OPTIONS: ReadonlyArray<{ value: ClockFormat; label: string }> = [
   { value: "12h", label: "12h" },
   { value: "24h", label: "24h" },
 ];
-/** Local diagnostics, optional testing and a way back into onboarding. */
-function PrivacyTestingGroup() {
+/** The testing opt-in and a way back into the welcome screen. */
+function TestingGroup() {
   const { set } = useSettingsFile();
   return (
-    <SettingsGroup title="Privacy and testing">
-      <LogRetentionRow />
+    <SettingsGroup title="Testing">
       <TestingRows />
-      <SettingRow label="Welcome and privacy" description="Review appearance, local data and testing choices from the beginning.">
+      <SettingRow label="Welcome screen" description="Go through the welcome screen again: appearance, testing and the community.">
         <Button
           size="sm"
           onClick={() => {
@@ -154,7 +153,7 @@ export function GeneralTab() {
   return (
     <>
       <UpdatesGroup />
-      <PrivacyTestingGroup />
+      <TestingGroup />
       <OcrGroup />
       <SettingsGroup
         title="Memory scanner"

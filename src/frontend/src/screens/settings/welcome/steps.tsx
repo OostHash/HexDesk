@@ -1,15 +1,18 @@
-import { ExternalLink, ShieldCheck } from "lucide-react";
+import { Bug, ExternalLink, FileArchive, Gamepad2, Keyboard, Lightbulb, Megaphone, Monitor, Send, ShieldCheck, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import discordQr from "../../../assets/welcome/discord-qr.svg";
 import { openExternal } from "../../../api/links";
+import { DiscordMark } from "../../../patterns/DiscordMark";
 import { Button } from "../../../primitives/actions";
 import { Icon } from "../../../primitives/display";
-import { DensityRow, LogRetentionRow, OcrModelsRow, TestingRows, TextSizeRow, ThemeRow } from "../controls";
-import { SettingsCard } from "../parts";
+import { DensityRow, OcrModelsRow, TestingRows, TextSizeRow, ThemeRow } from "../controls";
+import { SettingsCard, SettingsGroup } from "../parts";
 
+/** The invite `src/frontend/src/assets/welcome/discord-qr.svg` encodes; regenerate the image when it changes. */
 const DISCORD_URL = "https://discord.gg/GTCrhPMPQY";
 
-/** One page of the welcome screen, in order. */
-export const STEPS = [ComfortStep, PrivacyStep, TestingStep, ReadyStep] as const;
+/** The setup pages after the welcome page, in order. */
+export const SETUP_STEPS = [AppearanceStep, TestingStep, CommunityStep] as const;
 
 function StepHeading({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -20,41 +23,28 @@ function StepHeading({ title, children }: { title: string; children: ReactNode }
   );
 }
 
-function ComfortStep() {
+function AppearanceStep() {
   return (
     <div className="flex flex-col gap-6">
-      <StepHeading title="Make HexDesk comfortable">These choices can be changed later in Settings → General.</StepHeading>
-      <SettingsCard>
+      <StepHeading title="Make it yours">How HexDesk looks and how it reads the game. Both can be changed later in Settings → General.</StepHeading>
+      <SettingsGroup title="Appearance">
         <ThemeRow />
         <DensityRow />
         <TextSizeRow />
-        <OcrModelsRow />
-      </SettingsCard>
-    </div>
-  );
-}
-
-function PrivacyStep() {
-  return (
-    <div className="flex flex-col gap-6">
-      <StepHeading title="Your data stays under your control">HexDesk does not automatically upload logs, captures or test reports.</StepHeading>
-      <div className="grid gap-3 md:grid-cols-3">
-        <InfoCard title="Diagnostic logs">
-          App activity written to HexDesk&apos;s local app-data folder. Logs are separate from test samples.
-        </InfoCard>
-        <InfoCard title="Testing captures">
-          The screen areas OCR reads, its OCR result and the matching game-and-overlay image. Pending files stay in local app data only until you
-          answer.
-        </InfoCard>
-        <InfoCard title="Test reports">Saved as a zip in Downloads after a run. You decide whether to share it.</InfoCard>
-      </div>
-      <SettingsCard>
-        <LogRetentionRow />
-      </SettingsCard>
-      <p className="text-sm text-muted">
-        The activity console can remove diagnostic logs, saved captures and test data that has not been saved as a report yet. Factory reset removes
-        all local HexDesk data.
-      </p>
+      </SettingsGroup>
+      <SettingsGroup title="Screen reading">
+        <div className="flex flex-col gap-2 text-sm text-muted">
+          <p>
+            The overlays read the game screen: your relic list, the reward cards after a fissure and the stats on a riven. HexDesk uses the text
+            recognition built into Windows for this, so it works without any download.
+          </p>
+          <p>
+            Windows often misses small text, such as relic counts and the refinement tag on a relic. The open-source ocrs models read that text
+            better. Turn them on to download them once; a read can take a moment longer.
+          </p>
+        </div>
+        <OcrModelsRow description="About 12 MB, downloaded once. You can turn them off again at any time." />
+      </SettingsGroup>
     </div>
   );
 }
@@ -62,40 +52,106 @@ function PrivacyStep() {
 function TestingStep() {
   return (
     <div className="flex flex-col gap-6">
-      <StepHeading title="Help test HexDesk">
-        This is optional and off by default. When enabled, HexDesk occasionally asks whether a completed screen flow was read correctly.
+      <StepHeading title="Help improve HexDesk">
+        Testers tell HexDesk when it read a game screen wrong, so screen reading gets better for everyone. It is optional and off until you turn it
+        on.
       </StepHeading>
+      <ol className="grid gap-3 md:grid-cols-2">
+        <HowStep number={1} icon={Gamepad2} title="Play as usual">
+          After you pick a relic reward, refine a relic or look at a riven, HexDesk asks over the game whether it read the screen correctly.
+        </HowStep>
+        <HowStep number={2} icon={Keyboard} title="Answer with one key">
+          <kbd className="font-semibold text-text">Page Up</kbd> if it was right; HexDesk forgets those screens.{" "}
+          <kbd className="font-semibold text-text">Page Down</kbd> if something was wrong; HexDesk keeps them for your report.
+        </HowStep>
+        <HowStep number={3} icon={FileArchive} title="Get a zip after the run">
+          When the run ends, the screens you marked wrong are saved as one zip in your Downloads folder, and HexDesk tells you where.
+        </HowStep>
+        <HowStep number={4} icon={Send} title="Send it to us">
+          Post the zip in the HexDesk Discord, or attach it to an issue on GitHub. That is how a wrong read gets fixed.
+        </HowStep>
+      </ol>
+      <p className="flex items-start gap-2 text-xs text-muted">
+        <Icon icon={ShieldCheck} size="sm" className="mt-0.5 shrink-0 text-accent" />
+        Nothing is uploaded automatically. The zip holds only the screens you marked wrong and what HexDesk read on them: no logs, settings or account
+        data.
+      </p>
       <SettingsCard>
         <TestingRows />
       </SettingsCard>
+      <p className="text-xs text-muted">
+        Apart from testing, HexDesk keeps a local log for troubleshooting. You can choose how long it is kept and remove it in Settings → Console.
+      </p>
     </div>
   );
 }
 
-function ReadyStep() {
+function HowStep({ number, icon, title, children }: { number: number; icon: LucideIcon; title: string; children: ReactNode }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-5 py-8 text-center">
-      <span className="flex size-14 items-center justify-center rounded-full bg-accent-soft text-accent">
-        <Icon icon={ShieldCheck} size="lg" />
-      </span>
-      <div>
-        <h2 className="text-xl font-semibold">You are ready</h2>
-        <p className="mx-auto mt-1 max-w-xl text-sm text-muted">
-          You can revisit this setup and change testing, retention or appearance at any time in Settings → General.
+    <li className="flex gap-3 rounded-lg border border-border bg-surface-raised p-4">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent">{number}</span>
+      <div className="flex flex-col gap-1">
+        <h3 className="flex items-center gap-1.5 text-sm font-medium">
+          <Icon icon={icon} size="sm" className="text-muted" />
+          {title}
+        </h3>
+        <p className="text-xs text-muted">{children}</p>
+      </div>
+    </li>
+  );
+}
+
+function CommunityStep() {
+  return (
+    <div className="flex flex-col items-center gap-8 text-center">
+      <div className="flex flex-col items-center gap-3">
+        {/* Discord's brand assets come in white and black; the text colour is one of the two in every theme. */}
+        <span className="flex size-16 items-center justify-center rounded-2xl border border-border bg-surface-raised text-text">
+          <DiscordMark className="size-9" />
+        </span>
+        <h2 className="text-2xl font-semibold">Join the HexDesk community</h2>
+        <p className="max-w-lg text-sm text-muted">
+          The Discord is where players ask questions, report bugs and share test reports, and where new versions are announced first.
         </p>
       </div>
-      <Button variant="ghost" trailingIcon={ExternalLink} onClick={() => void openExternal(DISCORD_URL)}>
-        Join the HexDesk Discord
-      </Button>
+
+      <ul className="flex flex-wrap justify-center gap-2">
+        <Perk icon={Bug}>Report a bug</Perk>
+        <Perk icon={FileArchive}>Share a test report</Perk>
+        <Perk icon={Lightbulb}>Suggest a feature</Perk>
+        <Perk icon={Megaphone}>Hear about updates first</Perk>
+      </ul>
+
+      <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
+        <section className="flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-surface-raised p-6">
+          <Icon icon={Monitor} size="lg" className="text-muted" />
+          <div>
+            <h3 className="font-medium">On this computer</h3>
+            <p className="mt-1 text-xs text-muted">Opens the invite in your browser or the Discord app.</p>
+          </div>
+          <Button variant="primary" size="lg" trailingIcon={ExternalLink} onClick={() => void openExternal(DISCORD_URL)}>
+            <DiscordMark className="size-4" />
+            Join the Discord
+          </Button>
+        </section>
+        <section className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-surface-raised p-6">
+          {/* The image carries its own white quiet zone: phones need dark modules on a light field, whatever the theme. */}
+          <img src={discordQr} alt="QR code for the HexDesk Discord invite" className="size-36 rounded-lg" />
+          <div>
+            <h3 className="font-medium">On your phone</h3>
+            <p className="mt-1 text-xs text-muted">Scan the code with your camera.</p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
 
-function InfoCard({ title, children }: { title: string; children: ReactNode }) {
+function Perk({ icon, children }: { icon: LucideIcon; children: string }) {
   return (
-    <section className="rounded-lg border border-border bg-surface-raised p-4">
-      <h3 className="text-sm font-medium">{title}</h3>
-      <p className="mt-1 text-xs text-muted">{children}</p>
-    </section>
+    <li className="flex items-center gap-1.5 rounded-full border border-border bg-surface-raised px-3 py-1 text-xs text-muted">
+      <Icon icon={icon} size="sm" className="text-accent" />
+      {children}
+    </li>
   );
 }

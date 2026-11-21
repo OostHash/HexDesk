@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { emit } from "@tauri-apps/api/event";
 import { clearMocks, mockIPC, mockWindows } from "@tauri-apps/api/mocks";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { page } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-react";
 import type { LogEntry } from "../../domain/console";
@@ -60,6 +60,15 @@ function mount(entries: LogEntry[] = RECENT, calls: Array<{ cmd: string; args: u
 }
 
 const list = () => page.getByRole("list", { name: "Log entries" });
+
+it("saves how long log files are kept", async () => {
+  const calls: Array<{ cmd: string; args: unknown }> = [];
+  await mount(RECENT, calls);
+  await page.getByRole("combobox", { name: "Keep diagnostic logs for" }).selectOptions("5");
+  await vi.waitFor(() => {
+    expect(calls).toContainEqual({ cmd: "save_settings", args: { json: JSON.stringify({ logRetentionDays: 5 }) } });
+  });
+});
 
 it("shows readable entries, newest first, and hides debug until asked", async () => {
   await mount();
