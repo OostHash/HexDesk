@@ -19,7 +19,7 @@ path = "src/main.rs"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["image-png"] }
+tauri = { version = "2.11.1", features = ["image-png"] }
 tauri-plugin-opener = "2"
 tokio = { version = "1", features = ["rt", "time", "net", "fs", "io-util"] }
 serde = { version = "1", features = ["derive"] }
@@ -31,7 +31,6 @@ dirs = "5"
 memchr = "2"
 ureq = { version = "2", features = ["json"] }
 tungstenite = { version = "0.26", features = ["native-tls"] }
-native-tls = "0.2"
 lzma-rs = "0.3"
 hexdesk-capture = { path = "crates/capture" }
 hexdesk-diag = { path = "crates/diag" }
@@ -42,13 +41,8 @@ hexdesk-player = { path = "crates/player" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tauri-plugin-notification = "2"
-tauri-plugin-updater = "2"
+tauri-plugin-updater = "2.14.1"
 tauri-plugin-snap-layout = "1"
-
-[package.metadata.cargo-machete]
-# native-tls isn't imported directly — it's the backend enabled by
-# tungstenite's "native-tls" feature (src/wfm.rs's client_tls call).
-ignored = ["native-tls"]
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.52", features = [
