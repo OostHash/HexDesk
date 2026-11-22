@@ -1,6 +1,6 @@
 [package]
 name = "hexdesk-overlays"
-version = "1.0.1"
+version.workspace = true
 description = "HexDesk overlays: game screens, the signals that reveal them and the overlay each one gets"
 authors = ["HexDesk contributors"]
 edition = "2021"

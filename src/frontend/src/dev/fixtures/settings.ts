@@ -28,6 +28,7 @@ export function resetMockSettings() {
 }
 
 export const loadSettings: Fixture<string> = {
+  essential: true,
   default: () => JSON.stringify(read()),
   empty: () => "",
   onboarding: () =>

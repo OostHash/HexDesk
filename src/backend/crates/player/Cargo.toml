@@ -1,6 +1,6 @@
 [package]
 name = "hexdesk-player"
-version = "1.0.1"
+version.workspace = true
 description = "HexDesk player state: what the player owns, from which source, and what that means for item sets"
 authors = ["HexDesk contributors"]
 edition = "2021"

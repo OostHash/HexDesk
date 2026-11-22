@@ -17,9 +17,9 @@ const PART_CHOICES: ReadonlyArray<{ key: keyof DiagnosticsParts; label: string; 
     label: "System information",
     description: "HexDesk version, Windows version, screens, language, WebView2 and OCR languages.",
   },
-  { key: "settings", label: "Settings", description: "Your settings file, without passwords and tokens." },
+  { key: "settings", label: "Settings", description: "Your HexDesk settings file." },
   { key: "activity", label: "Activity", description: "The entries shown in the activity console." },
-  { key: "logs", label: "Log files", description: "The full logs HexDesk wrote, without player names." },
+  { key: "logs", label: "Log files", description: "The full logs HexDesk wrote." },
 ];
 
 /** The diagnostics export: where the last zip went, and whether one is being written. */
@@ -122,6 +122,9 @@ export function ExportDiagnosticsButtons({ state }: { state: ReturnType<typeof u
             </Checkbox>
           ))}
         </fieldset>
+        <p className="mt-3 text-xs text-muted">
+          HexDesk tries to redact known sensitive values, but automatic redaction may miss something. Review the zip before sharing it.
+        </p>
         {state.result?.tone === "danger" && (
           <p role="alert" className="mt-3 text-xs text-danger">
             {state.result.text}

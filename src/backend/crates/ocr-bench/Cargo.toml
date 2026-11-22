@@ -1,6 +1,6 @@
 [package]
 name = "hexdesk-ocr-bench"
-version = "1.0.1"
+version.workspace = true
 description = "HexDesk OCR bench: measures OCR engines against labelled game screens; a developer tool, not part of the app"
 authors = ["HexDesk contributors"]
 edition = "2021"

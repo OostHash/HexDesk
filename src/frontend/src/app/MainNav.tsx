@@ -81,7 +81,8 @@ export function MainNav({ screens, current, onSelect, settingsOpen, onOpenSettin
         <HexDeskMark className="size-12 text-accent" />
         <span className={cn("hidden", !collapsed && "md:inline")}>HexDesk</span>
       </div>
-      <ul className="flex flex-col gap-0.5">
+      {/* Only the screens scroll in a short window, so Report a bug and Settings stay reachable. */}
+      <ul className="scrollbar-thin flex min-h-0 flex-col gap-0.5 overflow-y-auto">
         {screens.map((s) => (
           <li key={s.id}>
             <NavItem

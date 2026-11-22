@@ -1,6 +1,6 @@
 [package]
 name = "hexdesk-persist"
-version = "1.0.1"
+version.workspace = true
 description = "HexDesk persistence: crash-safe file writes and the settings store"
 authors = ["HexDesk contributors"]
 edition = "2021"

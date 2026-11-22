@@ -1,6 +1,6 @@
 [package]
 name = "hexdesk-capture"
-version = "1.0.1"
+version.workspace = true
 description = "HexDesk capture: pictures of the game window and the text OCR reads in them"
 authors = ["HexDesk contributors"]
 edition = "2021"
