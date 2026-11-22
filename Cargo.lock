@@ -1702,7 +1702,6 @@ dependencies = [
  "hexdesk-player",
  "lzma-rs",
  "memchr",
- "native-tls",
  "regex",
  "rusqlite",
  "serde",

@@ -24,3 +24,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # select its default pure-Rust backend (miniz_oxide) for zip's deflate.
 flate2 = "1"
 zip = { version = "9.0.5", default-features = false, features = ["deflate-flate2"] }
+
+[package.metadata.cargo-machete]
+# Feature-only dependency: its default enables flate2's pure-Rust miniz backend
+# for zip's `deflate-flate2` feature.
+ignored = ["flate2"]
