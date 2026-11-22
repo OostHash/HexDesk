@@ -13,5 +13,6 @@ export const PAGES: readonly LabPage[] = [
   { name: "kitchen-sink", path: "/mock.html?view=kitchen-sink" },
   { name: "tokens", path: "/mock.html?view=tokens" },
   { name: "shell-main", path: "/mock.html" },
+  { name: "shell-onboarding", path: "/mock.html?scenario=onboarding" },
   { name: "shell-modular", path: "/mock.html?window=modular" },
 ];

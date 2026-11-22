@@ -1,18 +1,27 @@
 /**
- * Position offsets per overlay (vault overlay-settings.md): logical pixels on
+ * Position offsets per overlay: logical pixels on
  * top of the built-in place; 0 keeps it. The backend reads the relic and
  * relic pick offsets from the settings file, the main window the riven one.
  * Pure functions.
  */
 
-export type OverlayOffsets = { relicPickX: number; relicPickY: number; relicX: number; relicY: number; rivenX: number; rivenY: number };
+export type OverlayOffsets = {
+  relicPickX: number;
+  relicPickY: number;
+  relicX: number;
+  relicY: number;
+  rivenX: number;
+  rivenY: number;
+  statusX: number;
+  statusY: number;
+};
 /** The overlay an offset pair belongs to (the key prefix in the settings file). */
-export type OffsetTarget = "relic" | "relicPick" | "riven";
+export type OffsetTarget = "relic" | "relicPick" | "riven" | "status";
 
 export const OFFSET_LIMIT = 3000;
 /** Arrow keys in an offset field move this far. */
 export const OFFSET_STEP = 10;
-export const NO_OFFSETS: OverlayOffsets = { relicPickX: 0, relicPickY: 0, relicX: 0, relicY: 0, rivenX: 0, rivenY: 0 };
+export const NO_OFFSETS: OverlayOffsets = { relicPickX: 0, relicPickY: 0, relicX: 0, relicY: 0, rivenX: 0, rivenY: 0, statusX: 0, statusY: 0 };
 
 export const clampOffset = (v: number) => (Number.isFinite(v) ? Math.max(-OFFSET_LIMIT, Math.min(OFFSET_LIMIT, Math.round(v))) : 0);
 
@@ -27,6 +36,8 @@ export function offsetsFrom(v: unknown): OverlayOffsets {
     relicY: axis("relicY"),
     rivenX: axis("rivenX"),
     rivenY: axis("rivenY"),
+    statusX: axis("statusX"),
+    statusY: axis("statusY"),
   };
 }
 

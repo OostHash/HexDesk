@@ -1,10 +1,10 @@
-import { CircleCheck, CircleDashed, ExternalLink, Info, RefreshCw, ScanSearch, ScrollText, ShieldCheck, TriangleAlert } from "lucide-react";
+import { CircleCheck, CircleDashed, ExternalLink, Info, RefreshCw, ScanSearch, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isTauri } from "../../api/env";
 import { onEvent } from "../../api/events";
 import { openExternal } from "../../api/links";
 import { requestRivenCheck } from "../../api/overlays";
-import { fetchSessionLog, useRivenAnalysis, useRivenWeapons, useRollActions } from "../../api/rivens";
+import { useRivenAnalysis, useRivenWeapons, useRollActions } from "../../api/rivens";
 import {
   ALL_STATS,
   filledStats,
@@ -138,7 +138,6 @@ export function AnalyzerTab() {
   const [typed, setTyped] = useState("");
   const [weapon, setWeapon] = useState("");
   const [stats, setStats] = useState<RollStat[]>([]);
-  const [log, setLog] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { positives, negatives } = useMemo(() => splitSigns(stats), [stats]);
   const analysis = useRivenAnalysis(weapon, positives, negatives);
@@ -213,28 +212,8 @@ export function AnalyzerTab() {
               weapons.reload.mutate(undefined, { onError: () => toast({ title: "Reload failed", tone: "danger" }) });
             }}
           />
-          <Button
-            size="sm"
-            variant="ghost"
-            leadingIcon={ScrollText}
-            aria-expanded={log !== null}
-            onClick={() => {
-              if (log !== null) setLog(null);
-              else void fetchSessionLog().then(setLog);
-            }}
-          >
-            Session log
-          </Button>
         </span>
       </div>
-      {log !== null && (
-        <pre
-          aria-label="Riven session log"
-          className="max-h-72 overflow-y-auto rounded-lg border border-border bg-surface-sunken p-3 text-xs whitespace-pre-wrap text-muted"
-        >
-          {log}
-        </pre>
-      )}
 
       <ComboBox
         label="Weapon"

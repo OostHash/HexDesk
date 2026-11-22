@@ -32,6 +32,10 @@ pub trait ProcessAccess {
 
     /// Open a process handle for reading memory.
     fn open_process(pid: u32) -> Result<Box<dyn ProcessHandle>, String>;
+
+    /// Whether HexDesk itself runs elevated (as administrator). `None` when
+    /// the OS does not say.
+    fn is_elevated() -> Option<bool>;
 }
 
 /// An open handle to a process, allowing efficient repeated memory operations.
@@ -40,17 +44,6 @@ pub trait ProcessHandle {
     /// is what a faulted page inside an otherwise readable region looks like,
     /// so the count is the whole answer: there is no "try again for the rest".
     fn read_into(&self, addr: usize, buf: &mut [u8]) -> usize;
-
-    /// Reads `len` bytes, allocating a fresh buffer. Prefer `read_into` in
-    /// hot loops; this is a convenience wrapper for one-off reads.
-    fn read(&self, addr: usize, len: usize) -> Option<Vec<u8>> {
-        let mut buf = vec![0u8; len];
-        let n = self.read_into(addr, &mut buf);
-        (n > 0).then(|| {
-            buf.truncate(n);
-            buf
-        })
-    }
 
     /// Maps regions at or after `from`, in ascending address order.
     /// Yields one region per step, as the OS queries it.
@@ -97,13 +90,6 @@ pub trait LocaleProvider {
     fn get_system_locale() -> String;
 }
 
-// ─── COM Initialization ──────────────────────────────────────────────────────
-
-/// Initialize COM (Component Object Model) for the current thread.
-pub trait ComInit {
-    fn initialize_com();
-}
-
 // ─── Window Management ────────────────────────────────────────────────────────
 
 /// Interact with OS windows.
@@ -139,19 +125,15 @@ impl ProcessAccess for Platform {
     fn open_process(pid: u32) -> Result<Box<dyn ProcessHandle>, String> {
         windows::open_process(pid)
     }
+    fn is_elevated() -> Option<bool> {
+        windows::is_elevated()
+    }
 }
 
 #[cfg(target_os = "windows")]
 impl LocaleProvider for Platform {
     fn get_system_locale() -> String {
         windows::get_system_locale()
-    }
-}
-
-#[cfg(target_os = "windows")]
-impl ComInit for Platform {
-    fn initialize_com() {
-        windows::initialize_com();
     }
 }
 
@@ -188,6 +170,9 @@ impl ProcessAccess for Platform {
     fn open_process(_pid: u32) -> Result<Box<dyn ProcessHandle>, String> {
         Err("Process access not supported on Linux yet".into())
     }
+    fn is_elevated() -> Option<bool> {
+        None
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -195,11 +180,6 @@ impl LocaleProvider for Platform {
     fn get_system_locale() -> String {
         linux::get_system_locale()
     }
-}
-
-#[cfg(target_os = "linux")]
-impl ComInit for Platform {
-    fn initialize_com() {}
 }
 
 #[cfg(target_os = "linux")]

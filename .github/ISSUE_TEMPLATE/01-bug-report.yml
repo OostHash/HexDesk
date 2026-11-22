@@ -91,9 +91,11 @@ body:
   - type: textarea
     id: diagnostics
     attributes:
-      label: Logs or diagnostics
-      description: Use Settings → Debugging for relevant logs or captures. Drag files into this box after reviewing them for private information.
-      placeholder: Paste relevant text or attach files here. Leave empty if none are available.
+      label: Diagnostics export
+      description: |
+        In HexDesk 1.1 or later, open Settings → Debugging → Diagnostics export and select Export. Drag the zip it saves into this box. Passwords, tokens, e-mail addresses and player names are removed from it.
+        On older versions, attach the relevant logs from Settings → Debugging after reviewing them for private information.
+      placeholder: Drag the diagnostics zip here. Leave empty if you cannot export one.
 
   - type: textarea
     id: screenshots

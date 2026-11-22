@@ -1,0 +1,45 @@
+[package]
+name = "hexdesk-capture"
+version.workspace = true
+description = "HexDesk capture: pictures of the game window and the text OCR reads in them"
+authors = ["HexDesk contributors"]
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/OostHash/HexDesk"
+publish = false
+
+[lib]
+name = "hexdesk_capture"
+
+# Same versions and features as the backend crate, so the lock file gains no
+# new packages.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+ureq = "2"
+sha2 = "0.10"
+# Pure-Rust OCR, used where Windows OCR is missing (no language pack, other
+# platforms). Its models are downloaded on first use.
+ocrs = "0.14"
+rten = "0.28"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi",
+] }
+windows = { version = "0.58", features = [
+    "Media_Ocr",
+    "Graphics_Imaging",
+    "Storage_Streams",
+    "Foundation_Collections",
+    "Globalization",
+    "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Direct3D11",
+    "Win32_Graphics_Gdi",
+] }

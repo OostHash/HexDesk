@@ -26,7 +26,7 @@ type Props = {
   children?: ReactNode;
 };
 
-/** Panel/card surface. There is no separate Panel: use Card (plan 7.4). */
+/** Panel/card surface. There is no separate Panel: use Card. */
 export function Card({ as: Element = "div", padding, elevation, interactive, header, footer, className, children }: Props) {
   return (
     <Element className={cn(cardVariants({ padding, elevation, interactive }), className)}>

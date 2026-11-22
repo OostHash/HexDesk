@@ -1,4 +1,4 @@
-/** Backend data caches (src-tauri cache.rs), shown in the header's Data chip. */
+/** Backend data caches (backend cache.rs), shown in the header's Data chip. */
 
 export type CacheSource = "fresh" | "refreshed" | "stale" | "fallback";
 

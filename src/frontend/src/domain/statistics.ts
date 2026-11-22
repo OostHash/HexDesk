@@ -1,6 +1,5 @@
 /**
- * Statistics: trade report and tracked item quantities, same rules as the
- * current app (vault/frontend-ports/statistics.md).
+ * Statistics: trade report and tracked item quantities.
  */
 
 export type Trade = {
@@ -157,7 +156,7 @@ export function groupSessions(trades: readonly Trade[]): TradeSession[] {
   return sessions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
-/** "12,450" below 10 000, "12.5K" above, like the current app. */
+/** "12,450" below 10 000, "12.5K" above. */
 export const fmtK = (n: number) => (Math.abs(n) >= 10_000 ? `${(n / 1000).toFixed(1)}K` : n.toLocaleString("en-US"));
 export const signed = (n: number) => `${n >= 0 ? "+" : ""}${fmtK(n)}`;
 
@@ -186,7 +185,7 @@ export function snapshotsIn(points: readonly SnapshotPoint[], tf: Timeframe, tod
   return points.filter((p) => p.date >= cut);
 }
 
-/** Current, average change per day and total change, as in the current app (from the second point on). */
+/** Current, average change per day and total change (from the second point on). */
 export function snapshotStats(points: readonly SnapshotPoint[]): { current: number | null; avgPerDay: number | null; total: number | null } {
   const last = points[points.length - 1];
   if (!last) return { current: null, avgPerDay: null, total: null };

@@ -3,11 +3,11 @@ import { expect, test, type Page } from "@playwright/test";
 /**
  * Every form field has an id or a name (Chrome DevTools: "A form field
  * element should have an id or name attribute"; it helps autofill and label
- * wiring). Checks each screen, the kitchen sink and every Settings tab.
+ * wiring). Checks each screen, the kitchen sink and every Settings category.
  */
 
 const SCREENS = ["Timers", "Foundry", "Relics", "Inventory", "Market", "Rivens"];
-const SETTINGS_TABS = ["General", "Overlays", "Market", "Filters", "Data", "Debugging"];
+const SETTINGS_CATEGORIES = ["General", "Overlays", "Market", "Filters", "Data", "Debugging", "Console"];
 
 /** Form fields without id and name, described for the failure message. */
 const anonymousFields = (page: Page) =>
@@ -30,10 +30,11 @@ test("every form field on every screen has an id or name", async ({ page }) => {
     found.push(...(await anonymousFields(page)).map((f) => `${screen}: ${f}`));
   }
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Settings" });
-  for (const tab of SETTINGS_TABS) {
-    await dialog.getByRole("tab", { name: tab, exact: true }).click();
-    found.push(...(await anonymousFields(page)).map((f) => `Settings ${tab}: ${f}`));
+  const categories = page.getByRole("navigation", { name: "Settings" });
+  for (const category of SETTINGS_CATEGORIES) {
+    await categories.getByRole("button", { name: category, exact: true }).click();
+    await expect(page.getByRole("heading", { name: category, level: 2 })).toBeVisible();
+    found.push(...(await anonymousFields(page)).map((f) => `Settings ${category}: ${f}`));
   }
   expect(found).toEqual([]);
 });

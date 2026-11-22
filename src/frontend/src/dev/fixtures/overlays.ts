@@ -1,5 +1,5 @@
 import type { CatalogItem } from "../../domain/relics";
-import type { OcrRiven } from "../../domain/rivenOverlay";
+import type { BackendCard } from "../../domain/relicReward";
 import { noResult } from "./market";
 import type { Fixture } from "./scenario";
 
@@ -53,11 +53,67 @@ export const OVERLAY_PRICES: Record<string, number> = {
   "Glaive Prime Disc": 9,
 };
 
+type Part = NonNullable<BackendCard["parts"]>[number];
+const part = (path: string, name: string, owned: number, ducats: number | null = null, needed = 1): Part => ({
+  path,
+  name,
+  needed,
+  owned: { total: owned },
+  ducats,
+});
+
+const RHINO_PRIME_PARTS: Part[] = [
+  part("/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeBlueprint", "Rhino Prime Blueprint", 1, 15),
+  part("/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeChassisBlueprint", "Rhino Prime Chassis Blueprint", 0, 45),
+  part("/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeHelmetBlueprint", "Rhino Prime Neuroptics Blueprint", 1, 100),
+  part("/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeSystemsBlueprint", "Rhino Prime Systems Blueprint", 2, 45),
+];
+
+const GLAIVE_PRIME_PARTS: Part[] = [
+  part("/Lotus/Types/Recipes/Weapons/PrimeGlaiveBlueprint", "Glaive Prime Blueprint", 1, 15),
+  part("/Lotus/Weapons/Tenno/Melee/Glaive/PrimeGlaive/PrimeGlaiveBlade", "Glaive Prime Blade", 0, 45),
+  part("/Lotus/Weapons/Tenno/Melee/Glaive/PrimeGlaive/PrimeGlaiveDisc", "Glaive Prime Disc", 1, 45, 2),
+];
+
+/** Reward cards as the backend builds them, for the items the fixtures emit; anything else is unrecognized. */
+const REWARD_CARDS: Record<string, Omit<BackendCard, "path">> = {
+  "/Lotus/StoreItems/Types/Recipes/WarframeRecipes/RhinoPrimeChassisBlueprint": {
+    name: "Rhino Prime Chassis Blueprint",
+    unknown: false,
+    category: "Blueprints",
+    vaulted: true,
+    ducats: 45,
+    set_name: "Rhino Prime",
+    parts: RHINO_PRIME_PARTS,
+    built: { total: 0 },
+    complete_sets: 0,
+  },
+  "/Lotus/StoreItems/Weapons/Tenno/Melee/Glaive/PrimeGlaive/PrimeGlaiveDisc": {
+    name: "Glaive Prime Disc",
+    unknown: false,
+    category: "Parts",
+    vaulted: true,
+    ducats: 45,
+    set_name: "Glaive Prime",
+    parts: GLAIVE_PRIME_PARTS,
+    built: { total: 1 },
+    complete_sets: 1,
+  },
+};
+
+function rewardCard(path: string): BackendCard {
+  const known = REWARD_CARDS[path];
+  if (known) return { path, ...known };
+  const name = path.startsWith("?:") ? path.slice(2) : (path.split("/").pop() ?? path);
+  return { path, name, unknown: true, category: null, vaulted: null, ducats: null, set_name: null, parts: null, built: null, complete_sets: null };
+}
+
 export const overlayFixtures = {
   get_warframe_window_rect: { alwaysDefault: true, default: () => [0, 0, 1920, 1080] } satisfies Fixture<[number, number, number, number]>,
   show_overlay_window: noResult<{ x: number; y: number; w: number; h: number }>(),
   move_overlay_offscreen: noResult(),
   get_pending_relic_rewards: { alwaysDefault: true, default: () => null } satisfies Fixture<{ items: string[]; positions: number[] } | null>,
+  get_reward_cards: { default: ({ paths }) => paths.map(rewardCard), empty: () => [] } satisfies Fixture<BackendCard[], { paths: string[] }>,
   get_items_by_paths: { default: () => OVERLAY_CATALOG, empty: () => [] } satisfies Fixture<CatalogItem[], { paths: string[] }>,
   get_item_price: { default: ({ itemName }) => OVERLAY_PRICES[itemName] ?? null, empty: () => null } satisfies Fixture<
     number | null,
@@ -67,24 +123,28 @@ export const overlayFixtures = {
     Array<{ unique_name: string; item_name: string; completion_ms: number }>
   >,
   set_overlays_enabled: noResult<{ enabled: boolean }>(),
+  test_report_flows: { alwaysDefault: true, default: () => 3 } satisfies Fixture<number>,
+  export_test_report: {
+    alwaysDefault: true,
+    default: () => "C:/Users/Tenno/Downloads/hexdesk-test-report-2026-11-21-201544.zip",
+  } satisfies Fixture<string>,
+  discard_test_report: noResult(),
   set_relic_pick_enabled: noResult<{ enabled: boolean }>(),
-  ocr_riven_screen: {
-    default: () => ({
-      weapon: "soma",
-      positives: ["Critical Chance", "Critical Damage"],
-      negatives: ["Zoom"],
-      rolled_stats: [
-        { name: "Critical Chance", value: "+120%", positive: true },
-        { name: "Critical Damage", value: "+95%", positive: true },
-        { name: "Zoom", value: "-30%", positive: false },
-      ],
-      is_comparison: false,
-      original_rolled_stats: [],
-      raw: "SOMA\n+120% Critical Chance",
-    }),
-  } satisfies Fixture<OcrRiven>,
-  ocr_riven_log_error: noResult<{ error: string }>(),
+  set_relic_reward_enabled: noResult<{ enabled: boolean }>(),
+  set_riven_enabled: noResult<{ enabled: boolean }>(),
+  set_overlay_manual: noResult<{ enabled: boolean }>(),
+  set_overlay_key: noResult<{ vk: number }>(),
+  set_testing_keys: noResult<{ correct: number; wrong: number }>(),
+  set_overlay_key_capture: noResult<{ enabled: boolean }>(),
+  set_overlay_screenshot: noResult<{ enabled: boolean }>(),
+  set_overlay_areas: noResult<{ enabled: boolean }>(),
+  get_capture: { default: () => new ArrayBuffer(0) } satisfies Fixture<ArrayBuffer, { name: string }>,
+  check_riven: noResult(),
+  show_riven_window: noResult(),
   log_relic_fe: noResult<{ msg: string }>(),
   show_relic_pick_window: noResult(),
-  hide_relic_pick_overlay: noResult(),
+  park_relic_pick_window: noResult(),
+  show_overlay_status_window: noResult(),
+  overlay_closed: noResult(),
+  overlay_rendered: noResult<{ overlay: "relic_pick" | "relic_reward" | "riven"; view: number; summary: string }>(),
 };

@@ -478,7 +478,7 @@ function BehaviorSection() {
   );
 }
 
-/** Dev-only controls for the preference store (until Settings is ported). */
+/** Dev-only controls for the preference store. */
 function PreferenceControls() {
   const { textScale, density } = usePreferences();
   return (

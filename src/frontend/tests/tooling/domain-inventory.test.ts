@@ -15,7 +15,11 @@ import {
   categoryCounts,
   DEFAULT_INVENTORY_FILTERS,
   inventoryPresetCodec,
+  formatAge,
+  lastChangedMap,
   recentDelta,
+  recentSince,
+  recentWindowFrom,
   toggleRank,
   visibleItems,
   type InventoryCatalogItem,
@@ -76,13 +80,55 @@ describe("visibleItems", () => {
 });
 
 describe("recentDelta", () => {
-  it("returns the net change within five minutes", () => {
+  it("returns the net change since the start of the window", () => {
     const changes = [
       { unique_name: "/c", item_name: "Ferrite", delta: 50, timestamp: 1000 },
       { unique_name: "/c", item_name: "Ferrite", delta: -5, timestamp: 400 },
     ];
-    expect(recentDelta(changes, "/c", 1100)).toEqual({ delta: 50, minutesAgo: 1 });
-    expect(recentDelta(changes, "/c", 2000)).toBeNull();
+    expect(recentDelta(changes, "/c", 900, 1100)).toEqual({ delta: 50, minutesAgo: 1 });
+    expect(recentDelta(changes, "/c", 0, 1100)).toEqual({ delta: 45, minutesAgo: 1 });
+    expect(recentDelta(changes, "/c", 1001, 1100)).toBeNull();
+  });
+
+  it("uses whole-item changes when there are any, and per-rank changes otherwise", () => {
+    const changes = [
+      { unique_name: "/m", item_name: "Serration", delta: 1, timestamp: 1000, rank: 10 },
+      { unique_name: "/m", item_name: "Serration", delta: 2, timestamp: 1000 },
+    ];
+    expect(recentDelta(changes, "/m", 0, 1000)?.delta).toBe(2);
+    expect(recentDelta(changes.slice(0, 1), "/m", 0, 1000)?.delta).toBe(1);
+  });
+});
+
+describe("recent window", () => {
+  it("starts at app start, a fixed time ago, or the beginning of the log", () => {
+    expect(recentSince("session", 100_000, 90_000)).toBe(90_000);
+    expect(recentSince("hour", 100_000, 90_000)).toBe(96_400);
+    expect(recentSince("day", 100_000, 90_000)).toBe(13_600);
+    expect(recentSince("week", 700_000, 90_000)).toBe(95_200);
+    expect(recentSince("all", 100_000, 90_000)).toBe(0);
+  });
+
+  it("falls back to since HexDesk started for a missing or unknown setting", () => {
+    expect(recentWindowFrom(undefined)).toBe("session");
+    expect(recentWindowFrom("month")).toBe("session");
+    expect(recentWindowFrom("week")).toBe("week");
+  });
+
+  it("formats a badge age in minutes, hours or days", () => {
+    expect([0, 12, 60, 1439, 1440, 4000].map(formatAge)).toEqual(["now", "12m", "1h", "23h", "1d", "2d"]);
+  });
+});
+
+describe("lastChangedMap", () => {
+  it("only counts changes since the given time, so older history is not recent", () => {
+    const changes = [
+      { unique_name: "/c", item_name: "Ferrite", delta: 50, timestamp: 2000 },
+      { unique_name: "/c", item_name: "Ferrite", delta: 5, timestamp: 1500 },
+      { unique_name: "/b", item_name: "Braton", delta: 1, timestamp: 900 },
+    ];
+    expect(lastChangedMap(changes, 1000)).toEqual({ "/c": 2000 });
+    expect(lastChangedMap(changes, 2001)).toEqual({});
   });
 });
 

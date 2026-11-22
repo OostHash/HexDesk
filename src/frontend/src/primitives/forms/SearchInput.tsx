@@ -17,8 +17,7 @@ type Props = Omit<ComponentProps<"input">, "size" | "value" | "onChange" | "type
 
 /**
  * Search field with icon and clear button. Escape clears the text, or leaves
- * the field when it is already empty. Replaces SearchBar, ScreenSearch and
- * FoundrySearch from the current app.
+ * the field when it is already empty.
  */
 export function SearchInput({ value, onValueChange, size = "md", label, id, className, onKeyDown, ref, ...rest }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-react";
-import { SettingsDialog, type SettingsTab } from "./SettingsDialog";
+import { SettingsScreen, type SettingsTab } from "./SettingsScreen";
 
 type Call = { cmd: string; args: unknown };
 
@@ -40,7 +40,7 @@ function setup(initial: Record<string, unknown> = {}) {
 
 function Harness() {
   const [tab, setTab] = useState<SettingsTab>("overlays");
-  return <SettingsDialog open tab={tab} onTabChange={setTab} onClose={() => undefined} />;
+  return <SettingsScreen tab={tab} onTabChange={setTab} />;
 }
 
 const mount = (client: QueryClient) =>
@@ -80,6 +80,69 @@ it("saves the switches and choices of each overlay", async () => {
     .toBeDisabled();
 });
 
+it("shows and hides the overlays with Home unless another key is pressed in its field", async () => {
+  const { client, saved } = setup();
+  await mount(client);
+  const key = group("All overlays").getByRole("button", { name: "Overlay key", exact: true });
+  await expect.element(key).toHaveTextContent("Home");
+  await key.click();
+  await expect.element(key).toHaveTextContent("Press a key… (Backspace for none)");
+  await userEvent.keyboard("{F8}");
+  await vi.waitFor(() => {
+    expect(saved()).toMatchObject({ overlayKey: "F8" });
+  });
+  await expect.element(key).toHaveTextContent("F8");
+});
+
+it("refuses a key that cannot be used and keeps the old one", async () => {
+  const { client, saved } = setup();
+  await mount(client);
+  const key = group("All overlays").getByRole("button", { name: "Overlay key", exact: true });
+  await key.click();
+  await userEvent.keyboard("{Enter}");
+  await expect.element(page.getByText("That key cannot be used.", { exact: false })).toBeVisible();
+  expect(saved().overlayKey).toBeUndefined();
+});
+
+it("removes the overlay key with its × or with Backspace", async () => {
+  const { client, saved } = setup({ overlayKey: "F8" });
+  await mount(client);
+  const key = group("All overlays").getByRole("button", { name: "Overlay key", exact: true });
+  await group("All overlays").getByRole("button", { name: "Remove overlay key" }).click();
+  await vi.waitFor(() => {
+    expect(saved()).toMatchObject({ overlayKey: "off" });
+  });
+  await expect.element(key).toHaveTextContent("None");
+  await expect.element(group("All overlays").getByRole("button", { name: "Remove overlay key" })).not.toBeInTheDocument();
+
+  await key.click();
+  await userEvent.keyboard("{F9}");
+  await vi.waitFor(() => {
+    expect(saved()).toMatchObject({ overlayKey: "F9" });
+  });
+  await key.click();
+  await userEvent.keyboard("{Backspace}");
+  await vi.waitFor(() => {
+    expect(saved()).toMatchObject({ overlayKey: "off" });
+  });
+});
+
+it("warns that manual mode needs an overlay key", async () => {
+  const { client } = setup({ overlayKey: "off", overlayManual: true });
+  await mount(client);
+  await expect.element(page.getByText("Manual mode needs an overlay key.", { exact: false })).toBeVisible();
+});
+
+it("cancels the capture with Escape", async () => {
+  const { client, saved } = setup();
+  await mount(client);
+  const key = group("All overlays").getByRole("button", { name: "Overlay key", exact: true });
+  await key.click();
+  await userEvent.keyboard("{Escape}");
+  await expect.element(key).toHaveTextContent("Home");
+  expect(saved().overlayKey).toBeUndefined();
+});
+
 it("disables an overlay's choices while it is off, and hides the reward strip", async () => {
   const { client, saved } = setup({ relicPickEnabled: false });
   const seen = await heard("relic-screen");
@@ -111,6 +174,35 @@ it("saves offsets per overlay, typed or reset", async () => {
     expect(saved().overlayOffsets).toMatchObject({ relicPickX: -40, rivenX: 0, rivenY: 0 });
   });
   await expect.element(riven.getByRole("button", { name: "Reset" })).toBeDisabled();
+});
+
+it("keeps the status overlay settings in their own block", async () => {
+  const { client, saved } = setup({
+    overlayStatus: { enabled: true, durationSeconds: 6 },
+    overlayOffsets: { statusX: 10, statusY: -20 },
+  });
+  const seen = await heard("status-line");
+  await mount(client);
+  const status = group("Status");
+  const enabled = status.getByRole("switch", { name: "Show status overlay" });
+  await expect.element(enabled).toBeChecked();
+  await expect.element(status.getByRole("slider", { name: "Display time" })).toHaveAttribute("aria-valuetext", "6 s");
+  await expect.element(status.getByRole("spinbutton", { name: "X offset" })).toHaveValue(10);
+  await expect.element(status.getByRole("spinbutton", { name: "Y offset" })).toHaveValue(-20);
+
+  await enabled.click();
+  await expect.element(status.getByRole("slider", { name: "Display time" })).toBeDisabled();
+  await enabled.click();
+  await status.getByRole("spinbutton", { name: "X offset" }).fill("30");
+  await vi.waitFor(() => {
+    expect(saved().overlayStatus).toMatchObject({ enabled: true, durationSeconds: 6 });
+    expect(saved().overlayOffsets).toMatchObject({ statusX: 30, statusY: -20 });
+  });
+
+  await status.getByRole("button", { name: "Show preview" }).click();
+  await vi.waitFor(() => {
+    expect(seen).toEqual(["status-line"]);
+  });
 });
 
 it("shows and hides one preview, and moves it after an offset change", async () => {
@@ -162,7 +254,7 @@ it("shows all previews, and hides them when overlays go off or the tab closes", 
 
   seen.length = 0;
   await group("Riven overlay").getByRole("button", { name: "Show preview" }).click();
-  await page.getByRole("tab", { name: "General" }).click();
+  await page.getByRole("navigation", { name: "Settings" }).getByRole("button", { name: "General" }).click();
   await vi.waitFor(() => {
     expect(seen).toEqual(["riven-preview", "riven-preview-close"]);
   });
@@ -172,5 +264,5 @@ it("shows the backend status line", async () => {
   const { client } = setup();
   client.setQueryData(["overlay", "status"], "Reading rewards…");
   await mount(client);
-  await expect.element(group("Relic reward overlay").getByRole("status")).toHaveTextContent("Reading rewards…");
+  await expect.element(group("Status").getByText("Reading rewards…", { exact: true })).toBeVisible();
 });

@@ -1,7 +1,6 @@
 // ─── Imports ──────────────────────────────────────────────────────────────────
 
 use std::collections::HashMap;
-use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -13,35 +12,35 @@ use catalogue::load_items_cache;
 use image_cache::serve_image_files;
 use inventory_state::{is_unique_path, load_inventory_state_cache, load_recipes_cache};
 use pricing::{fetch_relics_run_data, load_relics_run_cache};
-use settings::{merge_settings, read_settings_map, restore_window_state, save_window_state};
 use wfcd::SyndicateOffer;
 use wfm::Wfm;
+use window_state::{restore_window_state, save_window_state};
 
 // ─── Modules ──────────────────────────────────────────────────────────────────
 
 mod app_state;
 mod blob_capture;
 mod cache;
+mod captures;
 mod catalogue;
-mod companion_api;
-mod console_login; // [console-login feature] remove this line to drop the feature
 mod credentials;
 mod db;
 mod diagnostics;
 mod events;
 mod image_cache;
 mod inventory_state;
+mod lifecycle;
 mod log_watcher;
 mod logging;
 mod mem_regions;
 mod memory_scanner;
 mod monitor;
 mod ocr;
-#[cfg(test)]
-mod ocr_bench;
-mod ocr_fallback;
+mod overlay_key;
+mod overlays;
 mod paths;
 mod platform;
+mod player;
 mod pricing;
 mod refresh;
 mod relic_pick;
@@ -51,6 +50,7 @@ mod rivens;
 mod settings;
 mod stats;
 mod syndicates;
+mod testing;
 mod trade_log;
 mod updater;
 mod wfcd;
@@ -58,20 +58,10 @@ mod wfm;
 mod wfm_commands;
 mod wfm_queue;
 mod wfm_top;
+mod window_state;
 mod worldstate;
 
 // ─── Structs ──────────────────────────────────────────────────────────────────
-
-pub struct OcrParams<'a> {
-    pixels: &'a [u8],
-    pix_w: u32,
-    pix_h: u32,
-    game_h: u32,
-    catalog: &'a [(String, String)],
-    capture_info: &'a str,
-    hint_squad_size: Option<usize>,
-    player_names: &'a [String],
-}
 
 pub struct BlobBuildParams<'a> {
     blob: &'a memory_scanner::BlobInventory,
@@ -107,10 +97,6 @@ struct InitialState {
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
-pub(crate) fn truncate_chars(s: &str, n: usize) -> String {
-    s.chars().take(n).collect()
-}
-
 fn sanitize_chat_item_name(s: &str) -> String {
     let rank = s
         .chars()
@@ -129,14 +115,6 @@ fn sanitize_chat_item_name(s: &str) -> String {
     }
 }
 
-pub(crate) fn append_to_file(path: &std::path::Path, text: &str) -> std::io::Result<()> {
-    let mut f = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)?;
-    f.write_all(text.as_bytes())
-}
-
 // ─── State initialisation ─────────────────────────────────────────────────────
 
 /// Cache file locations handed to `load_initial_state`.
@@ -150,6 +128,29 @@ struct InitialCachePaths<'a> {
     auction_ids_path: &'a std::path::PathBuf,
     relics_run_prices_cache_path: &'a std::path::PathBuf,
     corrections_path: &'a std::path::PathBuf,
+}
+
+/// Whether a stored relic rewards map can be used: keyed by relic display
+/// name ("Axi A21 Intact"), the key the Relic Pick overlay looks up.
+fn relic_rewards_usable(map: &HashMap<String, Vec<wfcd::RelicReward>>) -> bool {
+    !map.is_empty() && !map.keys().any(|k| k.starts_with('/'))
+}
+
+/// The relic rewards stored by the last catalogue build. A file that cannot
+/// be used is removed, so the next catalogue refresh rebuilds it.
+fn load_relic_rewards_cache(path: &std::path::Path) -> HashMap<String, Vec<wfcd::RelicReward>> {
+    let loaded: Option<HashMap<String, Vec<wfcd::RelicReward>>> = std::fs::read_to_string(path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok());
+    match loaded {
+        Some(map) if relic_rewards_usable(&map) => map,
+        Some(_) => {
+            info!("relic rewards cache not usable, removed so the catalogue rebuilds it");
+            let _ = std::fs::remove_file(path);
+            HashMap::new()
+        }
+        None => HashMap::new(),
+    }
 }
 
 fn load_initial_state(paths: InitialCachePaths<'_>) -> InitialState {
@@ -175,35 +176,7 @@ fn load_initial_state(paths: InitialCachePaths<'_>) -> InitialState {
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or_default();
 
-    // Relic rewards: invalidate on old format or age > 24 h.
-    let relic_rewards: HashMap<String, Vec<wfcd::RelicReward>> = {
-        let cache_age_ok = std::fs::metadata(relic_rewards_cache_path)
-            .and_then(|m| m.modified())
-            .map(|t| {
-                t.elapsed().unwrap_or(std::time::Duration::MAX)
-                    < std::time::Duration::from_secs(86_400)
-            })
-            .unwrap_or(false);
-        let loaded: Option<HashMap<String, Vec<wfcd::RelicReward>>> = if cache_age_ok {
-            std::fs::read_to_string(relic_rewards_cache_path)
-                .ok()
-                .and_then(|s| serde_json::from_str(&s).ok())
-        } else {
-            None
-        };
-        match loaded {
-            Some(map) if map.keys().any(|k| k.starts_with("/Lotus/")) => map,
-            Some(_) => {
-                info!("relic_rewards cache is old format (no path keys) — discarding, will regenerate");
-                let _ = std::fs::remove_file(relic_rewards_cache_path);
-                HashMap::new()
-            }
-            None => {
-                let _ = std::fs::remove_file(relic_rewards_cache_path);
-                HashMap::new()
-            }
-        }
-    };
+    let relic_rewards = load_relic_rewards_cache(relic_rewards_cache_path);
 
     // Inventory state → split into quantities, uniques, mods.
     let inv_state = load_inventory_state_cache(inventory_state_cache_path);
@@ -297,7 +270,17 @@ fn load_initial_state(paths: InitialCachePaths<'_>) -> InitialState {
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     use tauri::Manager;
 
-    logging::init();
+    let settings = Arc::clone(&app.state::<AppState>().settings);
+    logging::init(settings.snapshot().log_retention_days());
+    settings.on_change(|changes, written| {
+        if changes.contains(hexdesk_persist::settings::keys::LOG_RETENTION_DAYS) {
+            if let Err(error) = logging::set_retention(written.log_retention_days()) {
+                tracing::warn!(error = %error, "log retention could not be applied to the active logger");
+            }
+        }
+    });
+    diagnostics::forward_entries_to(app.handle().clone());
+    diagnostics::remove_old_debug_files(&paths::cache_dir(), &std::env::temp_dir());
 
     match paths::root() {
         Some(root) => info!("app root: {} (dev)", root.display()),
@@ -325,14 +308,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         window.set_icon(icon).map_err(|e| e.to_string())?;
 
         let state = app.state::<AppState>();
-        restore_window_state(
-            app.handle(),
-            &window,
-            &state.settings_path,
-            "window",
-            400,
-            300,
-        );
+        restore_window_state(app.handle(), &window, &state.settings, "window", 400, 300);
         let _ = window.show();
     }
 
@@ -340,16 +316,27 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // NEVER hide relic-overlay — breaks DirectComposition on transparent WebView2.
     if let Some(win) = app.get_webview_window("relic-overlay") {
         let _ = win.show();
-        let _ = win.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-            x: 0,
-            y: -3000,
-        }));
+        overlays::window::park_reward(app.handle());
+    }
+
+    // Relic Pick uses the same lifetime-safe pattern: keep its WebView2 alive
+    // and move it on/off screen instead of suspending it with native hide().
+    if let Some(win) = app.get_webview_window(overlays::window::RELIC_PICK) {
+        let _ = win.show();
+        let _ = overlays::window::park_relic_pick(app.handle());
+    }
+
+    // Its empty page is transparent; keeping it on screen lets it receive the
+    // first status event without covering or taking input from the game.
+    if let Some(win) = app.get_webview_window(overlays::window::STATUS) {
+        let _ = win.set_ignore_cursor_events(true);
+        let _ = overlays::window::show_overlay_status_window(app.handle().clone());
     }
 
     // Single EE.log tailer — started once, unconditionally, and runs for the app's
-    // lifetime. Handles riven-screen, relic-pick, trade-completion and WFM-whisper
-    // detection regardless of the memory scanner toggle (plain file I/O, not memory
-    // reading); the relic-reward OCR trigger inside it self-gates on `monitor_active`.
+    // lifetime. Feeds the overlay runtime and handles trade-completion and
+    // WFM-whisper detection regardless of the memory scanner toggle (plain file
+    // I/O, not memory reading); the reward card read gates on `monitor_active`.
     {
         let state = app.state::<AppState>();
         let relic_rewards_map = state
@@ -357,11 +344,11 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clone();
+        overlays::start(app.handle().clone());
         reward_watcher::spawn_reward_watcher_thread(reward_watcher::RewardWatcherDeps {
             app: app.handle().clone(),
             flag: state.monitor_active.clone(),
             relic_rewards: relic_rewards_map,
-            auto_capture_dir: state.auto_capture_dir.clone(),
         });
     }
 
@@ -446,10 +433,6 @@ async fn start_monitor(app: tauri::AppHandle, state: State<'_, AppState>) -> Res
             shared_unique: state.unique_quantities.clone(),
             shared_mods: state.current_mods.clone(),
             shared_crafting: state.current_crafting.clone(),
-            blob_log_enabled: state.blob_log_enabled.clone(),
-            blob_log_dir: state.blob_log_dir.clone(),
-            debug_cat_enabled: state.debug_cat_enabled.clone(),
-            unmatched_paths_dir: state.unmatched_paths_dir.clone(),
             force_pid_check: state.force_pid_check.clone(),
             blob_rx,
             blob_tx,
@@ -457,13 +440,8 @@ async fn start_monitor(app: tauri::AppHandle, state: State<'_, AppState>) -> Res
         catalog,
     );
 
-    // The EE.log tailer itself runs unconditionally from app startup (see `setup_app`) —
-    // only the relic-reward OCR trigger and this scan-only legacy worker are tied to
-    // the memory scanner's on/off state.
-    let debug_path = std::env::temp_dir().join("hexdesk_reward_debug.txt");
-    let last_found_path = std::env::temp_dir().join("hexdesk_last_reward.txt");
-    monitor::start_legacy_reward_worker(flag, debug_path, last_found_path);
-
+    // The EE.log tailer runs unconditionally from app startup (see `setup_app`);
+    // only its relic-reward OCR trigger follows the memory scanner's on/off state.
     Ok(())
 }
 
@@ -481,7 +459,7 @@ pub fn run() {
     let data_dir = paths::data_dir();
     let cache_dir = paths::cache_dir();
 
-    ocr_fallback::set_data_dir(cache_dir.clone());
+    hexdesk_capture::set_model_dir(cache_dir.join("ocr_models"));
 
     // ── Path definitions ───────────────────────────────────────────────────
     let db_path = data_dir.join("data.db");
@@ -492,31 +470,7 @@ pub fn run() {
     let quantities_cache_path = cache_dir.join("quantities_cache.json");
     let inventory_state_cache_path = cache_dir.join("inventory_state_cache.json");
     let settings_path = config_dir.join("settings.json");
-    let log_path = cache_dir.join("scan_log.txt");
-    let changes_log_path = cache_dir.join("inventory_changes.txt");
-
-    let debug_root = cache_dir.join("Debugging");
-    let blob_log_dir = debug_root.join("Inventory Snapshots");
-    let api_log_dir = debug_root.join("Api Responses");
-    let auto_capture_dir = debug_root.join("Auto-Capture");
-    let manual_capture_dir = debug_root.join("Manual Capture");
-    let memory_probe_dir = debug_root.join("Memory Probe");
-    let raw_scan_dir = debug_root.join("Raw Memory Record");
-    let unmatched_paths_dir = debug_root.join("Unmatched Paths");
-    let raw_scan_path = raw_scan_dir.join("raw_scan.txt");
-    let memory_probe_path = memory_probe_dir.join("memory_probe.txt");
-
-    for dir in &[
-        &blob_log_dir,
-        &api_log_dir,
-        &auto_capture_dir,
-        &manual_capture_dir,
-        &memory_probe_dir,
-        &raw_scan_dir,
-        &unmatched_paths_dir,
-    ] {
-        let _ = std::fs::create_dir_all(dir);
-    }
+    let settings = Arc::new(hexdesk_persist::Settings::new(&settings_path));
 
     let wfm_top_cache_path = cache_dir.join("wfm_top_cache.json");
     let syndicate_catalog_path = cache_dir.join("syndicate_catalog.json");
@@ -534,17 +488,22 @@ pub fn run() {
         }
     }
 
+    // A factory reset removes both files before this check, so it behaves like
+    // a new install. An upgrade already has at least one of them and must not
+    // interrupt the player with onboarding.
+    let fresh_install = !settings_path.exists() && !db_path.exists();
+    settings
+        .initialize_installation(fresh_install)
+        .expect("settings directory was just created");
+    ocr::load_models_setting(settings.snapshot().map());
+
     // ── Database ───────────────────────────────────────────────────────────
     let conn = db::init_db(&db_path).expect("Failed to initialize database");
 
     // ── Version-based cache invalidation ───────────────────────────────────
     {
         const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
-        let last_version = read_settings_map(&settings_path).ok().and_then(|m| {
-            m.get("lastVersion")
-                .and_then(|v| v.as_str().map(String::from))
-        });
-        if last_version.as_deref() != Some(CURRENT_VERSION) {
+        if settings.snapshot().last_version() != Some(CURRENT_VERSION) {
             for path in &[
                 &items_cache_path,
                 &recipes_cache_path,
@@ -554,9 +513,9 @@ pub fn run() {
                 let _ = std::fs::remove_file(path);
             }
             wfcd::clear_cached_etags();
-            let _ = merge_settings(&settings_path, |map| {
+            let _ = settings.merge(|map| {
                 map.insert(
-                    "lastVersion".to_string(),
+                    hexdesk_persist::settings::keys::LAST_VERSION.to_string(),
                     serde_json::Value::String(CURRENT_VERSION.to_string()),
                 );
             });
@@ -578,9 +537,6 @@ pub fn run() {
 
     // ── Tauri builder ──────────────────────────────────────────────────────
     tauri::Builder::default()
-        .register_uri_scheme_protocol("ffauth", |ctx, req| {
-            console_login::handle_ffauth(ctx.app_handle(), &req)
-        })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -597,9 +553,7 @@ pub fn run() {
             relic_rewards_cache_path,
             quantities_cache_path,
             inventory_state_cache_path,
-            settings_path,
-            log_path,
-            changes_log_path,
+            settings,
             conn: Mutex::new(conn),
             wfcd_items: Mutex::new(initial.items),
             recipes: Mutex::new(initial.recipes),
@@ -611,17 +565,8 @@ pub fn run() {
             current_quantities: Arc::new(Mutex::new(initial.quantities)),
             unique_quantities: Arc::new(Mutex::new(initial.unique)),
             current_mods: Arc::new(Mutex::new(initial.mods)),
-            api_quantities_cache: Arc::new(Mutex::new(HashMap::new())),
-            api_mod_copies_cache: Arc::new(Mutex::new(Vec::new())),
-            last_ocr_frame: Arc::new(Mutex::new(None)),
             current_crafting: Arc::new(Mutex::new(vec![])),
             monitor_active: Arc::new(AtomicBool::new(false)),
-            raw_scan_active: Arc::new(AtomicBool::new(false)),
-            raw_scan_path,
-            blob_log_enabled: Arc::new(AtomicBool::new(false)),
-            blob_log_dir,
-            api_log_enabled: Arc::new(AtomicBool::new(false)),
-            api_log_dir,
             wfm: {
                 let w = Arc::new(Wfm::new());
                 for (slug, price) in initial.wfm_prices {
@@ -644,14 +589,12 @@ pub fn run() {
             relics_run_prices: Mutex::new(initial.relics_run_prices),
             relics_run_prices_cache_path,
             worldstate_cache: Mutex::new(None),
-            debug_cat_enabled: Arc::new(AtomicBool::new(false)),
-            auto_capture_dir,
-            manual_capture_dir,
-            memory_probe_path,
-            unmatched_paths_dir,
             corrections: initial.corrections,
             force_pid_check: Arc::new(AtomicBool::new(false)),
             relic_pick_overlay_enabled: Arc::new(AtomicBool::new(false)),
+            riven_overlay_enabled: Arc::new(AtomicBool::new(false)),
+            overlay_manual: Arc::new(AtomicBool::new(false)),
+            relic_reward_overlay_enabled: Arc::new(AtomicBool::new(false)),
             overlays_enabled: Arc::new(AtomicBool::new(false)),
         })
         .setup(setup_app)
@@ -669,19 +612,13 @@ pub fn run() {
             stats::get_item_snapshots,
             trade_log::get_trades,
             trade_log::add_trade,
-            diagnostics::clear_cache,
+            monitor::clear_cache,
             settings::load_settings,
             settings::save_settings,
-            companion_api::log_api_changes,
-            diagnostics::dump_memory_probe,
-            diagnostics::toggle_raw_scan,
-            diagnostics::set_blob_log,
-            diagnostics::set_api_log,
-            settings::force_quit,
+            ocr::set_ocr_models,
+            lifecycle::force_quit,
             catalogue::get_weapon_catalog,
             catalogue::get_craftable_items,
-            diagnostics::toggle_debug_categorization,
-            catalogue::get_recipe,
             catalogue::get_recipes_bulk,
             catalogue::get_relic_drops,
             wfm_commands::fetch_wfm_items,
@@ -695,9 +632,8 @@ pub fn run() {
             pricing::get_bulk_prices,
             updater::check_for_update,
             updater::install_update,
-            settings::factory_reset,
+            lifecycle::factory_reset,
             wfm_commands::wfm_set_status,
-            rivens::ocr_riven_log_error,
             rivens::save_riven_roll,
             rivens::get_saved_riven_rolls,
             rivens::delete_saved_riven_roll,
@@ -705,10 +641,6 @@ pub fn run() {
             rivens::get_riven_weapons,
             rivens::reload_riven_database,
             rivens::analyze_riven,
-            rivens::ocr_riven_screen,
-            diagnostics::get_riven_session_log,
-            wfm_commands::wfm_debug_dump,
-            wfm_commands::wfm_get_riven_attributes,
             wfm_commands::wfm_get_item_orders,
             wfm_commands::wfm_get_item_statistics,
             wfm_commands::wfm_refresh_token,
@@ -732,51 +664,54 @@ pub fn run() {
             wfm_commands::wfm_delete_auction,
             wfm_commands::wfm_update_auction,
             wfm_commands::wfm_set_auction_visible,
-            companion_api::scan_warframe_credentials,
-            companion_api::scan_warframe_api_urls,
-            companion_api::warframe_login,
-            companion_api::fetch_warframe_inventory,
-            companion_api::save_mastery_data,
-            companion_api::get_saved_inventory,
-            companion_api::get_rivens,
+            monitor::get_saved_inventory,
+            monitor::get_rivens,
             rivens::get_weapon_dispositions,
-            companion_api::save_api_inventory,
             syndicates::get_syndicate_stores,
             syndicates::get_research_lab_stores,
             worldstate::fetch_worldstate,
-            diagnostics::get_warframe_window_rect,
-            diagnostics::get_overlay_session_log,
-            relic_pick::get_pending_relic_rewards,
+            overlays::window::get_warframe_window_rect,
+            overlays::reward::get_pending_relic_rewards,
             diagnostics::log_relic_fe,
-            relic_pick::show_overlay_window,
-            relic_pick::move_overlay_offscreen,
-            diagnostics::get_diag_folder_size,
-            diagnostics::clear_diag_folder,
-            diagnostics::capture_diagnostics,
+            overlays::window::show_overlay_window,
+            overlays::window::move_overlay_offscreen,
             image_cache::get_img_cache_dir,
             image_cache::prewarm_image_cache,
-            diagnostics::open_debug_folder,
-            diagnostics::clear_debug_data,
-            diagnostics::get_debug_data_size,
+            diagnostics::export_diagnostics,
+            overlays::test_report_flows,
+            overlays::export_test_report,
+            overlays::discard_test_report,
+            diagnostics::show_diagnostics_export,
+            diagnostics::get_recent_logs,
+            diagnostics::remove_logs,
             start_monitor,
             monitor::stop_monitor,
             monitor::poke_scan,
             monitor::set_relic_pick_enabled,
+            monitor::set_riven_enabled,
+            monitor::set_overlay_manual,
+            captures::set_overlay_areas,
+            monitor::set_relic_reward_enabled,
             monitor::set_overlays_enabled,
             monitor::get_monitor_status,
             platform::get_system_locale,
             catalogue::get_current_crafting,
-            relic_pick::debug_detect_fissure_era,
-            relic_pick::test_relic_pick_overlay,
-            relic_pick::hide_relic_pick_overlay,
-            relic_pick::show_relic_pick_window,
-            relic_pick::debug_ee_log_tail,
-            console_login::open_console_login,
+            overlays::window::show_relic_pick_window,
+            overlays::window::park_relic_pick_window,
+            overlays::window::show_overlay_status_window,
+            overlay_key::set_overlay_key,
+            overlay_key::set_overlay_key_capture,
+            overlay_key::set_testing_keys,
+            overlays::overlay_rendered,
+            overlays::overlay_closed,
+            overlays::check_riven,
+            overlays::show_riven_window,
+            player::get_reward_cards,
+            captures::get_capture,
+            captures::set_overlay_screenshot,
             wfcd::get_drop_data,
             pricing::get_cache_statuses,
             pricing::refresh_all_caches,
-            diagnostics::start_memory_relic_debug,
-            diagnostics::stop_memory_relic_debug,
         ])
         .on_window_event(|window, event| {
             let label = window.label().to_string();
@@ -791,13 +726,15 @@ pub fn run() {
                         let app = window.app_handle();
                         if let Some(wv) = app.get_webview_window(&label) {
                             let state = app.state::<AppState>();
-                            save_window_state(&wv, &state.settings_path, prefix);
+                            save_window_state(&wv, &state.settings, prefix);
                         }
                     }
                     tauri::WindowEvent::CloseRequested { .. } => {
                         // State is already saved on every Moved/Resized event.
                     }
                     tauri::WindowEvent::Destroyed if label == "main" => {
+                        // `exit` skips destructors, so write the log out first.
+                        logging::shutdown();
                         std::process::exit(0);
                     }
                     _ => {}
@@ -808,16 +745,40 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
-
 #[cfg(test)]
-mod tests {
+mod relic_rewards_cache_tests {
     use super::*;
 
+    fn rewards(keys: &[&str]) -> HashMap<String, Vec<wfcd::RelicReward>> {
+        keys.iter().map(|k| (k.to_string(), Vec::new())).collect()
+    }
+
     #[test]
-    fn truncate_chars_splits_on_characters_not_bytes() {
-        assert_eq!(truncate_chars("éé", 3), "éé");
-        assert_eq!(truncate_chars("éé", 1), "é");
-        assert_eq!(truncate_chars("abc", 2), "ab");
+    fn rewards_keyed_by_relic_name_are_usable() {
+        assert!(relic_rewards_usable(&rewards(&[
+            "Axi A21 Intact",
+            "Lith G1 Radiant"
+        ])));
+    }
+
+    #[test]
+    fn rewards_keyed_by_path_or_empty_are_not() {
+        assert!(!relic_rewards_usable(&rewards(&[
+            "/Lotus/Types/Game/Projections/T4VoidProjectionA21Bronze"
+        ])));
+        assert!(!relic_rewards_usable(&rewards(&[])));
+    }
+
+    #[test]
+    fn a_stored_rewards_file_survives_a_restart() {
+        let dir =
+            std::env::temp_dir().join(format!("hexdesk-relic-rewards-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("relic_rewards_cache.json");
+        std::fs::write(&path, r#"{"Axi A21 Intact":[{"unique_name":"/Lotus/X","name":"X","rarity":"Gold","image_name":null}]}"#).unwrap();
+        let loaded = load_relic_rewards_cache(&path);
+        assert_eq!(loaded.get("Axi A21 Intact").map(Vec::len), Some(1));
+        assert!(path.exists());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

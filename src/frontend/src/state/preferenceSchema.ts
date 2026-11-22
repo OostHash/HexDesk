@@ -1,11 +1,11 @@
 import { DEFAULT_DENSITY, DEFAULT_THEME, densities, highContrastThemes, themes, type DensityName, type ThemeName } from "../theme/tokens";
 
 /**
- * UI preferences: theme, contrast, colour-blind palette, density (plan 6.7)
- * and text scale (plan 6.9, applied as native webview zoom).
+ * UI preferences: theme, contrast, colour-blind palette, density
+ * and text scale.
  * Source of truth is localStorage, so index.html can apply them before the
- * first paint. Keys match the current app where they already exist
- * (ff-colorblind, ff-text-scale), so both apps read the same choice after
+ * first paint. Some keys are older than HexDesk (ff-colorblind, ff-text-scale)
+ * and are kept, so a saved choice survives after
  * the cutover.
  */
 
@@ -17,7 +17,7 @@ export const PREFERENCE_KEYS = {
   textScale: "ff-text-scale",
 } as const;
 
-/** Same range as the current app's text-size slider. */
+/** The text-size slider range. */
 export const TEXT_SCALE_RANGE = { min: 0.8, max: 2, step: 0.1 } as const;
 
 export const THEME_CHOICES = ["system", "dark", "light"] as const;
@@ -35,8 +35,8 @@ export type Preferences = {
 };
 
 export const DEFAULT_PREFERENCES: Preferences = {
-  // Dark until the user decides otherwise: the current app is dark only, so
-  // "system" as default would turn the app light for light-mode Windows users.
+  // Dark until the user decides otherwise: "system" as default would turn the
+  // app light for light-mode Windows users.
   theme: "dark",
   contrast: "system",
   cvd: false,
@@ -95,7 +95,7 @@ export function resolveAttributes(prefs: Preferences, media: MediaState): RootAt
 
 /**
  * The theme and contrast choices that do something with the token sets that
- * exist (vault theming-7a.md). "system" needs both sides; a list of one is
+ * exist. "system" needs both sides; a list of one is
  * no choice, so Settings hides it.
  */
 export function availableChoices(

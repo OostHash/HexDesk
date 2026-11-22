@@ -13,11 +13,13 @@ import {
 } from "../../api/overlays";
 import { useSaveSettings } from "../../api/settings";
 import { OFFSET_LIMIT, OFFSET_STEP, offsetDraft, offsetOf, withOffset, type OffsetTarget, type OverlayOffsets } from "../../domain/overlayOffsets";
+import { STATUS_DURATION_RANGE } from "../../domain/overlayStatus";
 import { PICK_LINES, PICK_LINES_LABEL, PICK_PRIORITIES, PICK_PRIORITY_LABEL } from "../../domain/relicPick";
 import { OVERLAY_PRIORITIES, OVERLAY_PRIORITY_LABEL } from "../../domain/relicReward";
 import { Button } from "../../primitives/actions";
-import { FormField, Input, Select } from "../../primitives/forms";
+import { FormField, Input, Select, Slider } from "../../primitives/forms";
 import { getPreferences } from "../../state/preferences";
+import { ManualModeRow, OverlayKeyRow } from "./controls";
 import { SettingRow, SettingsGroup, SwitchRow, useSettingsFile } from "./parts";
 
 type Overlay = "reward" | "pick" | "riven";
@@ -150,21 +152,22 @@ function OffsetRow({
   );
 }
 
-/** Settings → Overlays (vault overlay-settings.md). */
+/** Settings → Overlays. */
 export function OverlaysTab() {
   const { settings, set } = useSettingsFile();
   const { mutateAsync } = useSaveSettings();
   const prefs = overlayPrefsFrom(settings);
-  const status = useOverlayStatus();
+  const statusPrefs = prefs.status;
+  const statusText = useOverlayStatus();
   const previews = usePreviews();
   const allShown = OVERLAYS.every((o) => previews.shown.has(o));
 
   // The backend reads the relic offsets from the settings file, so a shown
   // preview moves only once the save has landed.
-  const saveOffsets = (overlay: Overlay) => (next: OverlayOffsets) => {
+  const saveOffsets = (overlay?: Overlay) => (next: OverlayOffsets) => {
     void mutateAsync({ overlayOffsets: next }).then(
       () => {
-        if (previews.shown.has(overlay)) quiet(show[overlay]());
+        if (overlay && previews.shown.has(overlay)) quiet(show[overlay]());
       },
       (error: unknown) => {
         console.error("overlays: saving offsets failed", error);
@@ -185,6 +188,8 @@ export function OverlaysTab() {
             if (!on) previews.set(OVERLAYS, false);
           }}
         />
+        <OverlayKeyRow />
+        <ManualModeRow />
         <PreviewButton
           all
           shown={allShown}
@@ -195,14 +200,55 @@ export function OverlaysTab() {
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Relic reward overlay">
-        {status && (
+      <SettingsGroup title="Status">
+        {statusText && (
           <div>
             <p role="status" className="font-mono text-xs text-success">
-              {status}
+              {statusText}
             </p>
           </div>
         )}
+        <SwitchRow
+          label="Show status overlay"
+          description="Show what the overlays are doing at the top centre of the game."
+          checked={statusPrefs.enabled}
+          onCheckedChange={(enabled) => {
+            set({ overlayStatus: { ...statusPrefs, enabled } });
+          }}
+        />
+        <FormField layout="row" label="Display time" description="How long the latest status stays on screen.">
+          <Slider
+            className="w-56"
+            min={STATUS_DURATION_RANGE.min}
+            max={STATUS_DURATION_RANGE.max}
+            value={statusPrefs.durationSeconds}
+            disabled={!statusPrefs.enabled}
+            formatValue={(seconds) => `${String(seconds)} s`}
+            onValueChange={(durationSeconds) => {
+              set({ overlayStatus: { ...statusPrefs, durationSeconds } });
+            }}
+          />
+        </FormField>
+        <OffsetRow target="status" offsets={prefs.offsets} disabled={!statusPrefs.enabled} onChange={saveOffsets()} />
+        <SettingRow label="Preview" description="Show the status line with example text.">
+          <Button
+            size="sm"
+            disabled={!statusPrefs.enabled}
+            onClick={() => {
+              void mutateAsync({ overlayStatus: statusPrefs }).then(
+                () => emitWith("status-line", "Overlay status preview"),
+                (error: unknown) => {
+                  console.error("overlays: saving status settings failed", error);
+                },
+              );
+            }}
+          >
+            Show preview
+          </Button>
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup title="Relic reward overlay">
         <SwitchRow
           label="Enable"
           description="Show reward cards when the Void Fissure reward screen opens."

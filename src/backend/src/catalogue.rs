@@ -38,31 +38,6 @@ pub struct CatalogItem {
     pub source_type: Option<String>,
 }
 
-/// Item captured when debug categorization is enabled and an inventory path either
-/// has no WFCD catalog entry or falls through to the "Misc" catch-all.
-#[derive(serde::Serialize, Clone)]
-pub struct DebugUnmatched {
-    pub path: String,
-    pub name: String,
-    pub item_type: String,
-    pub product_category: String,
-    pub wfcd_category: String,
-    pub final_category: String,
-    /// "no_wfcd_match" = path not in catalog; "misc_fallback" = in catalog but landed in Misc
-    pub reason: String,
-    // ── Blob fields present alongside this path ──────────────────────────────
-    /// ItemCount from blob (stackable items only)
-    pub item_count: Option<i64>,
-    /// Section from blob (unique items: "Suits", "LongGuns", "Melee", etc.)
-    pub section: Option<String>,
-    /// Number of polarised slots from blob (unique items only)
-    pub polarized: Option<u32>,
-    /// Total copies from blob (mods only)
-    pub mod_total: Option<i64>,
-    /// Last 4 non-trivial path segments — helpful when WFCD has no entry for this path
-    pub path_hint: Vec<String>,
-}
-
 /// Split a PascalCase path segment into space-separated words.
 /// e.g. "GarudaSystemsBlueprint" → "Garuda Systems Blueprint"
 ///      "ChromaBeaconCComponent"  → "Chroma Beacon C Component"
@@ -747,7 +722,13 @@ pub(crate) async fn fetch_item_list(
     // active until the user manually forces a refresh.
     let has_fallback_only = state.wfcd_items.lock().map_err(|e| e.to_string())?.len() <= 15;
     let has_no_recipes = state.recipes.lock().map_err(|e| e.to_string())?.is_empty();
-    let force = force.unwrap_or(false) || has_fallback_only || has_no_recipes;
+    let has_no_relic_rewards = state
+        .relic_rewards
+        .lock()
+        .map_err(|e| e.to_string())?
+        .is_empty();
+    let force =
+        force.unwrap_or(false) || has_fallback_only || has_no_recipes || has_no_relic_rewards;
     let fetched = tauri::async_runtime::spawn_blocking(move || wfcd::fetch_items(None, force))
         .await
         .map_err(|e| e.to_string())??;
@@ -1157,14 +1138,6 @@ pub(crate) fn get_craftable_items(state: State<AppState>) -> Vec<CatalogItem> {
     result
 }
 
-/// Returns the recipe component tree for a single item (empty vec = not found).
-/// Returns Vec instead of Option to avoid Tauri serialization edge cases.
-#[tauri::command]
-pub(crate) fn get_recipe(state: State<AppState>, unique_name: String) -> Vec<RecipeComponent> {
-    let recipes = state.recipes.lock().unwrap_or_else(|e| e.into_inner());
-    recipes.get(&unique_name).cloned().unwrap_or_default()
-}
-
 #[tauri::command]
 pub(crate) fn get_recipes_bulk(
     state: State<AppState>,
@@ -1332,8 +1305,10 @@ fn dedup_known_aliases(mut items: Vec<WfcdItem>) -> Vec<WfcdItem> {
 /// back for one full interval instead of running it at the launch tick.
 pub fn refresh_catalogue(app: &tauri::AppHandle, force: bool) -> Result<(), String> {
     let state = app.state::<AppState>();
-    // A valid ETag is not enough when version invalidation removed the local cache.
-    let cache_missing = !state.items_cache_path.exists();
+    // A valid ETag is not enough when a local cache built from the download is
+    // gone: an unchanged answer would leave it empty until the sources change.
+    let cache_missing =
+        !state.items_cache_path.exists() || !state.relic_rewards_cache_path.exists();
     let fetched = wfcd::fetch_items(None, force || cache_missing)?;
     let result = match fetched {
         cache::Fetched::New(r, _) => r,
@@ -1345,153 +1320,151 @@ pub fn refresh_catalogue(app: &tauri::AppHandle, force: bool) -> Result<(), Stri
     Ok(())
 }
 
-// ── Debug unmatched paths ─────────────────────────────────────────────────────
+// ── Unmatched paths ───────────────────────────────────────────────────────────
 
-/// The path→label lookup maps that feed `write_debug_unmatched_paths`.
-pub(crate) struct UnmatchedPathMaps<'a> {
-    pub(crate) path_to_name: &'a HashMap<String, String>,
-    pub(crate) path_to_item_type: &'a HashMap<String, String>,
-    pub(crate) path_to_product_category: &'a HashMap<String, String>,
-    pub(crate) path_to_wfcd_cat: &'a HashMap<String, String>,
-    pub(crate) path_to_category: &'a HashMap<String, String>,
-}
+/// How many example paths an unmatched-paths entry lists per reason.
+const UNMATCHED_EXAMPLES: usize = 10;
 
-pub(crate) fn write_debug_unmatched_paths(
+/// Logs which inventory paths the catalogue could not place: no catalogue entry
+/// at all, or an entry that falls back to Miscellaneous. Paths are game data,
+/// not personal data.
+pub(crate) fn log_unmatched_paths(
     blob: &memory_scanner::BlobInventory,
-    maps: UnmatchedPathMaps<'_>,
+    path_to_name: &HashMap<String, String>,
+    path_to_category: &HashMap<String, String>,
     ignored_paths: &std::collections::HashSet<String>,
-    unmatched_paths_dir: &std::path::Path,
 ) {
-    let UnmatchedPathMaps {
-        path_to_name,
-        path_to_item_type,
-        path_to_product_category,
-        path_to_wfcd_cat,
-        path_to_category,
-    } = maps;
-    // ── Reference file (written once per session) ─────────────────────
-    let ref_path = unmatched_paths_dir.join("_reference.json");
-    if !ref_path.exists() {
-        let mut item_types: std::collections::BTreeMap<String, String> = Default::default();
-        let mut prod_cats: std::collections::BTreeMap<String, String> = Default::default();
-        let mut wfcd_cats: std::collections::BTreeMap<String, String> = Default::default();
-        for (path, nm) in path_to_name {
-            let it = path_to_item_type
-                .get(path)
-                .map(|s| s.as_str())
-                .unwrap_or("");
-            let pc = path_to_product_category
-                .get(path)
-                .map(|s| s.as_str())
-                .unwrap_or("");
-            let wc = path_to_wfcd_cat.get(path).map(|s| s.as_str()).unwrap_or("");
-            let cat = fix_category(nm, it, pc, wc, path);
-            if !it.is_empty() {
-                item_types.entry(it.to_string()).or_insert(cat.clone());
-            }
-            if !pc.is_empty() {
-                prod_cats.entry(pc.to_string()).or_insert(cat.clone());
-            }
-            if !wc.is_empty() {
-                wfcd_cats.entry(wc.to_string()).or_insert(cat);
-            }
-        }
-        let ref_json = serde_json::json!({
-            "note": "Distinct field values from the loaded WFCD catalog. 'maps_to' shows the display category fix_category() assigns when that field is the deciding factor.",
-            "item_type": item_types.iter().map(|(v, c)| serde_json::json!({ "value": v, "maps_to": c })).collect::<Vec<_>>(),
-            "product_category": prod_cats.iter().map(|(v, c)| serde_json::json!({ "value": v, "maps_to": c })).collect::<Vec<_>>(),
-            "wfcd_category": wfcd_cats.iter().map(|(v, c)| serde_json::json!({ "value": v, "maps_to": c })).collect::<Vec<_>>(),
-        });
-        if let Ok(s) = serde_json::to_string_pretty(&ref_json) {
-            let _ = std::fs::write(&ref_path, s);
-        }
-    }
-
-    // ── Per-scan unmatched file ───────────────────────────────────────
-    let stackable_count: std::collections::HashMap<&str, i64> = blob
-        .stackable_items
-        .iter()
-        .map(|e| (e.item_type.as_str(), e.item_count))
-        .collect();
-    let unique_section: std::collections::HashMap<&str, &str> = blob
-        .unique_items
-        .iter()
-        .map(|e| (e.item_type.as_str(), e.section.as_str()))
-        .collect();
-    let unique_polarized: std::collections::HashMap<&str, u32> = blob
-        .unique_items
-        .iter()
-        .map(|e| (e.item_type.as_str(), e.polarized))
-        .collect();
-
-    let all_paths: Vec<&str> = blob
+    let mut no_match: Vec<&str> = Vec::new();
+    let mut misc: Vec<&str> = Vec::new();
+    let paths = blob
         .stackable_items
         .iter()
         .map(|e| e.item_type.as_str())
         .chain(blob.unique_items.iter().map(|e| e.item_type.as_str()))
-        .chain(blob.mods.keys().map(|k| k.as_str()))
-        .collect();
-    let mut new_entries: Vec<DebugUnmatched> = Vec::new();
-    for p in all_paths {
-        if p.starts_with("/_currency/") {
+        .chain(blob.mods.keys().map(|k| k.as_str()));
+    for p in paths {
+        if p.starts_with("/_currency/") || ignored_paths.contains(p) {
             continue;
         }
-        if ignored_paths.contains(p) {
-            continue;
+        if !path_to_name.contains_key(p) {
+            let inferred = fix_category("", "", "", "", p);
+            let blueprint = p.contains("/Recipes/") && p.ends_with("Blueprint");
+            if (inferred == "Miscellaneous" || inferred == "Excluded") && !blueprint {
+                no_match.push(p);
+            }
+        } else if path_to_category
+            .get(p)
+            .map_or("Miscellaneous", String::as_str)
+            == "Miscellaneous"
+        {
+            misc.push(p);
         }
-        let name = path_to_name.get(p).cloned().unwrap_or_default();
-        let (reason, final_cat) = if name.is_empty() {
-            let inferred_cat = fix_category("", "", "", "", p);
-            if inferred_cat != "Miscellaneous" && inferred_cat != "Excluded" {
-                ("path_rule".to_string(), inferred_cat)
-            } else {
-                let last = p.rsplit('/').next().unwrap_or("");
-                if last.ends_with("Blueprint") && p.contains("/Recipes/") {
-                    ("path_inferred".to_string(), "Blueprints".to_string())
-                } else {
-                    ("no_wfcd_match".to_string(), "Unknown".to_string())
-                }
-            }
-        } else {
-            let cat = path_to_category
-                .get(p)
-                .map(|s| s.as_str())
-                .unwrap_or("Miscellaneous");
-            if cat != "Miscellaneous" {
-                continue;
-            }
-            ("misc_fallback".to_string(), "Misc".to_string())
-        };
-        let path_hint: Vec<String> = p
-            .split('/')
-            .filter(|s| !s.is_empty() && *s != "Lotus")
-            .rev()
-            .take(4)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .map(|s| s.to_string())
-            .collect();
-        new_entries.push(DebugUnmatched {
-            path: p.to_string(),
-            name,
-            item_type: path_to_item_type.get(p).cloned().unwrap_or_default(),
-            product_category: path_to_product_category.get(p).cloned().unwrap_or_default(),
-            wfcd_category: path_to_wfcd_cat.get(p).cloned().unwrap_or_default(),
-            final_category: final_cat,
-            reason,
-            item_count: stackable_count.get(p).copied(),
-            section: unique_section.get(p).map(|s| s.to_string()),
-            polarized: unique_polarized.get(p).copied(),
-            mod_total: blob.mods.get(p).map(|m| m.total),
-            path_hint,
-        });
     }
-    if !new_entries.is_empty() {
-        let ts = chrono::Utc::now().format("%Y-%m-%dT%H-%M-%SZ").to_string();
-        let out = unmatched_paths_dir.join(format!("{}.json", ts));
-        if let Ok(json) = serde_json::to_string_pretty(&new_entries) {
-            let _ = std::fs::write(&out, json);
+    if no_match.is_empty() && misc.is_empty() {
+        return;
+    }
+    no_match.sort_unstable();
+    no_match.dedup();
+    misc.sort_unstable();
+    misc.dedup();
+    let examples = |list: &[&str]| {
+        list.iter()
+            .take(UNMATCHED_EXAMPLES)
+            .copied()
+            .collect::<Vec<_>>()
+            .join(",")
+    };
+    hexdesk_diag::debug!(
+        catalogue,
+        no_catalogue_entry = no_match.len(),
+        misc_fallback = misc.len(),
+        no_catalogue_entry_examples = %examples(&no_match),
+        misc_fallback_examples = %examples(&misc),
+        "Inventory items the catalogue could not place"
+    );
+}
+
+#[cfg(test)]
+mod unmatched_paths_tests {
+    use super::log_unmatched_paths;
+    use crate::memory_scanner::{BlobInventory, BlobStackableEntry};
+    use std::collections::{HashMap, HashSet};
+    use std::sync::Arc;
+    use tracing_subscriber::layer::SubscriberExt;
+
+    fn item(path: &str) -> BlobStackableEntry {
+        BlobStackableEntry {
+            item_type: path.to_string(),
+            item_count: 1,
+            sockets: None,
         }
+    }
+
+    fn logged(f: impl FnOnce()) -> Vec<hexdesk_diag::Entry> {
+        let collector = Arc::new(hexdesk_diag::Collector::new(hexdesk_diag::Config::default()));
+        let subscriber =
+            tracing_subscriber::registry().with(hexdesk_diag::DiagLayer::new(collector.clone()));
+        tracing::subscriber::with_default(subscriber, f);
+        collector.recent(10)
+    }
+
+    #[test]
+    fn paths_the_catalogue_cannot_place_are_logged_with_examples() {
+        let blob = BlobInventory {
+            stackable_items: vec![
+                item("/Lotus/Types/Items/MiscItems/Known"),
+                item("/Lotus/Types/Items/MiscItems/InMisc"),
+                item("/Lotus/Types/Unheard/Thing"),
+                item("/_currency/Credits"),
+            ],
+            ..Default::default()
+        };
+        let names: HashMap<String, String> = [
+            ("/Lotus/Types/Items/MiscItems/Known", "Known"),
+            ("/Lotus/Types/Items/MiscItems/InMisc", "In Misc"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+        let categories: HashMap<String, String> = [
+            ("/Lotus/Types/Items/MiscItems/Known", "Resources"),
+            ("/Lotus/Types/Items/MiscItems/InMisc", "Miscellaneous"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+
+        let entries = logged(|| log_unmatched_paths(&blob, &names, &categories, &HashSet::new()));
+        assert_eq!(entries.len(), 1);
+        let e = &entries[0];
+        assert_eq!(e.source, "catalogue");
+        let field = |k: &str| {
+            e.fields
+                .iter()
+                .find(|(key, _)| key == k)
+                .map(|(_, v)| v.as_str())
+        };
+        assert_eq!(field("no_catalogue_entry"), Some("1"));
+        assert_eq!(field("misc_fallback"), Some("1"));
+        assert_eq!(
+            field("no_catalogue_entry_examples"),
+            Some("/Lotus/Types/Unheard/Thing")
+        );
+        assert_eq!(
+            field("misc_fallback_examples"),
+            Some("/Lotus/Types/Items/MiscItems/InMisc")
+        );
+    }
+
+    #[test]
+    fn nothing_is_logged_when_everything_is_placed() {
+        let blob = BlobInventory {
+            stackable_items: vec![item("/_currency/Credits")],
+            ..Default::default()
+        };
+        let entries = logged(|| {
+            log_unmatched_paths(&blob, &HashMap::new(), &HashMap::new(), &HashSet::new())
+        });
+        assert!(entries.is_empty());
     }
 }

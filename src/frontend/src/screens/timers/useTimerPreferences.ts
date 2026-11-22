@@ -4,7 +4,7 @@ import { normalizeFavorites, type TimerId } from "../../domain/timers";
 
 /**
  * Timer favourites, fissure watches and the notification switch, read from
- * and written to the shared settings file (same keys as the current app).
+ * and written to the shared settings file.
  */
 export function useTimerPreferences() {
   const { data: settings } = useSettings();

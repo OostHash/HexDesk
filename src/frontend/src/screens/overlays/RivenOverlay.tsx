@@ -1,13 +1,16 @@
 import { RefreshCw, Save, X, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isTauri } from "../../api/env";
-import { emitEvent, emitWith, onEvent } from "../../api/events";
-import { requestRivenCheck } from "../../api/overlays";
+import { emitEvent, onEvent } from "../../api/events";
+import { invoke } from "../../api/invoke";
+import { fitRivenWidth, hideCurrentWindow, requestRivenCheck } from "../../api/overlays";
 import { useRollActions } from "../../api/rivens";
 import {
   classifyOriginal,
   classifyStat,
-  EMERGENCY_HIDE_MS,
+  PREVIEW_VIEW,
+  RIVEN_WIDTH,
+  rivenSummary,
   savedRollLabel,
   STAT_LABEL,
   wantedNames,
@@ -16,6 +19,7 @@ import {
   type RivenView,
   type StatClass,
 } from "../../domain/rivenOverlay";
+import { getPreferences } from "../../state/preferences";
 import { verdictLevel, type RollStat, type VerdictLevel } from "../../domain/rivens";
 import { Button, IconButton } from "../../primitives/actions";
 import { cn } from "../../primitives/cn";
@@ -24,10 +28,6 @@ import { Badge, ProgressBar, type Tone } from "../../primitives/display";
 const VERDICT_TONE: Readonly<Record<VerdictLevel, Tone>> = { great: "success", good: "info", mediocre: "warning", bad: "danger" };
 const scoreTone = (score: number): Tone => (score >= 0.8 ? "success" : score >= 0.6 ? "info" : score >= 0.4 ? "warning" : "danger");
 const STAT_TONE: Readonly<Record<StatClass, Tone>> = { wanted: "success", neutral: "neutral", safe: "info", harmful: "danger" };
-
-const hide = (reason: string) => {
-  void emitWith("riven-overlay-hide", { reason });
-};
 
 function StatRow({ stat, cls, faded = false }: { stat: RollStat; cls: StatClass; faded?: boolean }) {
   return (
@@ -84,10 +84,14 @@ function Analysis({ analysis }: { analysis: OverlayAnalysis }) {
   );
 }
 
+/** A live view keeps a Settings preview from replacing it. */
+const isLive = (view: RivenView | null) => view !== null && !(view.kind === "result" && view.preview);
+
 /**
  * The riven overlay window (riven-overlay, #rivenoverlay): what the check read
- * from the riven card and how good the roll is (vault overlay-riven.md). The
- * main window owns the check and the window; this one only draws.
+ * from the riven card and how good the roll is. The backend runs the check,
+ * places and hides the window; this one draws the view it is sent and
+ * confirms what it drew.
  */
 export function RivenOverlay() {
   const [view, setView] = useState<RivenView | null>(null);
@@ -97,30 +101,40 @@ export function RivenOverlay() {
   useEffect(() => {
     if (!isTauri()) return;
     let disposed = false;
-    let unlisten: (() => void) | undefined;
-    void onEvent("riven-view", setView).then((fn) => {
-      if (disposed) {
-        fn();
-        return;
-      }
-      unlisten = fn;
-      // Listening now: ask the main window for the current view.
-      void emitEvent("riven-window-ready");
-    });
+    const unlisteners: Array<() => void> = [];
+    const keep = (p: Promise<() => void>) => {
+      void p.then((fn) => {
+        if (disposed) fn();
+        else unlisteners.push(fn);
+      });
+    };
+    keep(onEvent("riven-view", setView));
+    keep(
+      onEvent("riven-preview", () => {
+        setView((prev) => (isLive(prev) ? prev : PREVIEW_VIEW));
+      }),
+    );
+    keep(
+      onEvent("riven-preview-close", () => {
+        setView((prev) => {
+          if (isLive(prev)) return prev;
+          void hideCurrentWindow();
+          return null;
+        });
+      }),
+    );
     return () => {
       disposed = true;
-      unlisten?.();
+      for (const fn of unlisteners) fn();
     };
   }, []);
 
-  // A forgotten overlay closes itself an hour after the last data.
+  // Each live view carries its number; the backend logs that it was drawn.
   useEffect(() => {
-    const id = window.setTimeout(() => {
-      hide("emergency-60min");
-    }, EMERGENCY_HIDE_MS);
-    return () => {
-      window.clearTimeout(id);
-    };
+    if (!view || !isTauri()) return;
+    void fitRivenWidth(Math.round(RIVEN_WIDTH * getPreferences().textScale)).catch(() => undefined);
+    if (view.view === undefined) return;
+    void invoke("overlay_rendered", { overlay: "riven", view: view.view, summary: rivenSummary(view) }).catch(() => undefined);
   }, [view]);
 
   useEffect(() => {
@@ -184,7 +198,12 @@ export function RivenOverlay() {
             icon={X}
             label="Close riven check"
             onClick={() => {
-              hide("x-button");
+              if (isLive(view)) {
+                void invoke("overlay_closed").catch(() => undefined);
+              } else {
+                setView(null);
+                void hideCurrentWindow();
+              }
             }}
           />
         </header>

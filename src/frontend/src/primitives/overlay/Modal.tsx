@@ -23,7 +23,7 @@ type Props = {
 };
 
 /**
- * Modal dialog on the native <dialog> element (plan 7.2). showModal() gives
+ * Modal dialog on the native <dialog> element. showModal() gives
  * the top layer, a focus trap, an inert background, Escape handling (only
  * the topmost dialog receives it) and focus restore on close.
  * Initial focus: the first element with `autoFocus`, otherwise the first

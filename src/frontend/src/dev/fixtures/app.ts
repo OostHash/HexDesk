@@ -4,7 +4,7 @@ import type { Fixture } from "./scenario";
 
 let monitoring = false;
 
-/** App core (vault app-core.md): scanner, catalogue, account, updater. */
+/** App core: scanner, catalogue, account, updater. */
 /** Fixed against the frozen test clock (2026-11-12T12:00:00Z = 1 794 484 800 s). */
 const NOW_S = 1_794_484_800;
 const CACHES: CacheStatuses = {

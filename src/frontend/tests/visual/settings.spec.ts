@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-/** Settings in browser mode: every ported tab, keyboard, confirmations, narrow window — with axe. */
+/** Settings in browser mode: every category, keyboard, confirmations, narrow window — with axe. */
 
 const PRESETS = {
   presets: [
@@ -20,7 +20,7 @@ async function open(page: Page, viewport = { width: 1280, height: 900 }) {
   }, PRESETS);
   await page.goto("/mock.html");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Settings" })).toBeVisible();
 }
 
 async function axe(page: Page) {
@@ -28,7 +28,7 @@ async function axe(page: Page) {
   expect(results.violations).toEqual([]);
 }
 
-const tab = (page: Page, name: string) => page.getByRole("dialog", { name: "Settings" }).getByRole("tab", { name, exact: true });
+const tab = (page: Page, name: string) => page.getByRole("navigation", { name: "Settings" }).getByRole("button", { name, exact: true });
 
 test("general", async ({ page }) => {
   await open(page);
@@ -43,8 +43,9 @@ test("memory scanner switch turns the header chip on", async ({ page }) => {
   const toggle = page.getByRole("switch", { name: "Enable memory scanner" });
   await toggle.click();
   await expect(toggle).toBeChecked();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Settings" })).toBeHidden();
+  // Settings is a screen: leave it like any other.
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  await expect(page.getByRole("navigation", { name: "Settings" })).toBeHidden();
   // Scanner runs, no game in mock mode.
   await expect(page.getByRole("banner").getByText("No Game")).toBeVisible();
 });
@@ -65,25 +66,29 @@ test("overlays, offset by keyboard and previews", async ({ page }) => {
   await expect(page).toHaveScreenshot("settings-overlays.png");
 });
 
-test("debugging, results and the batch preview", async ({ page }) => {
+test("debugging", async ({ page }) => {
   await open(page);
   await tab(page, "Debugging").click();
-  const probe = page.getByRole("group", { name: "Memory probe", exact: true });
-  await probe.getByRole("button", { name: "Run" }).click();
-  await expect(probe.getByRole("status")).toHaveText("Probe done: 2 entries written.");
-  await expect(page.getByRole("group", { name: "Relic captures" }).getByRole("button", { name: "Clear (40.0 MB)" })).toBeEnabled();
+  await expect(page.getByRole("group", { name: "Diagnostics export", exact: true })).toBeVisible();
   await axe(page);
   await expect(page).toHaveScreenshot("settings-debugging.png");
+});
 
-  await page.getByRole("group", { name: "Incoming batch" }).getByRole("button", { name: "Preview" }).click();
-  const preview = page.getByRole("dialog", { name: "Incoming batch preview" });
-  await expect(preview.getByRole("article")).toHaveCount(4);
+test("console, an entry opened and the export", async ({ page }) => {
+  await open(page);
+  await tab(page, "Console").click();
+  const entries = page.getByRole("list", { name: "Log entries" });
+  const failure = entries.getByRole("button", { name: /Order could not be created/ });
+  await failure.click();
+  await expect(entries.getByText("market.denied")).toBeVisible();
+  await page.getByRole("button", { name: "Export…" }).click();
+  const choose = page.getByRole("dialog", { name: "Export diagnostics" });
   await axe(page);
-  await expect(page).toHaveScreenshot("settings-batch-preview.png");
-  // Escape closes the preview only; Settings stays open.
-  await page.keyboard.press("Escape");
-  await expect(preview).toBeHidden();
-  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await choose.getByRole("button", { name: "Export", exact: true }).click();
+  await expect(choose).toBeHidden();
+  await expect(page.getByText(/^Saved to .*hexdesk-diagnostics-.*\.zip$/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Show in folder" })).toBeVisible();
+  await axe(page);
 });
 
 test("market, logged in", async ({ page }) => {
@@ -99,11 +104,14 @@ test("market, logged in", async ({ page }) => {
 
 test("filters, by keyboard", async ({ page }) => {
   await open(page);
+  // The categories are buttons in a navigator: Tab moves between them, Enter opens one.
   await tab(page, "General").focus();
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("ArrowRight");
-  await expect(tab(page, "Filters")).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(tab(page, "Filters")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(tab(page, "Filters")).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("switch", { name: "Restore previous filters on active preset click" })).toBeChecked();
   await expect(page.getByRole("region", { name: "Pinned presets" }).getByText("Prime parts")).toBeVisible();
   await axe(page);
@@ -145,7 +153,7 @@ test("data: factory reset asks first", async ({ page }) => {
   await expect(page).toHaveScreenshot("settings-data-reset.png");
   await confirm.getByRole("button", { name: "Cancel" }).click();
   await expect(confirm).toBeHidden();
-  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Settings" })).toBeVisible();
 });
 
 test("narrow window", async ({ page }) => {

@@ -1,4 +1,5 @@
 import { ModularPopoutPage } from "../screens/modular/ModularPopoutPage";
+import { OverlayStatus } from "../screens/overlays/OverlayStatus";
 import { RelicPickOverlay } from "../screens/overlays/RelicPickOverlay";
 import { RelicRewardOverlay } from "../screens/overlays/RelicRewardOverlay";
 import { RivenOverlay } from "../screens/overlays/RivenOverlay";
@@ -23,5 +24,7 @@ export function WindowRoot({ kind }: Props) {
       return <RelicPickOverlay />;
     case "riven-overlay":
       return <RivenOverlay />;
+    case "overlay-status":
+      return <OverlayStatus />;
   }
 }

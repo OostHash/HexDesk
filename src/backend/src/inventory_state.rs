@@ -387,9 +387,8 @@ pub(crate) fn load_inventory_state_cache(path: &PathBuf) -> InventoryStateCache 
 /// Shared read-modify-write for inventory_state_cache.json: loads via
 /// `load_inventory_state_cache` (so every writer sees the same read-or-default
 /// behavior), applies `mutate`, then serializes and atomically writes back.
-/// Callers that used to hand-roll this (read → mutate → atomic_write) should
-/// go through this instead so there's one place that owns the file's
-/// read/write contract.
+/// Callers go through this rather than read → mutate → atomic_write by hand,
+/// so there is one place that owns the file's read/write contract.
 pub(crate) fn persist_inventory_state_cache(
     path: &PathBuf,
     mutate: impl FnOnce(&mut InventoryStateCache),
@@ -399,13 +398,83 @@ pub(crate) fn persist_inventory_state_cache(
     serde_json::to_string(&cache)
         .map_err(|e| e.to_string())
         .and_then(|json| {
-            crate::cache::atomic_write(path, json.as_bytes()).map_err(|e| e.to_string())
+            hexdesk_persist::atomic_write(path, json.as_bytes()).map_err(|e| e.to_string())
         })
 }
 
+/// The recipes cache, or nothing when it is missing, unreadable or was built
+/// with warframe component names from before they were renamed ("... Chassis
+/// Blueprint" for the part, "... Blueprint Blueprint" for its blueprint). An
+/// empty result makes the catalogue rebuild.
 pub(crate) fn load_recipes_cache(path: &PathBuf) -> HashMap<String, Vec<RecipeComponent>> {
-    std::fs::read_to_string(path)
+    let recipes: HashMap<String, Vec<RecipeComponent>> = std::fs::read_to_string(path)
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    if recipes.values().flatten().any(has_doubled_blueprint_name) {
+        hexdesk_diag::info!(
+            catalogue,
+            "Recipes cache not used: built with old component names"
+        );
+        return HashMap::new();
+    }
+    recipes
+}
+
+fn has_doubled_blueprint_name(node: &RecipeComponent) -> bool {
+    node.name.ends_with(" Blueprint Blueprint")
+        || node.components.iter().any(has_doubled_blueprint_name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn node(name: &str, components: Vec<RecipeComponent>) -> RecipeComponent {
+        RecipeComponent {
+            unique_name: format!("/Lotus/{}", name.replace(' ', "")),
+            name: name.to_string(),
+            count: 1,
+            result_count: 1,
+            components,
+        }
+    }
+
+    fn cache_with(name: &str, tree: Vec<RecipeComponent>) -> PathBuf {
+        let path = std::env::temp_dir().join(format!(
+            "hexdesk-recipes-{name}-{}.json",
+            std::process::id()
+        ));
+        let recipes = HashMap::from([("/Lotus/Powersuits/Hoplite/StyanaxPrime".to_string(), tree)]);
+        std::fs::write(&path, serde_json::to_string(&recipes).unwrap()).unwrap();
+        path
+    }
+
+    #[test]
+    fn a_cache_with_old_component_names_is_not_used() {
+        // As built before the fix: the part named after its blueprint, and
+        // the blueprint with "Blueprint" twice.
+        let path = cache_with(
+            "old",
+            vec![node(
+                "Styanax Prime Chassis Blueprint",
+                vec![node("Styanax Prime Chassis Blueprint Blueprint", vec![])],
+            )],
+        );
+        assert!(load_recipes_cache(&path).is_empty());
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn a_cache_with_current_names_is_used() {
+        let path = cache_with(
+            "current",
+            vec![node(
+                "Styanax Prime Chassis",
+                vec![node("Styanax Prime Chassis Blueprint", vec![])],
+            )],
+        );
+        assert_eq!(load_recipes_cache(&path).len(), 1);
+        let _ = std::fs::remove_file(path);
+    }
 }

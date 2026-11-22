@@ -32,14 +32,15 @@ type Props = {
   triggerSize?: "sm" | "md" | "lg";
   items: readonly MenuEntry[];
   placement?: "bottom start" | "bottom end" | "top start" | "top end";
+  /** Controlled open state, e.g. to open the menu from a right-click elsewhere. */
+  open?: boolean;
   /** Called when the menu opens or closes. */
   onOpenChange?: (open: boolean) => void;
 };
 
 /**
- * Action menu built on React Aria (plan 7.3): role="menu", roving focus,
+ * Action menu built on React Aria: role="menu", roving focus,
  * arrow keys, typeahead, Escape and focus restore to the trigger.
- * Replaces the mouse-only CtxMenu of the current app.
  */
 export function Menu({
   trigger,
@@ -48,12 +49,13 @@ export function Menu({
   triggerSize = "md",
   items,
   placement = "bottom start",
+  open,
   onOpenChange,
 }: Props) {
   const disabledKeys = items.filter((item) => !("separator" in item) && item.disabled).map((item) => item.id);
 
   return (
-    <MenuTrigger {...(onOpenChange ? { onOpenChange } : {})}>
+    <MenuTrigger {...(open === undefined ? {} : { isOpen: open })} {...(onOpenChange ? { onOpenChange } : {})}>
       <AriaButton
         {...(triggerLabel ? { "aria-label": triggerLabel } : {})}
         className={cn(buttonVariants({ variant: triggerVariant, size: triggerSize }), "data-pressed:bg-active")}

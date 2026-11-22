@@ -2,9 +2,11 @@ import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isTauri } from "../../api/env";
 import { onEvent } from "../../api/events";
-import { fitPickWindow, hideCurrentWindow, setClickThrough, useOverlayPrefs } from "../../api/overlays";
+import { invoke } from "../../api/invoke";
+import { fitPickWindow, useOverlayPrefs } from "../../api/overlays";
 import {
   eraLabel,
+  pickSummary,
   PREVIEW_PICK,
   recommendedRefinement,
   refinementLabel,
@@ -57,9 +59,9 @@ function RewardRow({ reward }: { reward: PickReward }) {
 
 /**
  * The relic pick window (relic-pick-overlay): when the relic selection
- * screen opens, the three relics most worth running for the chosen priority
- * (vault overlay-relic-pick.md). The backend places and shows the window;
- * clicks pass through to the game except over the close button.
+ * screen opens, the three relics most worth running for the chosen priority.
+ * The backend places and shows the window. The window takes the mouse, so
+ * the cursor shows over it and the close button can be clicked.
  */
 export function RelicPickOverlay() {
   const [source, setSource] = useState<Source>("idle");
@@ -67,20 +69,13 @@ export function RelicPickOverlay() {
   const { pickPriority, pickLines } = useOverlayPrefs();
   const { textScale } = usePreferences();
 
-  const show = (next: Source) => {
-    setSource(next);
-    // A close click can hide the window with the cursor still on the button.
-    if (isTauri()) void setClickThrough(true).catch(() => undefined);
-  };
   const hide = useCallback(() => {
     setSource("idle");
     setPick(null);
-    if (isTauri()) void hideCurrentWindow().catch(() => undefined);
   }, []);
 
   useEffect(() => {
     if (!isTauri()) return;
-    void setClickThrough(true).catch(() => undefined);
     let disposed = false;
     const unlisteners: Array<() => void> = [];
     const keep = (p: Promise<() => void>) => {
@@ -92,7 +87,7 @@ export function RelicPickOverlay() {
     keep(
       onEvent("relic-pick-open", (payload) => {
         setPick(payload);
-        show("live");
+        setSource("live");
       }),
     );
     keep(onEvent("relic-pick-close", hide));
@@ -104,7 +99,7 @@ export function RelicPickOverlay() {
     keep(
       onEvent("relic-pick-preview-close", () => {
         setSource((prev) => {
-          if (prev !== "live") void hideCurrentWindow().catch(() => undefined);
+          if (prev !== "live") void invoke("park_relic_pick_window").catch(() => undefined);
           return prev === "live" ? prev : "idle";
         });
       }),
@@ -115,6 +110,18 @@ export function RelicPickOverlay() {
       for (const fn of unlisteners) fn();
     };
   }, [hide]);
+
+  // Tell the backend the view is on screen, after the browser painted it.
+  useEffect(() => {
+    if (source !== "live" || !pick || pick.view === undefined || !isTauri()) return;
+    const view = pick.view;
+    const frame = requestAnimationFrame(() => {
+      void invoke("overlay_rendered", { overlay: "relic_pick", view, summary: pickSummary(pick, pickPriority) }).catch(() => undefined);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [source, pick, pickPriority]);
 
   // The window follows the content height (and the text size).
   const root = useRef<HTMLElement | null>(null);
@@ -152,17 +159,18 @@ export function RelicPickOverlay() {
           size="sm"
           icon={X}
           label="Close relic pick"
-          onClick={hide}
-          onPointerEnter={() => {
-            if (isTauri()) void setClickThrough(false).catch(() => undefined);
-          }}
-          onPointerLeave={() => {
-            if (isTauri()) void setClickThrough(true).catch(() => undefined);
+          onClick={() => {
+            // The backend tracks what is on screen, so it hears about the close.
+            if (source === "live" && isTauri()) void invoke("overlay_closed").catch(() => undefined);
+            if (source === "preview" && isTauri()) void invoke("park_relic_pick_window").catch(() => undefined);
+            hide();
           }}
         />
       </header>
       {relics.length === 0 ? (
-        <p className="px-2 py-3 text-center text-muted">No {era} relics in inventory</p>
+        <p className="px-2 py-3 text-center text-muted">
+          {data.relics.length === 0 ? `No ${era} relics in inventory` : `No ${era} relics confirmed on screen`}
+        </p>
       ) : (
         <ol aria-label="Recommended relics" className="flex flex-col gap-1">
           {relics.map((relic, i) => {
@@ -176,6 +184,11 @@ export function RelicPickOverlay() {
                   <span className={cn("min-w-5 font-semibold", i === 0 ? "text-info" : "text-muted")}>#{i + 1}</span>
                   <span className="flex-1 truncate text-sm font-semibold">{relic.base_name}</span>
                   <Badge variant="outline">{refinementLabel(relic.refinement)}</Badge>
+                  {relic.on_screen === false && (
+                    <Badge tone="warning" variant="outline" title="Not found on the relic list on screen">
+                      not on screen
+                    </Badge>
+                  )}
                   <span className="text-muted">×{relic.count}</span>
                   <span className="font-semibold whitespace-nowrap text-info">{scoreLabel(relic, pickPriority)}</span>
                 </h2>

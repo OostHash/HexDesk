@@ -1,26 +1,25 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { isTauri } from "../../api/env";
 import { onEvent, type RelicRewards } from "../../api/events";
-import { useRecipes } from "../../api/foundry";
-import { hideRewardStrip, logRelic, takePendingRewards, useItemPrices, useOverlayPrefs, useOverlayStock, useRewardCatalog } from "../../api/overlays";
+import { invoke } from "../../api/invoke";
+import { hideRewardStrip, logRelic, takePendingRewards, useItemPrices, useOverlayPrefs, useRewardCards } from "../../api/overlays";
 import {
+  cardsFrom,
   bestPick,
   cardWidth,
   cellLabel,
   columnCenters,
   PREVIEW_CARDS,
   priceNames,
-  rewardCards,
-  setEntryIds,
+  rewardSummary,
   type RewardCard,
 } from "../../domain/relicReward";
 import { cn } from "../../primitives/cn";
 import { Badge, domainTone } from "../../primitives/display";
 
 type Source = "idle" | "preview" | "live";
-type Session = { source: Source; paths: string[] };
-const IDLE: Session = { source: "idle", paths: [] };
-const NO_RECIPES = new Map();
+type Session = { source: Source; paths: string[]; uncertain: boolean[] };
+const IDLE: Session = { source: "idle", paths: [], uncertain: [] };
 const NO_PRICES: ReadonlyMap<string, number> = new Map();
 
 function subscribeResize(listener: () => void) {
@@ -47,10 +46,10 @@ function Card({ card, left, width, best }: { card: RewardCard; left: number; wid
   const ownedFull = (card.completeSets ?? 0) >= 1;
   return (
     <article
-      aria-label={best ? `${card.name}, best pick` : card.name}
+      aria-label={[card.name, card.uncertain ? "uncertain" : "", best ? "best pick" : ""].filter(Boolean).join(", ")}
       className={cn(
         "absolute top-7 flex flex-col gap-1 rounded-lg border bg-surface/95 p-2 text-xs text-text shadow-2",
-        card.unknown ? "border-warning/60" : best ? "border-accent" : "border-border",
+        card.unknown || card.uncertain ? "border-warning/60" : best ? "border-accent" : "border-border",
       )}
       style={{ left, width }}
     >
@@ -58,6 +57,11 @@ function Card({ card, left, width, best }: { card: RewardCard; left: number; wid
         {card.unknown ? "? " : ""}
         {card.name}
       </h2>
+      {card.uncertain && (
+        <Badge tone="warning" variant="outline" title="Read differently between reads, or only part of the name was read">
+          Uncertain
+        </Badge>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-1">
         <Plat value={card.plat} />
         {card.vaulted && <Badge variant="outline">Vaulted</Badge>}
@@ -116,13 +120,13 @@ export function skipReason(prev: Session, rewards: RelicRewards): string | null 
 
 /** Live rewards replace a preview; a duplicate or shorter read keeps what is shown. */
 export function nextSession(prev: Session, rewards: RelicRewards): Session {
-  return skipReason(prev, rewards) === null ? { source: "live", paths: rewards.items } : prev;
+  return skipReason(prev, rewards) === null ? { source: "live", paths: rewards.items, uncertain: rewards.uncertain ?? [] } : prev;
 }
 
 /**
  * The relic reward overlay window (relic-overlay, ?overlay): a card per reward
- * slot with prices and set progress, and an arrow over the best pick
- * (vault overlay-relic-reward.md). Transparent around the cards.
+ * slot with prices and set progress, and an arrow over the best pick.
+ * Transparent around the cards.
  */
 export function RelicRewardOverlay() {
   const [session, setSession] = useState<Session>(IDLE);
@@ -132,7 +136,6 @@ export function RelicRewardOverlay() {
     shown.current = session;
   }, [session]);
   const prefs = useOverlayPrefs();
-  const stock = useOverlayStock();
   const width = useWindowWidth();
 
   useEffect(() => {
@@ -158,13 +161,13 @@ export function RelicRewardOverlay() {
     };
     keep(
       onEvent("relic-trigger", () => {
-        setSession({ source: "live", paths: [] });
+        setSession({ source: "live", paths: [], uncertain: [] });
       }),
     );
     keep(onEvent("relic-rewards", apply));
     keep(
       onEvent("relic-reward-preview", () => {
-        setSession((prev) => (prev.source === "live" ? prev : { source: "preview", paths: [] }));
+        setSession((prev) => (prev.source === "live" ? prev : { source: "preview", paths: [], uncertain: [] }));
       }),
     );
     keep(
@@ -189,15 +192,30 @@ export function RelicRewardOverlay() {
     };
   }, []);
 
-  const catalog = useRewardCatalog(session.paths);
-  const entryIds = useMemo(() => setEntryIds(session.paths, catalog), [session.paths, catalog]);
-  const recipes = useRecipes(entryIds) ?? NO_RECIPES;
-  const names = useMemo(
-    () => priceNames(rewardCards(session.paths, { catalog, stock, recipes, prices: NO_PRICES })),
-    [session.paths, catalog, stock, recipes],
-  );
+  const backendCards = useRewardCards(session.paths);
+  const names = useMemo(() => priceNames(cardsFrom(backendCards, NO_PRICES)), [backendCards]);
   const prices = useItemPrices(names);
-  const live = useMemo(() => rewardCards(session.paths, { catalog, stock, recipes, prices }), [session.paths, catalog, stock, recipes, prices]);
+  const live = useMemo(
+    () => cardsFrom(backendCards, prices).map((card, i) => (session.uncertain[i] === true ? { ...card, uncertain: true } : card)),
+    [backendCards, prices, session.uncertain],
+  );
+
+  // Each new set of rewards is a new view for the backend log.
+  const view = useRef(0);
+  useEffect(() => {
+    view.current += 1;
+  }, [session.paths]);
+  // Prices arrive one by one; once the cards have been still for a moment,
+  // tell the backend what they show.
+  useEffect(() => {
+    if (session.source !== "live" || live.length === 0 || !isTauri()) return;
+    const timer = window.setTimeout(() => {
+      void invoke("overlay_rendered", { overlay: "relic_reward", view: view.current, summary: rewardSummary(live) }).catch(() => undefined);
+    }, 800);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [session.source, live]);
 
   const cards = session.source === "preview" ? PREVIEW_CARDS : session.source === "live" ? live : [];
   if (cards.length === 0) return null;

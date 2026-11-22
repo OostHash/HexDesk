@@ -1,155 +1,125 @@
-import { Backpack, Bug, Clock, Gem, Hammer, Settings, Sparkles, Store, type LucideIcon } from "lucide-react";
 import { useCallback, useState, type ComponentType } from "react";
-import { openExternal } from "../api/links";
-import { SidebarItem } from "../primitives/navigation";
+import { useSettings } from "../api/settings";
+import { cn } from "../primitives/cn";
 import { FoundryScreen } from "../screens/foundry/FoundryScreen";
 import { ItemWindowHost } from "../screens/market/ItemWindow";
 import { MarketScreen } from "../screens/market/MarketScreen";
 import { RivensScreen } from "../screens/rivens/RivensScreen";
-import { BatchPreviewDialog } from "../screens/inventory/BatchPreviewDialog";
-import { SettingsDialog, type SettingsTab } from "../screens/settings/SettingsDialog";
-import { setBatchPreviewOpen, useBatchPreviewOpen } from "../state/batchPreview";
+import { SettingsScreen, type SettingsTab } from "../screens/settings/SettingsScreen";
 import { InventoryScreen } from "../screens/inventory/InventoryScreen";
 import { RelicsScreen } from "../screens/relics/RelicsScreen";
 import { TimersScreen } from "../screens/timers/TimersScreen";
+import { WelcomeScreen } from "../screens/settings/welcome/WelcomeScreen";
 import { AppLifecycle } from "./AppLifecycle";
-import { HexDeskMark } from "./HexDeskMark";
 import { ChangeLogDock } from "./ChangeLogDock";
 import { FissureAlerts } from "./FissureAlerts";
 import { Header } from "./Header";
+import { MainNav, type NavScreen } from "./MainNav";
 import { ModularDock } from "./ModularDock";
+import { NAV_ICONS } from "./navIcons";
 import { RelicOverlayController } from "./RelicOverlayController";
-import { RivenOverlayController } from "./RivenOverlayController";
+import { TestReportNotices } from "./TestReportNotices";
 import { ScreenBoundary } from "./ScreenBoundary";
 import { TradeWatcher } from "./TradeWatcher";
 import { WindowTitleBar } from "./WindowTitleBar";
 
-type ScreenDef = { id: string; label: string; icon: LucideIcon; Screen: ComponentType };
+type ScreenDef = NavScreen & { Screen: ComponentType };
 
-/** Ported screens. Grows as screens move over (vault plan, port ledger). */
+/** The screens of the main window, in sidebar order. */
 const SCREENS: readonly ScreenDef[] = [
-  { id: "inventory", label: "Inventory", icon: Backpack, Screen: InventoryScreen },
-  { id: "foundry", label: "Foundry", icon: Hammer, Screen: FoundryScreen },
-  { id: "relics", label: "Relics", icon: Gem, Screen: RelicsScreen },
-  { id: "rivens", label: "Rivens", icon: Sparkles, Screen: RivensScreen },
-  { id: "timers", label: "Timers", icon: Clock, Screen: TimersScreen },
-  { id: "market", label: "Market", icon: Store, Screen: MarketScreen },
+  { id: "inventory", label: "Inventory", icon: NAV_ICONS.inventory, Screen: InventoryScreen },
+  { id: "foundry", label: "Foundry", icon: NAV_ICONS.foundry, Screen: FoundryScreen },
+  { id: "relics", label: "Relics", icon: NAV_ICONS.relics, Screen: RelicsScreen },
+  { id: "rivens", label: "Rivens", icon: NAV_ICONS.rivens, Screen: RivensScreen },
+  { id: "timers", label: "Timers", icon: NAV_ICONS.timers, Screen: TimersScreen },
+  { id: "market", label: "Market", icon: NAV_ICONS.market, Screen: MarketScreen },
 ];
-
-const BUG_REPORT_URL = "https://github.com/OostHash/HexDesk/issues/new/choose";
-const NARROW_NAV_ITEM = "justify-center px-0 md:justify-start md:px-3 [&>span]:hidden md:[&>span]:inline";
 
 /** Main window: navigation on the left, the active screen on the right. */
 export function AppShell() {
+  const { data: settings, isPending: settingsPending } = useSettings();
   const [screen, setScreen] = useState("inventory");
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Kept while the app runs, so Settings reopens on the category used last.
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
-  const batchPreviewOpen = useBatchPreviewOpen();
+  const onSettings = screen === "settings";
   const current = SCREENS.find((s) => s.id === screen) ?? SCREENS[0];
   // Stable: the changelog dock listens for the pop-out's requests with it.
   const openInventory = useCallback(() => {
     setScreen("inventory");
   }, []);
+  const openSettings = (tab?: SettingsTab) => {
+    if (tab) setSettingsTab(tab);
+    setScreen("settings");
+  };
+  // Until settings load it is unknown whether this is a fresh install; showing
+  // the app first would flash it before the welcome screen.
+  if (settingsPending || settings?.onboardingCompleted === false) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <TestReportNotices />
+        <WindowTitleBar />
+        {!settingsPending && <WelcomeScreen />}
+      </div>
+    );
+  }
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <TestReportNotices />
       <AppLifecycle />
       <FissureAlerts />
       <TradeWatcher />
       <RelicOverlayController />
-      <RivenOverlayController />
       <WindowTitleBar />
       <div className="flex min-h-0 flex-1">
-        <nav aria-label="Main" className="flex w-14 shrink-0 flex-col gap-4 border-e border-border bg-surface p-2 md:w-52">
-          <div className="flex items-center justify-center gap-2 pt-1 text-sm font-semibold md:justify-start md:px-2">
-            <HexDeskMark className="size-5 text-accent" />
-            <span className="hidden md:inline">HexDesk</span>
-          </div>
-          <ul className="flex flex-col gap-0.5">
-            {SCREENS.map((s) => (
-              <li key={s.id}>
-                <SidebarItem
-                  active={screen === s.id}
-                  label={s.label}
-                  icon={s.icon}
-                  aria-label={s.label}
-                  title={s.label}
-                  className={NARROW_NAV_ITEM}
-                  onClick={() => {
-                    setScreen(s.id);
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
-          <ul aria-label="Support and settings" className="mt-auto flex flex-col gap-0.5 border-t border-border pt-2">
-            <li>
-              <SidebarItem
-                active={false}
-                label="Report a bug"
-                icon={Bug}
-                aria-label="Report a bug"
-                title="Report a bug"
-                className={NARROW_NAV_ITEM}
-                onClick={() => {
-                  void openExternal(BUG_REPORT_URL).catch(() => undefined);
-                }}
-              />
-            </li>
-            <li>
-              <SidebarItem
-                active={settingsOpen}
-                label="Settings"
-                icon={Settings}
-                aria-label="Settings"
-                title="Settings"
-                className={NARROW_NAV_ITEM}
-                onClick={() => {
-                  setSettingsOpen(true);
-                }}
-              />
-            </li>
-          </ul>
-        </nav>
+        <MainNav
+          screens={SCREENS}
+          current={screen}
+          onSelect={setScreen}
+          settingsOpen={onSettings}
+          onOpenSettings={() => {
+            openSettings();
+          }}
+        />
         <div className="flex min-w-0 flex-1 flex-col">
           <Header
             onOpenScreen={setScreen}
             onOpenSettings={() => {
-              setSettingsOpen(true);
+              // The memory scanner switch lives in General.
+              openSettings("general");
             }}
           />
           <div className="flex min-h-0 flex-1">
             <div className="flex min-w-0 flex-1 flex-col">
-              <main className="flex min-h-0 flex-1 flex-col">
-                <h1 className="sr-only">{current?.label}</h1>
-                {current && (
-                  <ScreenBoundary key={current.id} label={current.label}>
-                    <current.Screen />
-                  </ScreenBoundary>
-                )}
+              <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                <h1 className="sr-only">{onSettings ? "Settings" : current?.label}</h1>
+                {/* A screen keeps room for its toolbar and some of its list; in a lower window the panel scrolls as a whole. */}
+                <div className="flex min-h-112 flex-1 flex-col">
+                  {onSettings ? (
+                    <ScreenBoundary key="settings" label="Settings">
+                      <SettingsScreen tab={settingsTab} onTabChange={setSettingsTab} />
+                    </ScreenBoundary>
+                  ) : (
+                    current && (
+                      <ScreenBoundary key={current.id} label={current.label}>
+                        <current.Screen />
+                      </ScreenBoundary>
+                    )
+                  )}
+                </div>
               </main>
-              <ChangeLogDock onOpenInventory={openInventory} />
+              {/* Hidden, not unmounted, on Settings: the docks keep their state and their pop-out listeners. */}
+              <div className={cn("contents", onSettings && "hidden")}>
+                <ChangeLogDock onOpenInventory={openInventory} />
+              </div>
             </div>
-            <ModularDock />
+            <div className={cn("contents", onSettings && "hidden")}>
+              <ModularDock />
+            </div>
           </div>
         </div>
       </div>
       {/* Outside the screens: React Aria renders Tabs children in a detached collection pass, where showModal() fails. */}
       <ItemWindowHost />
-      <SettingsDialog
-        open={settingsOpen}
-        tab={settingsTab}
-        onTabChange={setSettingsTab}
-        onClose={() => {
-          setSettingsOpen(false);
-        }}
-      />
-      {/* Opened from Settings → Debugging; on top of Settings. */}
-      <BatchPreviewDialog
-        open={batchPreviewOpen}
-        onClose={() => {
-          setBatchPreviewOpen(false);
-        }}
-      />
     </div>
   );
 }

@@ -165,7 +165,7 @@ describe("item window", () => {
 });
 
 describe("market presets", () => {
-  it("leaves the open tab out and validates like the current app", () => {
+  it("leaves the open tab out and validates stored presets", () => {
     const codec = marketPresetCodec("mods");
     const stored = codec.encode({ ...DEFAULT_MARKET_FILTERS, vault: ["vaulted"] });
     expect(stored).not.toHaveProperty("activeMarketTab");

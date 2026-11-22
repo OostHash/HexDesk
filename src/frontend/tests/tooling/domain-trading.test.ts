@@ -83,7 +83,7 @@ describe("whispers", () => {
     expect(pruneGhosts([w("1", "a", 0), w("2", "b")], GHOST_MS).map((x) => x.id)).toEqual(["2"]);
   });
 
-  it("writes the same messages as the current app", () => {
+  it("writes the whisper messages", () => {
     expect(inviteText("Tenno")).toBe("/w Tenno Hi! I'm online, come to my orbiter.");
     expect(soldText("Tenno", "Ash Prime Set")).toBe("/w Tenno Ash Prime Set sold! Thank you.");
     expect(soldText("Tenno")).toBe("/w Tenno Sold! Thank you.");

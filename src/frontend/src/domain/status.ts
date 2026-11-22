@@ -1,4 +1,4 @@
-/** Header status chips: what each state means in words (vault header.md). */
+/** Header status chips: what each state means in words. */
 
 export type ChipState = "online" | "warn" | "offline" | "disabled";
 export type ChipStatus = { state: ChipState; detail: string; hint: string };

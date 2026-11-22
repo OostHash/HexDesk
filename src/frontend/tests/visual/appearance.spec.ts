@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Appearance axes in browser mode (vault theming-7a.md): the colour-blind
+ * Appearance axes in browser mode: the colour-blind
  * palette, density, and Windows High Contrast (forced colors).
  */
 
@@ -39,10 +39,10 @@ test("colour-blind palette swaps status and gain/loss colours before the first p
 test("density changes control heights, not text", async ({ page }) => {
   await open(page);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Settings" });
-  const general = dialog.getByRole("tab", { name: "Overlays" });
+  const categories = page.getByRole("navigation", { name: "Settings" });
+  const general = categories.getByRole("button", { name: "Overlays" });
   const before = await general.evaluate((el) => ({ h: el.getBoundingClientRect().height, font: getComputedStyle(el).fontSize }));
-  await dialog.getByText("Comfortable", { exact: true }).click();
+  await page.getByRole("main").getByText("Comfortable", { exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-density", "comfortable");
   const after = await general.evaluate((el) => ({ h: el.getBoundingClientRect().height, font: getComputedStyle(el).fontSize }));
   expect(after.h).toBe(before.h + 4);
@@ -55,12 +55,15 @@ test.describe("forced colors", () => {
   test("selected states get system colours", async ({ page }) => {
     await open(page);
     await page.getByRole("button", { name: "Settings", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Settings" });
-    const selectedTab = dialog.getByRole("tab", { name: "General" });
-    const otherTab = dialog.getByRole("tab", { name: "Overlays" });
+    const categories = page.getByRole("navigation", { name: "Settings" });
+    const selectedTab = categories.getByRole("button", { name: "General" });
+    const otherTab = categories.getByRole("button", { name: "Overlays" });
     const bg = (el: SVGElement | HTMLElement) => getComputedStyle(el).backgroundColor;
     expect(await selectedTab.evaluate(bg)).not.toBe(await otherTab.evaluate(bg));
-    const chosen = dialog.locator("label", { has: page.getByRole("radio", { name: "Normal", exact: true }) }).first();
+    const chosen = page
+      .getByRole("main")
+      .locator("label", { has: page.getByRole("radio", { name: "Normal", exact: true }) })
+      .first();
     expect(await chosen.evaluate(bg)).not.toBe("rgba(0, 0, 0, 0)");
     await expect(page).toHaveScreenshot("forced-colors-settings.png");
   });

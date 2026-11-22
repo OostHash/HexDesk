@@ -1,7 +1,7 @@
 import { palette } from "./palette.ts";
 
 /**
- * Layer 2: semantic roles, the only colours primitives know (plan 6.1).
+ * Layer 2: semantic roles, the only colours primitives know.
  * Every theme must define every role; the `satisfies` checks enforce it.
  */
 export const semanticTokens = [
@@ -37,7 +37,7 @@ export type SemanticToken = (typeof semanticTokens)[number];
 export type ThemeTokens = Readonly<Record<SemanticToken, string>>;
 
 /**
- * Interaction states derive from text/accent, so they invert with the theme (plan 6.6).
+ * Interaction states derive from text/accent, so they invert with the theme.
  * text-faint is for disabled controls and placeholders only (WCAG exempts
  * those from contrast); never for readable content.
  */
@@ -104,8 +104,8 @@ export const light = {
 } as const satisfies ThemeTokens;
 
 /**
- * Resolved themes; adding one here is the whole change (plan 6.8 acceptance
- * test): CSS, the pre-paint script and the Settings choice follow.
+ * Resolved themes; adding one here is the whole change: CSS, the pre-paint
+ * script and the Settings choice follow.
  */
 export const themes = { dark, light } as const satisfies Record<string, ThemeTokens>;
 export type ThemeName = keyof typeof themes;
@@ -113,7 +113,7 @@ export type ThemeName = keyof typeof themes;
 const hd = palette.highDark;
 const hl = palette.highLight;
 
-/** High contrast (plan 6.11): 7:1 for text, borders that read as edges, no tinted surfaces. */
+/** High contrast: 7:1 for text, borders that read as edges, no tinted surfaces. */
 export const highContrastThemes = {
   dark: {
     ...derived,
@@ -163,7 +163,7 @@ export const highContrastThemes = {
   },
 } as const satisfies Record<ThemeName, ThemeTokens>;
 
-/** Status roles the colour-blind palette replaces (plan 6.7). */
+/** Status roles the colour-blind palette replaces. */
 export type CvdTokens = Readonly<Pick<ThemeTokens, "success" | "danger" | "warning" | "info">>;
 
 const cvdDark = {
@@ -198,7 +198,7 @@ export const cvdHighContrastThemes = {
   },
 } as const satisfies Record<ThemeName, CvdTokens>;
 
-/** Foreground/background pairs that must meet WCAG contrast (plan 6.11). */
+/** Foreground/background pairs that must meet WCAG contrast. */
 export const contrastPairs: ReadonlyArray<{
   fg: SemanticToken;
   bg: SemanticToken;
@@ -228,7 +228,7 @@ export const staticTokens = {
   "z-toast": "300",
 } as const;
 
-/** Density only moves control heights, cell padding and list text (plan 6.8). */
+/** Density only moves control heights, cell padding and list text. */
 export const densities = {
   compact: {
     "control-sm": "20px",

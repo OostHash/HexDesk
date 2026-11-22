@@ -1,18 +1,16 @@
 import { useQueries, useQuery, type QueryClient } from "@tanstack/react-query";
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { availableMonitors, currentMonitor, getCurrentWindow, LogicalPosition, LogicalSize } from "@tauri-apps/api/window";
-import { useMemo } from "react";
+import { currentMonitor, getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { emitEvent } from "./events";
 import { invoke } from "./invoke";
 import { useSettings, type SettingsFile } from "./settings";
-import { craftingCounts, overlayPriorityFrom, stripBounds, type OverlayPriority, type Stock } from "../domain/relicReward";
-import type { CatalogItem } from "../domain/relics";
+import { overlayPriorityFrom, stripBounds, type BackendCard, type OverlayPriority } from "../domain/relicReward";
+import { overlayKeyCode, overlayKeyFrom, testingKeysFrom, type OverlayKey, type TestingKeys } from "../domain/overlayKey";
 import { pickLinesFrom, pickPriorityFrom, type PickLines, type PickPriority } from "../domain/relicPick";
 import { offsetsFrom, type OverlayOffsets } from "../domain/overlayOffsets";
-import { worthAnalysing, type OcrRiven, type OverlayAnalysis } from "../domain/rivenOverlay";
+import { overlayStatusFrom, type OverlayStatusSettings } from "../domain/overlayStatus";
 import { useCrafting, useQuantities } from "./inventory";
 
-/** Overlay switches and choices from the shared settings file (vault overlay-relic-reward.md). */
+/** Overlay switches and choices from the shared settings file. */
 export type OverlayPrefs = {
   /** All overlays (default on). */
   overlaysEnabled: boolean;
@@ -23,8 +21,21 @@ export type OverlayPrefs = {
   relicPickEnabled: boolean;
   pickPriority: PickPriority;
   pickLines: PickLines;
+  /** The key that shows or hides the overlays (default Home). */
+  overlayKey: OverlayKey;
+  /** Only the overlay key opens an overlay; the game's log still closes one (default off). */
+  overlayManual: boolean;
+  /** The keys that answer the testing prompt (default Page Up and Page Down). */
+  testingKeys: TestingKeys;
+  /** Save what OCR reads on screen (default off). */
+  overlayKeyCapture: boolean;
+  /** Save the game frame with the areas each read uses outlined (default off). */
+  overlayAreas: boolean;
+  /** Save the overlay window each time it is drawn (default off). */
+  overlayScreenshot: boolean;
   /** The riven overlay (default on). */
   rivenEnabled: boolean;
+  status: OverlayStatusSettings;
   offsets: OverlayOffsets;
 };
 
@@ -36,7 +47,14 @@ export function overlayPrefsFrom(s: SettingsFile | undefined): OverlayPrefs {
     relicPickEnabled: s?.relicPickEnabled !== false,
     pickPriority: pickPriorityFrom(s?.relicPickPriority),
     pickLines: pickLinesFrom(s?.relicPickLines),
+    overlayKey: overlayKeyFrom(s?.overlayKey),
+    overlayManual: s?.overlayManual === true,
+    testingKeys: testingKeysFrom(s?.testingCorrectKey, s?.testingWrongKey),
+    overlayKeyCapture: s?.overlayKeyCapture === true,
+    overlayScreenshot: s?.overlayScreenshot === true,
+    overlayAreas: s?.overlayAreas === true,
     rivenEnabled: s?.rivenEnabled !== false,
+    status: overlayStatusFrom(s?.overlayStatus),
     offsets: offsetsFrom(s?.overlayOffsets),
   };
 }
@@ -50,11 +68,19 @@ export async function syncOverlaySwitches(prefs: OverlayPrefs): Promise<void> {
   await Promise.all([
     invoke("set_overlays_enabled", { enabled: prefs.overlaysEnabled }),
     invoke("set_relic_pick_enabled", { enabled: prefs.relicPickEnabled }),
+    invoke("set_relic_reward_enabled", { enabled: prefs.rewardEnabled }),
+    invoke("set_riven_enabled", { enabled: prefs.rivenEnabled }),
+    invoke("set_overlay_manual", { enabled: prefs.overlayManual }),
+    invoke("set_overlay_key", { vk: overlayKeyCode(prefs.overlayKey) }),
+    invoke("set_testing_keys", { correct: overlayKeyCode(prefs.testingKeys.correct), wrong: overlayKeyCode(prefs.testingKeys.wrong) }),
+    invoke("set_overlay_key_capture", { enabled: prefs.overlayKeyCapture }),
+    invoke("set_overlay_screenshot", { enabled: prefs.overlayScreenshot }),
+    invoke("set_overlay_areas", { enabled: prefs.overlayAreas }),
   ]);
   if (!prefs.overlaysEnabled) await emitEvent("overlays-disabled");
 }
 
-/** A line in the overlay session log, for bug reports (current app: log_relic_fe). */
+/** A line from an overlay window in the log (Settings → Console), for bug reports. */
 export const logRelic = (msg: string) => invoke("log_relic_fe", { msg }).catch(() => null);
 
 /** The game's client area, or the first screen when the game is not found (`log` hears which). */
@@ -98,7 +124,7 @@ export async function hideRewardPreview(): Promise<void> {
   await emitEvent("relic-reward-preview-close");
 }
 
-// ── Backend status line (ff-status) ─────────────────────────────────────────
+// ── Backend status line (status-line) ─────────────────────────────────────────
 
 const statusKey = ["overlay", "status"] as const;
 
@@ -111,32 +137,21 @@ export function setOverlayStatus(queryClient: QueryClient, text: string) {
 
 // ── Reward overlay data ─────────────────────────────────────────────────────
 
-const EMPTY_QTY: Readonly<Record<string, number>> = {};
+const NO_CARDS: readonly BackendCard[] = [];
 
 /**
- * Quantities and Foundry jobs for the overlay window: the scanner's pushes
- * (TauriEventBridge) when they came, else what the backend has now.
+ * The backend's cards for this session's rewards: set parts and what the
+ * player owns of them. Asked again when the inventory changes.
  */
-export function useOverlayStock(): Stock {
-  const quantities = useQuantities().data ?? EMPTY_QTY;
-  const live = useCrafting();
-  const initial = useQuery({ queryKey: ["overlay", "crafting"] as const, queryFn: () => invoke("get_current_crafting"), staleTime: Infinity }).data;
-  const crafting = useMemo(() => craftingCounts(live.length > 0 ? live : (initial ?? [])), [live, initial]);
-  return useMemo(() => ({ quantities, crafting }), [quantities, crafting]);
-}
-
-const NO_ITEMS: readonly CatalogItem[] = [];
-
-/** Catalogue entries for this session's rewards and their set siblings. */
-export function useRewardCatalog(paths: readonly string[]): readonly CatalogItem[] {
-  const real = paths.filter((p) => !p.startsWith("?:"));
+export function useRewardCards(paths: readonly string[]): readonly BackendCard[] {
+  const inventoryAt = useQuantities().dataUpdatedAt;
+  const crafting = useCrafting().length;
   return (
     useQuery({
-      queryKey: ["overlay", "items", real] as const,
-      queryFn: () => invoke("get_items_by_paths", { paths: real }),
-      enabled: real.length > 0,
-      staleTime: Infinity,
-    }).data ?? NO_ITEMS
+      queryKey: ["overlay", "reward-cards", paths, inventoryAt, crafting] as const,
+      queryFn: () => invoke("get_reward_cards", { paths: [...paths] }),
+      enabled: paths.length > 0,
+    }).data ?? NO_CARDS
   );
 }
 
@@ -170,12 +185,10 @@ export async function showPickPreview(): Promise<void> {
 
 export const hidePickPreview = () => emitEvent("relic-pick-preview-close");
 
-/** Inside the pick window: let clicks reach the game, except over the close button. */
-export function setClickThrough(through: boolean): Promise<void> {
-  return getCurrentWindow().setIgnoreCursorEvents(through);
-}
-
 export const hideCurrentWindow = () => getCurrentWindow().hide();
+
+/** Makes a display-only overlay let mouse input pass through to the game. */
+export const ignoreCurrentWindowCursor = () => getCurrentWindow().setIgnoreCursorEvents(true);
 
 /** Width in CSS px; the window follows the content height. */
 export const PICK_WIDTH = 340;
@@ -199,59 +212,35 @@ export async function fitPickWindow(contentHeight: number, scale: number): Promi
   await win.setSize(new LogicalSize(Math.round(width), Math.round(height)));
 }
 
+/**
+ * Sets the window height to its content and keeps the width, for windows the
+ * backend places and centres. The backend does not know the text size, so its
+ * height alone can cut the content off.
+ */
+export async function fitWindowHeight(contentHeight: number, scale: number): Promise<void> {
+  if (contentHeight <= 0) return;
+  const win = getCurrentWindow();
+  const [size, factor] = await Promise.all([win.innerSize(), win.scaleFactor()]);
+  const height = Math.ceil(contentHeight * scale);
+  // Callers also fit after every resize of the window, so a size that already fits must not resize it again.
+  if (Math.abs(size.height / factor - height) < 1) return;
+  await win.setSize(new LogicalSize(size.width / factor, height));
+}
+
 // ── Riven overlay ───────────────────────────────────────────────────────────
 
-export const RIVEN_LABEL = "riven-overlay";
-
-/** Scale factor of the monitor holding a physical point (the first monitor otherwise). */
-export async function monitorScaleAt(x: number, y: number): Promise<number> {
-  const monitors = await availableMonitors().catch(() => []);
-  const hit = monitors.find((m) => x >= m.position.x && x < m.position.x + m.size.width && y >= m.position.y && y < m.position.y + m.size.height);
-  return hit?.scaleFactor ?? monitors[0]?.scaleFactor ?? 1;
+/** "Check Riven" in Rivens and "New roll" in the overlay: the backend runs the check. */
+export const requestRivenCheck = () => invoke("check_riven");
+/** Settings → Overlays → Show: the backend places the window, which then shows the example roll. */
+export async function showRivenPreview(): Promise<void> {
+  await invoke("show_riven_window");
+  await emitEvent("riven-preview");
 }
-
-/** Opens the riven window at a logical place, or moves the open one there. True when it was created now. */
-export async function placeRivenWindow(place: { x: number; y: number; width: number; height: number }, visible: boolean): Promise<boolean> {
-  const existing = await WebviewWindow.getByLabel(RIVEN_LABEL).catch(() => null);
-  if (existing) {
-    await existing.setPosition(new LogicalPosition(place.x, place.y)).catch(() => undefined);
-    await existing.setSize(new LogicalSize(place.width, place.height)).catch(() => undefined);
-    if (visible) await existing.show().catch(() => undefined);
-    return false;
-  }
-  new WebviewWindow(RIVEN_LABEL, {
-    url: "index.html#rivenoverlay",
-    title: "HexDesk Riven",
-    transparent: true,
-    decorations: false,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    resizable: false,
-    focus: false,
-    visible,
-    ...place,
-  });
-  return true;
-}
-
-export async function closeRivenWindow(): Promise<void> {
-  const win = await WebviewWindow.getByLabel(RIVEN_LABEL).catch(() => null);
-  await win?.close().catch(() => undefined);
-}
-
-/** OCR on the riven card, then the analysis when there is something to analyse. */
-export async function checkRivenOnScreen(): Promise<{ ocr: OcrRiven; analysis: OverlayAnalysis | null }> {
-  const ocr = await invoke("ocr_riven_screen");
-  // The backend also sends matched/missing positives, which OverlayAnalysis reads.
-  const analysis: OverlayAnalysis | null = worthAnalysing(ocr)
-    ? await invoke("analyze_riven", { weapon: ocr.weapon, positives: ocr.positives, negatives: ocr.negatives }).catch(() => null)
-    : null;
-  return { ocr, analysis };
-}
-
-export const logRivenError = (error: string) => invoke("ocr_riven_log_error", { error }).catch(() => null);
-
-/** "Check Riven" in Rivens and "New roll" in the overlay: the main window runs the check. */
-export const requestRivenCheck = () => emitEvent("riven-manual-check");
-export const showRivenPreview = () => emitEvent("riven-preview");
 export const hideRivenPreview = () => emitEvent("riven-preview-close");
+
+/** Sets the riven window's width to the text size chosen in the app; the backend places it and sets its height. */
+export async function fitRivenWidth(width: number): Promise<void> {
+  const win = getCurrentWindow();
+  const [size, scale] = await Promise.all([win.innerSize(), win.scaleFactor()]);
+  await win.setSize(new LogicalSize(width, size.height / scale));
+}

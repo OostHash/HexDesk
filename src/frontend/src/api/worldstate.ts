@@ -3,13 +3,12 @@ import { invoke } from "./invoke";
 
 export const worldstateKeys = { all: ["worldstate"] as const };
 
-/** The backend caches worldstate; polling once a minute matches the current app. */
+/** The backend caches worldstate; the frontend polls it once a minute. */
 export const WORLDSTATE_POLL_MS = 60_000;
 
 /**
  * Worldstate for every consumer in this window (Timers, modular window,
- * fissure alerts). One query key means one poll and one shared snapshot,
- * replacing the hand-written subscriber set in the current app.
+ * fissure alerts). One query key means one poll and one shared snapshot.
  */
 export function useWorldState() {
   return useQuery({

@@ -77,7 +77,8 @@ it("collapses to a rail and remembers the choice", async () => {
   await vi.waitFor(() => {
     expect(saved().modularCollapsed).toBe(true);
   });
-  await page.getByRole("button", { name: "Expand modular window" }).click();
+  // The vertical title is part of the rail button, so clicking it opens the panel.
+  await page.getByText("Modular window", { exact: true }).click();
   await expect.element(page.getByRole("button", { name: "Collapse modular window" })).toBeVisible();
   await vi.waitFor(() => {
     expect(saved().modularCollapsed).toBe(false);

@@ -75,7 +75,7 @@ describe("trades", () => {
       ["Relic", 0],
       ["Arcane", -40],
     ]);
-    // traded-out counts as a sale, like the current app.
+    // traded-out counts as a sale.
     expect(topSold(trades)).toEqual([
       { item_name: "Nova Prime Set", quantity: 3, total_plat: 290 },
       { item_name: "Lith B1 Relic", quantity: 5, total_plat: 0 },
@@ -95,7 +95,7 @@ describe("trades", () => {
     expect(s[1]).toMatchObject({ givenPlat: 30, receivedItems: [{ name: "C", qty: 1 }] });
   });
 
-  it("formats like the current app", () => {
+  it("formats with thousands separators below 10K and K above", () => {
     expect(fmtK(9_999)).toBe("9,999");
     expect(fmtK(12_450)).toBe("12.4K");
     expect(signed(-40)).toBe("-40");

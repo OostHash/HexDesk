@@ -12,7 +12,7 @@ import { Icon } from "../display/Icon";
 import { strings } from "../strings";
 
 /**
- * In-app notifications on React Aria's toast region (plan 7.8): an aria-live
+ * In-app notifications on React Aria's toast region: an aria-live
  * landmark (F6 reaches it), pause on hover and focus, close button.
  * React Aria still marks the API UNSTABLE_; it is wrapped here so a change
  * stays inside this file. OS notifications stay with the notification plugin.

@@ -41,12 +41,12 @@ const open = async () => {
   });
 };
 
-it("lets clicks through to the game from the start", async () => {
+it("takes the mouse itself, so the cursor shows over it", async () => {
   const { client, calls } = setup();
   await mount(client);
-  await vi.waitFor(() => {
-    expect(calls.find((c) => c.cmd === "plugin:window|set_ignore_cursor_events")?.args).toMatchObject({ value: true });
-  });
+  await open();
+  await page.getByRole("button", { name: "Close relic pick" }).hover();
+  expect(calls.some((c) => c.cmd === "plugin:window|set_ignore_cursor_events")).toBe(false);
 });
 
 it("ranks the relics for the priority and lists their rewards", async () => {
@@ -69,13 +69,29 @@ it("shows the estimate line instead of rewards when asked", async () => {
   expect(page.getByRole("list", { name: "Axi R4 rewards" }).query()).toBeNull();
 });
 
-it("hides the window from the close button", async () => {
+it("clears the view without suspending WebView2 and tells the backend", async () => {
   const { client, calls } = setup();
   await mount(client);
   await open();
   await page.getByRole("button", { name: "Close relic pick" }).click();
   await expect.element(page.getByRole("main", { name: "Relic pick" })).not.toBeInTheDocument();
-  expect(calls.some((c) => c.cmd === "plugin:window|hide")).toBe(true);
+  expect(calls.some((c) => c.cmd === "plugin:window|hide")).toBe(false);
+  expect(calls.some((c) => c.cmd === "overlay_closed")).toBe(true);
+});
+
+it("confirms each view it draws to the backend", async () => {
+  const { client, calls } = setup({ relicPickPriority: "ducat" });
+  await mount(client);
+  await vi.waitFor(async () => {
+    await emit("relic-pick-open", { ...PREVIEW_PICK, view: 7 });
+    expect(calls.some((c) => c.cmd === "overlay_rendered")).toBe(true);
+  });
+  const rendered = calls.find((c) => c.cmd === "overlay_rendered");
+  expect(rendered?.args).toEqual({
+    overlay: "relic_pick",
+    view: 7,
+    summary: "ALL: Meso N1 intact x2, Axi R4 intact x1, Lith S1 intact x3",
+  });
 });
 
 it("shows the preview, which live data replaces", async () => {
@@ -89,4 +105,25 @@ it("shows the preview, which live data replaces", async () => {
   await expect.element(page.getByText("No Neo relics in inventory")).toBeVisible();
   await emit("relic-pick-preview-close", {});
   await expect.element(page.getByText("No Neo relics in inventory")).toBeVisible();
+});
+
+it("parks a closed preview without suspending WebView2", async () => {
+  const { client, calls } = setup();
+  await mount(client);
+  await emit("relic-pick-preview", {});
+  await expect.element(page.getByRole("main", { name: "Relic pick" })).toBeVisible();
+  await emit("relic-pick-preview-close", {});
+  await expect.element(page.getByRole("main", { name: "Relic pick" })).not.toBeInTheDocument();
+  expect(calls.some((c) => c.cmd === "park_relic_pick_window")).toBe(true);
+  expect(calls.some((c) => c.cmd === "plugin:window|hide")).toBe(false);
+});
+
+it("does not call an unconfirmed relic an inventory recommendation", async () => {
+  const { client } = setup();
+  await mount(client);
+  await emit("relic-pick-open", {
+    era: "NEO",
+    relics: [{ ...PREVIEW_PICK.relics[0], on_screen: false }],
+  });
+  await expect.element(page.getByText("No Neo relics confirmed on screen")).toBeVisible();
 });

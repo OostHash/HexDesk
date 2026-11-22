@@ -12,8 +12,7 @@ const STATUS_POLL_MS = 2 * 60_000;
 /**
  * warframe.market in the background (main window only). Screens unmount in
  * this app, so whispers, finished trades, the session restore at start and
- * the status poll live here, not in the Trading tab (current app: always
- * mounted WfmTrading plus App.tsx).
+ * the status poll live here, not in the Trading tab.
  */
 export function TradeWatcher() {
   const queryClient = useQueryClient();

@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, type CSSProperties, type ReactNode } from "react";
+import { cn } from "../cn";
 import { anchoredStyle, anchorStyle, useAnchorName, type Placement } from "./anchor";
 
 export type TooltipTriggerProps = {
@@ -17,6 +18,8 @@ type Props = {
   placement?: Placement;
   /** Hover delay in ms; focus shows immediately. */
   delay?: number;
+  /** Extra classes for the tooltip panel, e.g. to hide it at some widths. */
+  className?: string;
 };
 
 /** Show/hide logic outside React state: the popover element is the state. */
@@ -49,7 +52,7 @@ function createController(id: string, delay: number) {
  * aria-describedby). Uses popover="hint" so it never closes an open menu or
  * popover. Escape hides it. Never put interactive content in a tooltip.
  */
-export function Tooltip({ content, children, placement = "top", delay = 400 }: Props) {
+export function Tooltip({ content, children, placement = "top", delay = 400, className }: Props) {
   const id = useId();
   const anchor = useAnchorName();
   const controller = useMemo(() => createController(id, delay), [id, delay]);
@@ -80,7 +83,7 @@ export function Tooltip({ content, children, placement = "top", delay = 400 }: P
         role="tooltip"
         popover="hint"
         style={anchoredStyle(anchor, placement)}
-        className="pointer-events-none max-w-xs rounded-md bg-text px-2 py-1 text-xs text-bg shadow-2"
+        className={cn("pointer-events-none max-w-xs rounded-md bg-text px-2 py-1 text-xs text-bg shadow-2", className)}
       >
         {content}
       </div>

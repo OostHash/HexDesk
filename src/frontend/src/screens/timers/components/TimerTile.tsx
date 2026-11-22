@@ -66,8 +66,7 @@ type ExpandableProps = TileProps & {
 
 /**
  * Timer tile with a disclosure for details (sortie missions, Baro's
- * inventory). A real button with aria-expanded, unlike the clickable div of
- * the current app. Expanded tiles span the full row.
+ * inventory). A real button with aria-expanded. Expanded tiles span the full row.
  */
 export function ExpandableTile({
   name,

@@ -3,8 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { PREVIEW_VIEW, type RivenView } from "../../src/domain/rivenOverlay";
 
 /**
- * Riven overlay window in browser mode (?window=riven-overlay): the main
- * window is not there, so the test sends the view itself — the preview and a
+ * Riven overlay window in browser mode (?window=riven-overlay): the backend
+ * is not there, so the test sends the view itself — the preview and a
  * comparison, keyboard close — with axe. The window is transparent over the
  * game, so colour contrast cannot be judged here.
  */
@@ -64,27 +64,8 @@ test("comparison", async ({ page }) => {
 
 test("close by keyboard", async ({ page }) => {
   await open(page, PREVIEW_VIEW);
-  const hidden = page.evaluate(
-    () =>
-      new Promise<unknown>((resolve) => {
-        const internals = (
-          window as unknown as {
-            __TAURI_INTERNALS__: {
-              invoke: (c: string, a: unknown) => Promise<unknown>;
-              transformCallback: (cb: (e: { payload: unknown }) => void) => number;
-            };
-          }
-        ).__TAURI_INTERNALS__;
-        void internals.invoke("plugin:event|listen", {
-          event: "riven-overlay-hide",
-          target: { kind: "Any" },
-          handler: internals.transformCallback((e) => {
-            resolve(e.payload);
-          }),
-        });
-      }),
-  );
   await page.getByRole("button", { name: "Close riven check" }).focus();
   await page.keyboard.press("Enter");
-  expect(await hidden).toEqual({ reason: "x-button" });
+  // A closed preview leaves the window empty until the next check.
+  await expect(page.getByRole("heading", { name: "Tenora Prime" })).toBeHidden();
 });

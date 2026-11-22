@@ -124,6 +124,27 @@ describe("InventoryScreen", () => {
     await expect.element(screen.getByRole("button", { name: "Restore filters" })).toBeVisible();
   });
 
+  it("turns an active preset off with a second click", async () => {
+    const screen = await renderScreen();
+    const prime = screen.getByRole("button", { name: "Prime", exact: true });
+    await userEvent.click(prime);
+    await userEvent.click(screen.getByRole("button", { name: "Presets" }));
+    await userEvent.click(page.getByRole("button", { name: "Save current filters" }));
+    await userEvent.fill(page.getByRole("textbox", { name: "Preset name" }), "Primes");
+    await userEvent.click(page.getByRole("button", { name: "Save", exact: true }));
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(prime);
+    await expect.element(prime).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.click(screen.getByRole("button", { name: "Presets" }));
+    const preset = page.getByRole("button", { name: "Primes" });
+    await userEvent.click(preset);
+    await expect.element(prime).toHaveAttribute("aria-pressed", "true");
+    // "Restore previous filters" is off by default: the second click clears the preset's filters.
+    await userEvent.click(preset);
+    await expect.element(prime).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("shows an empty inventory", async () => {
     const screen = await renderScreen("?scenario=empty");
     await expect.element(screen.getByText("No items found.")).toBeVisible();

@@ -1,6 +1,5 @@
 /**
- * warframe.market trading (Market part 2), same rules as the current app
- * (vault/frontend-ports/market.md, "Deel 2").
+ * warframe.market trading (Market part 2).
  */
 
 export type WfmStatus = "online" | "ingame" | "invisible" | "offline";
@@ -95,7 +94,7 @@ export type TradeLogRow = {
 };
 
 /**
- * Trade-log rows for a finished in-game trade, like the current app: a sale
+ * Trade-log rows for a finished in-game trade: a sale
  * is one "sold" row per item with the platinum on the first, a purchase one
  * "bought" row per received item, a swap "traded-out" and "traded-in" rows.
  */
@@ -124,7 +123,7 @@ export function tradeLogRows(t: TradeCompleted): TradeLogRow[] {
 
 const titleCase = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-/** Display name from whichever field the WFM API filled, like the current app. */
+/** Display name from whichever field the WFM API filled. */
 export function orderName(o: WfmManagedOrder, itemNames: ReadonlyMap<string, string>): string {
   return (
     o.item?.i18n?.en?.name ??

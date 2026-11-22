@@ -70,6 +70,15 @@ export function formatClockTime(unixSeconds: number, clock: ClockFormat, locale:
   return new Date(unixSeconds * 1000).toLocaleTimeString(locale, options);
 }
 
+/**
+ * Day, month and time of a change, e.g. "19 Nov · 14:05": "Changed recently"
+ * can reach back days, so a time alone is ambiguous.
+ */
+export function formatChangeTime(unixSeconds: number, clock: ClockFormat, locale: string): string {
+  const date = new Date(unixSeconds * 1000);
+  return `${date.toLocaleDateString(locale, { day: "numeric", month: "short" })} · ${formatClockTime(unixSeconds, clock, locale)}`;
+}
+
 /** Largest height the dock may take in a window of this height. */
 export const maxLogHeight = (windowHeight: number) =>
   Math.max(LOG_HEIGHT.min, Math.min(LOG_HEIGHT.max, Math.floor(windowHeight * LOG_HEIGHT.maxShare)));

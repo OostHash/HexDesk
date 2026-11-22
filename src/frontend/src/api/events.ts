@@ -1,16 +1,19 @@
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useEffect, useRef } from "react";
+import { isTauri } from "./env";
 import type { CacheStatuses } from "../domain/cache";
+import type { LogEntry } from "../domain/console";
 import type { ChangeEntry } from "../domain/inventory";
 import type { RelicPick } from "../domain/relicPick";
 import type { RivenView } from "../domain/rivenOverlay";
+import type { FlowKind } from "../domain/testing";
 import type { TradeCompleted } from "../domain/trading";
 
 /**
- * Backend → frontend events the new frontend uses, with payload types.
- * Names come from src/constants/tauri.ts in the current app (copied, never
- * imported). Add an entry when a screen needs a new event.
+ * Backend → frontend events the frontend uses, with payload types. The names
+ * match src/backend/src/events.rs. Add an entry when a screen needs a new event.
  */
-/** Subset of the backend InventoryUpdate (src-tauri/src/monitor.rs) the frontend reads. */
+/** Subset of the backend InventoryUpdate (src/backend/src/monitor.rs) the frontend reads. */
 export type InventoryUpdatePayload = {
   quantities: Record<string, number>;
   /** uniqueName to mastery rank; only present in some updates (not on heartbeats). */
@@ -38,8 +41,11 @@ export type InventoryUpdatePayload = {
   is_full_pass?: boolean;
 };
 
-/** Locked relic rewards: uniqueName per slot ("?:text" when OCR did not recognise it) and the slot's x (0–1). */
-export type RelicRewards = { items: string[]; positions: number[] };
+/**
+ * Locked relic rewards: uniqueName per slot ("?:text" when OCR did not recognise it), the slot's x (0–1),
+ * and per slot whether the match is uncertain (reads disagreed, or only part of the name was read).
+ */
+export type RelicRewards = { items: string[]; positions: number[]; uncertain?: boolean[] };
 
 export interface EventMap {
   "settings-updated": unknown;
@@ -49,6 +55,8 @@ export interface EventMap {
   "blob-status": { stage: string; detail: string };
   /** Logged-in Warframe account, from EE.log. */
   "player-name": string;
+  /** One new log entry for the activity console (main window only). */
+  "diag-entry": LogEntry;
   /** All data cache statuses, after any cache changed. */
   "cache-status": CacheStatuses;
   "bulk-prices-updated": unknown;
@@ -75,25 +83,25 @@ export interface EventMap {
   "relic-screen": boolean;
   /** Overlays were switched off: every overlay window hides. */
   "overlays-disabled": unknown;
-  /** Short backend status line, shown for a few seconds. */
-  "ff-status": string;
+  /** Short backend status line for the app header and the in-game status window. */
+  "status-line": string;
+  /** Scoped Page Up/Page Down prompt after a completed testing flow. */
+  /** `timeoutMs`: how long the prompt stays up unanswered. */
+  "testing-feedback": { visible: true; flow: FlowKind; timeoutMs: number } | { visible: false };
+  /** A short in-game confirmation of a testing answer. */
+  "testing-notice": { text: string; tone: "success" | "danger" };
+  /** A reported testing flow could not be stored. */
+  "test-report": { error: string };
+  /** How many reported testing flows wait for an export. */
+  "test-report-flows": number;
   /** The relic selection screen opened: which relics to run. */
   "relic-pick-open": RelicPick;
   "relic-pick-close": unknown;
   /** Settings preview of the relic pick overlay. */
   "relic-pick-preview": unknown;
   "relic-pick-preview-close": unknown;
-  /** EE.log: a riven card screen opened / closed. */
-  "riven-screen-open": unknown;
-  "riven-screen-close": unknown;
-  /** Check the riven on screen now (overlay button, Rivens → Check Riven). */
-  "riven-manual-check": unknown;
-  /** The riven overlay wants to close (its close button, a cancelled preview). */
-  "riven-overlay-hide": { reason?: string };
-  /** The riven overlay window listens now and wants the current view. */
-  "riven-window-ready": unknown;
-  /** The riven overlay's state, from the main window. */
-  "riven-view": RivenView;
+  /** The riven overlay's state, from the backend; null when it hides. */
+  "riven-view": RivenView | null;
   /** Settings preview of the riven overlay. */
   "riven-preview": unknown;
   "riven-preview-close": unknown;
@@ -115,6 +123,32 @@ export function onEvent<E extends EventName>(event: E, handler: (payload: EventM
   });
 }
 
+/**
+ * Calls `handler` for every `event` while the component is mounted. The latest `handler` is used, so it may
+ * change between renders without subscribing again.
+ */
+export function useEvent<E extends EventName>(event: E, handler: (payload: EventMap[E]) => void) {
+  const latest = useRef(handler);
+  useEffect(() => {
+    latest.current = handler;
+  });
+  useEffect(() => {
+    if (!isTauri()) return;
+    let disposed = false;
+    let unlisten: UnlistenFn | undefined;
+    void onEvent(event, (payload) => {
+      latest.current(payload);
+    }).then((fn) => {
+      if (disposed) fn();
+      else unlisten = fn;
+    });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [event]);
+}
+
 /** Tells every window something changed (e.g. trades-updated after logging a trade). */
 export function emitEvent(
   event:
@@ -124,8 +158,6 @@ export function emitEvent(
     | "relic-reward-preview-close"
     | "relic-pick-preview"
     | "relic-pick-preview-close"
-    | "riven-manual-check"
-    | "riven-window-ready"
     | "riven-preview"
     | "riven-preview-close"
     | "riven-roll-saved",
@@ -134,9 +166,6 @@ export function emitEvent(
 }
 
 /** Window-to-window events that carry data. */
-export function emitWith<E extends "riven-view" | "riven-overlay-hide" | "relic-screen" | "changelog-open-inventory">(
-  event: E,
-  payload: EventMap[E],
-): Promise<void> {
+export function emitWith<E extends "relic-screen" | "changelog-open-inventory" | "status-line">(event: E, payload: EventMap[E]): Promise<void> {
   return emit(event, payload);
 }

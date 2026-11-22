@@ -11,7 +11,7 @@ import { formatDuration, untilExpiry } from "../../domain/time";
 import { getTimerInfo, TIMER_LABELS } from "../../domain/timers";
 import { IconButton } from "../../primitives/actions";
 import { cn } from "../../primitives/cn";
-import { Badge, domainTone } from "../../primitives/display";
+import { Badge, domainTone, Icon } from "../../primitives/display";
 import { RadioGroup } from "../../primitives/forms";
 import { useNow } from "../../state/useNow";
 
@@ -313,19 +313,31 @@ type Props = {
   className?: string;
 };
 
-/** Tracked items, favourites, pinned timers and watched fissures (vault modular-window.md). */
+/** Tracked items, favourites, pinned timers and watched fissures. */
 export function ModularWindow({ onPopout, onCollapse, className }: Props) {
   const { prefs } = useModularPrefs();
   return (
-    <aside aria-label="Modular window" className={cn("flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto bg-surface", className)}>
-      <div className="flex shrink-0 items-center gap-1 border-b border-border py-1.5 ps-3 pe-1">
-        <span className="flex-1 text-xs font-semibold tracking-wide text-muted uppercase">Modular window</span>
-        {onCollapse && <IconButton size="sm" icon={PanelRightClose} label="Collapse modular window" onClick={onCollapse} />}
-        {onPopout && <IconButton size="sm" icon={ExternalLink} label="Open in its own window" onClick={onPopout} />}
+    <aside aria-label="Modular window" className={cn("flex min-h-0 min-w-0 flex-col bg-surface", className)}>
+      <div className="flex h-11 shrink-0 items-center gap-1 border-b border-border ps-3 pe-1">
+        <span className="flex-1 text-sm font-semibold tracking-wide text-muted uppercase">Modular window</span>
+        {onPopout && <IconButton size="lg" icon={ExternalLink} label="Open in its own window" onClick={onPopout} />}
       </div>
-      {prefs.sectionOrder.map((id, index) => (
-        <Section key={id} id={id} index={index} count={prefs.sectionOrder.length} />
-      ))}
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+        {prefs.sectionOrder.map((id, index) => (
+          <Section key={id} id={id} index={index} count={prefs.sectionOrder.length} />
+        ))}
+      </div>
+      {/* The whole bottom strip, level with the changelog bar, collapses the panel. */}
+      {onCollapse && (
+        <button
+          type="button"
+          aria-label="Collapse modular window"
+          className="flex h-11 w-full shrink-0 items-center justify-end px-3 text-muted hover:text-text"
+          onClick={onCollapse}
+        >
+          <Icon icon={PanelRightClose} size="md" />
+        </button>
+      )}
     </aside>
   );
 }

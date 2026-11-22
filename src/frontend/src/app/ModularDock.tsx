@@ -6,6 +6,7 @@ import { useSettings } from "../api/settings";
 import { clampModularWidth, MODULAR_WIDTH } from "../domain/modular";
 import { ResizeHandle } from "../primitives/behavior/ResizeHandle";
 import { IconButton } from "../primitives/actions";
+import { Icon } from "../primitives/display";
 import { toast } from "../primitives/overlay";
 import { ModularWindow } from "../screens/modular/ModularWindow";
 
@@ -20,8 +21,7 @@ const NARROW_WINDOW_WIDTH = 720;
 
 /**
  * The modular window docked on the right of the main window, or — with
- * modularPopout — in its own window, which this component opens and closes
- * (current app: useModularWindow).
+ * modularPopout — in its own window, which this component opens and closes.
  */
 export function ModularDock() {
   const { prefs, loaded, setWidth, setCollapsed, setPopout } = useModularPrefs();
@@ -53,7 +53,7 @@ export function ModularDock() {
   if (popout) return null;
   if (windowWidth < NARROW_WINDOW_WIDTH) {
     return (
-      <aside aria-label="Narrow modular window" className="flex w-10 shrink-0 justify-center border-s border-border bg-surface py-1.5">
+      <aside aria-label="Narrow modular window" className="flex w-12 shrink-0 justify-center border-s border-border bg-surface py-1.5">
         <IconButton
           size="sm"
           icon={ExternalLink}
@@ -67,15 +67,22 @@ export function ModularDock() {
   }
   if (prefs.collapsed) {
     return (
-      <aside aria-label="Collapsed modular window" className="flex w-10 shrink-0 justify-center border-s border-border bg-surface py-1.5">
-        <IconButton
-          size="sm"
-          icon={PanelRightOpen}
-          label="Expand modular window"
+      <aside aria-label="Collapsed modular window" className="flex w-12 shrink-0 border-s border-border bg-surface">
+        {/* The whole rail is the target and the vertical title says what it opens. The icon sits in a
+            bottom strip as high as the open panel's collapse strip, so it stays in the same place. */}
+        <button
+          type="button"
+          aria-label="Expand modular window"
+          className="flex flex-1 flex-col items-center pt-2.5 text-muted hover:text-text"
           onClick={() => {
             setCollapsed(false);
           }}
-        />
+        >
+          <span className="text-sm font-semibold tracking-wide whitespace-nowrap uppercase [writing-mode:vertical-rl]">Modular window</span>
+          <span className="mt-auto flex h-11 items-center">
+            <Icon icon={PanelRightOpen} size="md" />
+          </span>
+        </button>
       </aside>
     );
   }
@@ -92,8 +99,8 @@ export function ModularDock() {
         onValueCommit={(value) => {
           const commit = ++widthCommit.current;
           // Keep the committed width visible until the asynchronous settings
-          // save finishes. Clearing it immediately briefly restored the old
-          // width before the optimistic settings cache caught up.
+          // save finishes; clearing it at once would show the previous width
+          // until the optimistic settings cache catches up.
           setDragWidth(value);
           void setWidth(value).finally(() => {
             if (widthCommit.current === commit) setDragWidth(null);

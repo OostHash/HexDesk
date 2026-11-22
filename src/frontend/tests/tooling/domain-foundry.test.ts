@@ -79,7 +79,7 @@ describe("foundry filters", () => {
     expect(names(filterItems(items, f({ filterLvlCap: true }), o))).toEqual(["Kuva Bramma"]);
   });
 
-  it("keeps the current app's filter side effects", () => {
+  it("keeps the filter side effects", () => {
     expect(patchFilters(f({ activeCat: "Melee" }), { search: "x" }).activeCat).toBe("All");
     expect(patchFilters(f({ search: "x" }), { activeCat: "Melee" }).search).toBe("");
     expect(patchFilters(f({ filterUnmastered: true }), { filterMastered: true }).filterUnmastered).toBe(false);
@@ -159,7 +159,7 @@ describe("mastery, shards, wiki and presets", () => {
     expect(isMastered(item(2), own({}, { "/forma": 30 }))).toBe(false);
   });
 
-  it("decodes shard colours like the current app", () => {
+  it("decodes shard colours from names and numbers", () => {
     expect(parseShard({ upgrade_type: "/X/ArchonCrystalUpgradeWarframeAbilityStrength", color: "ACC_RED" })).toEqual({
       type: "Crimson",
       tauforged: false,

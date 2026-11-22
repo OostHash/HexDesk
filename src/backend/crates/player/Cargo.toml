@@ -1,0 +1,17 @@
+[package]
+name = "hexdesk-player"
+version.workspace = true
+description = "HexDesk player state: what the player owns, from which source, and what that means for item sets"
+authors = ["HexDesk contributors"]
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/OostHash/HexDesk"
+publish = false
+
+[lib]
+name = "hexdesk_player"
+
+# Same versions and features as the backend crate, so the lock file gains no
+# new packages.
+[dependencies]
+serde = { version = "1", features = ["derive"] }

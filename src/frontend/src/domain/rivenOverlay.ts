@@ -1,23 +1,12 @@
 import type { RivenAnalysis, RollStat } from "./rivens";
 
-/** Riven overlay rules (vault overlay-riven.md). Pure functions. */
+/** Riven overlay rules. Pure functions. */
 
 /** analyze_riven also reports these (the screens did not need them so far). */
 export type OverlayAnalysis = RivenAnalysis & { matched_positives?: string[]; missing_positives?: string[] };
 
-/** What ocr_riven_screen reads from the riven card on screen. */
-export type OcrRiven = {
-  weapon: string;
-  positives: string[];
-  negatives: string[];
-  rolled_stats: RollStat[];
-  is_comparison: boolean;
-  original_rolled_stats: RollStat[];
-  raw: string;
-};
-
-/** The overlay's state, as the main window sends it (riven-analysis-update and friends). */
-export type RivenView =
+/** The overlay's state, as the backend sends it (riven-view); `view` numbers a live view. */
+export type RivenView = (
   | { kind: "scanning"; rollCount: number }
   | {
       kind: "result";
@@ -30,38 +19,15 @@ export type RivenView =
       originalStats: RollStat[];
       isComparison: boolean;
       ocrRaw: string;
-    };
+    }
+) & { view?: number };
 
-export function resultFromOcr(ocr: OcrRiven, analysis: OverlayAnalysis | null, rollCount: number): RivenView {
-  return {
-    kind: "result",
-    preview: false,
-    rollCount,
-    analysis,
-    weapon: ocr.weapon,
-    rolledStats: ocr.rolled_stats,
-    originalStats: ocr.original_rolled_stats,
-    isComparison: ocr.is_comparison,
-    ocrRaw: ocr.raw,
-  };
+/** One line for the log: what the overlay shows. */
+export function rivenSummary(view: RivenView): string {
+  if (view.kind === "scanning") return `scanning, roll ${String(view.rollCount)}`;
+  const verdict = view.analysis?.verdict ?? "no analysis";
+  return `${view.weapon || "no weapon"}: ${String(view.rolledStats.length)} stats, ${verdict}`;
 }
-
-export function resultFromError(error: unknown, rollCount: number): RivenView {
-  return {
-    kind: "result",
-    preview: false,
-    rollCount,
-    analysis: null,
-    weapon: "",
-    rolledStats: [],
-    originalStats: [],
-    isComparison: false,
-    ocrRaw: `OCR ERROR: ${String(error)}`,
-  };
-}
-
-/** OCR found something worth analysing: a weapon or a positive stat. */
-export const worthAnalysing = (ocr: OcrRiven) => ocr.weapon !== "" || ocr.positives.length > 0;
 
 export type StatClass = "wanted" | "neutral" | "safe" | "harmful";
 export const STAT_LABEL: Readonly<Record<StatClass, string>> = { wanted: "Wanted", neutral: "Neutral", safe: "Safe", harmful: "Harmful" };
@@ -98,43 +64,16 @@ export function weaponTitle(weapon: string): string {
     .join(" ");
 }
 
-/** "Tenora prime · Roll #4 · 12 Nov", like the current app. */
+/** "Tenora prime · Roll #4 · 12 Nov". */
 export function savedRollLabel(weapon: string, rollCount: number, date: Date): string {
   const month = date.toLocaleString("en", { month: "short" });
   return `${weapon.charAt(0).toUpperCase()}${weapon.slice(1)} · Roll #${String(rollCount)} · ${String(date.getDate())} ${month}`;
 }
 
-// ── Window placement ────────────────────────────────────────────────────────
+// ── Window ──────────────────────────────────────────────────────────────────
 
+/** The window's width at text size 100 %; matches the backend's placement. */
 export const RIVEN_WIDTH = 300;
-/** Ignore a second screen-open within this long (the log repeats it). */
-export const RETRIGGER_MS = 4000;
-/** Close a forgotten overlay after an hour without new data. */
-export const EMERGENCY_HIDE_MS = 3_600_000;
-
-/**
- * Where the riven window goes for a game rect in physical pixels: logical
- * x/y/size on the monitor's scale factor, left in the game window, offsets
- * on top.
- */
-export function rivenPlacement(
-  rect: readonly [number, number, number, number],
-  monitorScale: number,
-  textScale: number,
-  offset: { x: number; y: number },
-): { x: number; y: number; width: number; height: number } {
-  const [wx, wy, , wh] = rect;
-  const f = monitorScale || 1;
-  const x = wx / f;
-  const y = wy / f;
-  const h = wh / f;
-  return {
-    x: Math.round(x + 10 + offset.x),
-    y: Math.round(y + h * 0.2 + offset.y),
-    width: Math.round(RIVEN_WIDTH * textScale),
-    height: Math.round(h * 0.6),
-  };
-}
 
 // ── Preview ─────────────────────────────────────────────────────────────────
 

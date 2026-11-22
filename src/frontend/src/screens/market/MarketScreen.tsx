@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useUnread } from "../../api/trading";
+import { ScreenTabBar } from "../../patterns/ScreenTabBar";
 import { Tab, TabList, TabPanel, Tabs } from "../../primitives/navigation";
 import { openItemWindow } from "../../state/itemWindow";
 import { ItemReport } from "./ItemReport";
@@ -18,13 +19,13 @@ export function MarketScreen() {
 
   return (
     <Tabs selectedKey={tab} onSelectionChange={setTab} className="flex min-h-0 flex-1 flex-col gap-0">
-      <div className="shrink-0 border-b border-border bg-bg px-4 pt-2 lg:px-6">
+      <ScreenTabBar>
         <TabList label="Market" className="border-b-0">
           <Tab id="trading">{unread > 0 ? `Trading (${String(unread)} new)` : "Trading"}</Tab>
           <Tab id="trade-report">Trade report</Tab>
           <Tab id="item-report">Item report</Tab>
         </TabList>
-      </div>
+      </ScreenTabBar>
       <TabPanel id="trading" className="flex min-h-0 flex-1 flex-col">
         <TradingTab onEdit={openItemWindow} />
       </TabPanel>

@@ -17,8 +17,9 @@ import { useSaveSettings, useSettings } from "./settings";
 
 /**
  * Filter presets of one screen, stored in the shared settings file
- * (`filterPresets`). Applying a pinned preset twice restores the filters
- * from before it when the user enabled that option, like the current app.
+ * (`filterPresets`). Clicking an active preset again turns it off: it
+ * restores the filters from before it when the user enabled that option,
+ * and clears the filters otherwise.
  */
 export function useFilterPresets<F>(codec: PresetCodec<F>, filters: F, setFilters: (f: F) => void, defaults: F) {
   const { data } = useSettings();
@@ -43,8 +44,10 @@ export function useFilterPresets<F>(codec: PresetCodec<F>, filters: F, setFilter
     apply: (id: string) => {
       const preset = presets.find((p) => p.id === id);
       if (!preset) return;
-      if (isPresetActive(preset, filters, codec) && settings.restorePreviousFiltersOnPresetClick && beforePreset) {
-        setFilters(beforePreset);
+      // A second click always turns the preset off: back to the filters from
+      // before it when the user asked for that and they are known, else cleared.
+      if (isPresetActive(preset, filters, codec)) {
+        setFilters(settings.restorePreviousFiltersOnPresetClick && beforePreset ? beforePreset : defaults);
         setBeforePreset(null);
         return;
       }

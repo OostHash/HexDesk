@@ -46,8 +46,7 @@ export const MISSION_TYPES_BY_VARIANT: Readonly<Record<FissureWatch["variant"], 
 };
 
 /**
- * Whether a fissure matches a watch. Same rules as the current app:
- * variant first; tier with bidirectional Omnia (an Omnia watch matches every
+ * Whether a fissure matches a watch: variant first; tier with bidirectional Omnia (an Omnia watch matches every
  * tier except Requiem, an Omnia fissure matches every watch except Requiem);
  * then mission type.
  */
@@ -106,8 +105,8 @@ export type MatchedFissure = { fissure: WsFissure | WsStorm; variant: FissureVar
 export type SeenFissures = ReadonlyMap<string, ReadonlySet<string>>;
 
 /**
- * New matches since the last poll, for OS notifications. Same rules as the
- * current app: a newly added watch announces what is live right now; watches
+ * New matches since the last poll, for OS notifications: a newly added
+ * watch announces what is live right now; watches
  * restored from settings at startup are seeded silently; `live` replaces the
  * caller's seen-state, which drops expired fissures and removed watches.
  */

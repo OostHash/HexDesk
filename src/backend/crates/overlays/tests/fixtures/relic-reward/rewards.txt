@@ -1,0 +1,608 @@
+/Lotus/Types/Items/FusionTreasures/OroFusexOrnamentB	Ayatan Amber Star
+/Lotus/Types/Items/MiscItems/Kuva	1200X Kuva
+/Lotus/Types/Items/MiscItems/RivenFragment	Riven Sliver
+/Lotus/Types/Recipes/ArchwingRecipes/PrimeArchwing/PrimeArchwingBlueprint	Odonata Prime Blueprint
+/Lotus/Types/Recipes/ArchwingRecipes/PrimeArchwing/PrimeArchwingChassisBlueprint	Odonata Prime Harness Blueprint
+/Lotus/Types/Recipes/ArchwingRecipes/PrimeArchwing/PrimeArchwingSystemsBlueprint	Odonata Prime Systems Blueprint
+/Lotus/Types/Recipes/ArchwingRecipes/PrimeArchwing/PrimeArchwingWingsBlueprint	Odonata Prime Wings Blueprint
+/Lotus/Types/Recipes/Components/FormaBlueprint	2X Forma Blueprint
+/Lotus/Types/Recipes/Components/FormaBlueprint	Forma Blueprint
+/Lotus/Types/Recipes/Components/WeaponUtilityUnlockerBlueprint	Exilus Weapon Adapter Blueprint
+/Lotus/Types/Recipes/Kubrow/Collars/PrimeKubrowCollarABandComponent	Kavasa Prime Band
+/Lotus/Types/Recipes/Kubrow/Collars/PrimeKubrowCollarABlueprint	Kavasa Prime Kubrow Collar Blueprint
+/Lotus/Types/Recipes/Kubrow/Collars/PrimeKubrowCollarABuckleComponent	Kavasa Prime Buckle
+/Lotus/Types/Recipes/SentinelRecipes/NautilusPrimeSentinelBlueprint	Nautilus Prime Blueprint
+/Lotus/Types/Recipes/SentinelRecipes/PrimeCarrierSentinelBlueprint	Carrier Prime Blueprint
+/Lotus/Types/Recipes/SentinelRecipes/PrimeDethcubeSentinelBlueprint	Dethcube Prime Blueprint
+/Lotus/Types/Recipes/SentinelRecipes/PrimeHeliosSentinelBlueprint	Helios Prime Blueprint
+/Lotus/Types/Recipes/SentinelRecipes/PrimeWyrmSentinelBlueprint	Wyrm Prime Blueprint
+/Lotus/Types/Recipes/SentinelRecipes/ShadePrimeSentinelBlueprint	Shade Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/AshPrimeBlueprint	Ash Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/AshPrimeChassisBlueprint	Ash Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/AshPrimeHelmetBlueprint	Ash Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/AshPrimeSystemsBlueprint	Ash Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/AtlasPrimeBlueprint	Atlas Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/AtlasPrimeChassisBlueprint	Atlas Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/AtlasPrimeHelmetBlueprint	Atlas Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/AtlasPrimeSystemsBlueprint	Atlas Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/BansheePrimeBlueprint	Banshee Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/BansheePrimeChassisBlueprint	Banshee Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/BansheePrimeHelmetBlueprint	Banshee Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/BansheePrimeSystemsBlueprint	Banshee Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/BaruukPrimeBlueprint	Baruuk Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/BaruukPrimeChassisBlueprint	Baruuk Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/BaruukPrimeHelmetBlueprint	Baruuk Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/BaruukPrimeSystemsBlueprint	Baruuk Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/CalibanPrimeBlueprint	Caliban Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/CalibanPrimeChassisBlueprint	Caliban Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/CalibanPrimeHelmetBlueprint	Caliban Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/CalibanPrimeSystemsBlueprint	Caliban Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ChromaPrimeBlueprint	Chroma Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ChromaPrimeChassisBlueprint	Chroma Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ChromaPrimeHelmetBlueprint	Chroma Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ChromaPrimeSystemsBlueprint	Chroma Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/CitrinePrimeBlueprint	Citrine Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/CitrinePrimeChassisBlueprint	Citrine Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/CitrinePrimeHelmetBlueprint	Citrine Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/CitrinePrimeSystemsBlueprint	Citrine Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/EmberPrimeBlueprint	Ember Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/EmberPrimeChassisBlueprint	Ember Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/EmberPrimeHelmetBlueprint	Ember Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/EmberPrimeSystemsBlueprint	Ember Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/EquinoxPrimeBlueprint	Equinox Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/EquinoxPrimeChassisBlueprint	Equinox Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/EquinoxPrimeHelmetBlueprint	Equinox Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/EquinoxPrimeSystemsBlueprint	Equinox Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/FrostPrimeBlueprint	Frost Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/FrostPrimeChassisBlueprint	Frost Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/FrostPrimeHelmetBlueprint	Frost Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/FrostPrimeSystemsBlueprint	Frost Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GaraPrimeBlueprint	Gara Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GaraPrimeChassisBlueprint	Gara Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GaraPrimeHelmetBlueprint	Gara Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GaraPrimeSystemsBlueprint	Gara Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GarudaPrimeBlueprint	Garuda Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GarudaPrimeChassisBlueprint	Garuda Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GarudaPrimeHelmetBlueprint	Garuda Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GarudaPrimeSystemsBlueprint	Garuda Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GaussPrimeBlueprint	Gauss Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GaussPrimeChassisBlueprint	Gauss Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GaussPrimeHelmetBlueprint	Gauss Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GaussPrimeSystemsBlueprint	Gauss Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GrendelPrimeBlueprint	Grendel Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GrendelPrimeChassisBlueprint	Grendel Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GrendelPrimeHelmetBlueprint	Grendel Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GrendelPrimeSystemsBlueprint	Grendel Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GyrePrimeBlueprint	Gyre Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GyrePrimeChassisBlueprint	Gyre Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GyrePrimeHelmetBlueprint	Gyre Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/GyrePrimeSystemsBlueprint	Gyre Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HarrowPrimeBlueprint	Harrow Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HarrowPrimeChassisBlueprint	Harrow Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HarrowPrimeHelmetBlueprint	Harrow Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HarrowPrimeSystemsBlueprint	Harrow Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HildrynPrimeBlueprint	Hildryn Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HildrynPrimeChassisBlueprint	Hildryn Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HildrynPrimeHelmetBlueprint	Hildryn Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HildrynPrimeSystemsBlueprint	Hildryn Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HydroidPrimeBlueprint	Hydroid Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HydroidPrimeChassisBlueprint	Hydroid Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HydroidPrimeHelmetBlueprint	Hydroid Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/HydroidPrimeSystemsBlueprint	Hydroid Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/InarosPrimeBlueprint	Inaros Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/InarosPrimeChassisBlueprint	Inaros Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/InarosPrimeHelmetBlueprint	Inaros Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/InarosPrimeSystemsBlueprint	Inaros Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/IvaraPrimeBlueprint	Ivara Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/IvaraPrimeChassisBlueprint	Ivara Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/IvaraPrimeHelmetBlueprint	Ivara Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/IvaraPrimeSystemsBlueprint	Ivara Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/KhoraPrimeBlueprint	Khora Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/KhoraPrimeChassisBlueprint	Khora Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/KhoraPrimeHelmetBlueprint	Khora Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/KhoraPrimeSystemsBlueprint	Khora Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LavosPrimeBlueprint	Lavos Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LavosPrimeChassisBlueprint	Lavos Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LavosPrimeHelmetBlueprint	Lavos Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LavosPrimeSystemsBlueprint	Lavos Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LimboPrimeBlueprint	Limbo Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LimboPrimeChassisBlueprint	Limbo Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LimboPrimeHelmetBlueprint	Limbo Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LimboPrimeSystemsBlueprint	Limbo Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LokiPrimeBlueprint	Loki Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LokiPrimeChassisBlueprint	Loki Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LokiPrimeHelmetBlueprint	Loki Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/LokiPrimeSystemsBlueprint	Loki Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MagPrimeBlueprint	Mag Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MagPrimeChassisBlueprint	Mag Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MagPrimeHelmetBlueprint	Mag Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MagPrimeSystemsBlueprint	Mag Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MesaPrimeBlueprint	Mesa Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MesaPrimeChassisBlueprint	Mesa Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MesaPrimeHelmetBlueprint	Mesa Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MesaPrimeSystemsBlueprint	Mesa Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MiragePrimeBlueprint	Mirage Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MiragePrimeChassisBlueprint	Mirage Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MiragePrimeHelmetBlueprint	Mirage Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/MiragePrimeSystemsBlueprint	Mirage Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NekrosPrimeBlueprint	Nekros Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NekrosPrimeChassisBlueprint	Nekros Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NekrosPrimeHelmetBlueprint	Nekros Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NekrosPrimeSystemsBlueprint	Nekros Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NezhaPrimeBlueprint	Nezha Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NezhaPrimeChassisBlueprint	Nezha Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NezhaPrimeHelmetBlueprint	Nezha Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NezhaPrimeSystemsBlueprint	Nezha Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NidusPrimeBlueprint	Nidus Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NidusPrimeChassisBlueprint	Nidus Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NidusPrimeHelmetBlueprint	Nidus Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NidusPrimeSystemsBlueprint	Nidus Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NovaPrimeBlueprint	Nova Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NovaPrimeChassisBlueprint	Nova Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NovaPrimeHelmetBlueprint	Nova Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NovaPrimeSystemsBlueprint	Nova Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NyxPrimeBlueprint	Nyx Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NyxPrimeChassisBlueprint	Nyx Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NyxPrimeHelmetBlueprint	Nyx Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/NyxPrimeSystemsBlueprint	Nyx Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/OberonPrimeBlueprint	Oberon Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/OberonPrimeChassisBlueprint	Oberon Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/OberonPrimeHelmetBlueprint	Oberon Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/OberonPrimeSystemsBlueprint	Oberon Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/OctaviaPrimeBlueprint	Octavia Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/OctaviaPrimeChassisBlueprint	Octavia Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/OctaviaPrimeHelmetBlueprint	Octavia Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/OctaviaPrimeSystemsBlueprint	Octavia Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ProteaPrimeBlueprint	Protea Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ProteaPrimeChassisBlueprint	Protea Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ProteaPrimeHelmetBlueprint	Protea Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ProteaPrimeSystemsBlueprint	Protea Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/RevenantPrimeBlueprint	Revenant Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/RevenantPrimeChassisBlueprint	Revenant Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/RevenantPrimeHelmetBlueprint	Revenant Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/RevenantPrimeSystemsBlueprint	Revenant Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeBlueprint	Rhino Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeChassisBlueprint	Rhino Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeHelmetBlueprint	Rhino Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeSystemsBlueprint	Rhino Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/SarynPrimeBlueprint	Saryn Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/SarynPrimeChassisBlueprint	Saryn Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/SarynPrimeHelmetBlueprint	Saryn Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/SarynPrimeSystemsBlueprint	Saryn Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/SevagothPrimeBlueprint	Sevagoth Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/SevagothPrimeChassisBlueprint	Sevagoth Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/SevagothPrimeHelmetBlueprint	Sevagoth Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/SevagothPrimeSystemsBlueprint	Sevagoth Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/StyanaxPrimeBlueprint	Styanax Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/StyanaxPrimeChassisBlueprint	Styanax Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/StyanaxPrimeHelmetBlueprint	Styanax Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/StyanaxPrimeSystemsBlueprint	Styanax Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/TitaniaPrimeBlueprint	Titania Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/TitaniaPrimeChassisBlueprint	Titania Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/TitaniaPrimeHelmetBlueprint	Titania Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/TitaniaPrimeSystemsBlueprint	Titania Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/TrinityPrimeBlueprint	Trinity Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/TrinityPrimeChassisBlueprint	Trinity Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/TrinityPrimeHelmetBlueprint	Trinity Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/TrinityPrimeSystemsBlueprint	Trinity Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ValkyrPrimeBlueprint	Valkyr Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ValkyrPrimeChassisBlueprint	Valkyr Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ValkyrPrimeHelmetBlueprint	Valkyr Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ValkyrPrimeSystemsBlueprint	Valkyr Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VaubanPrimeBlueprint	Vauban Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VaubanPrimeChassisBlueprint	Vauban Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VaubanPrimeHelmetBlueprint	Vauban Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VaubanPrimeSystemsBlueprint	Vauban Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VoltPrimeBlueprint	Volt Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VoltPrimeChassisBlueprint	Volt Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VoltPrimeHelmetBlueprint	Volt Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VoltPrimeSystemsBlueprint	Volt Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VorunaPrimeBlueprint	Voruna Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VorunaPrimeChassisBlueprint	Voruna Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VorunaPrimeHelmetBlueprint	Voruna Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/VorunaPrimeSystemsBlueprint	Voruna Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/WispPrimeBlueprint	Wisp Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/WispPrimeChassisBlueprint	Wisp Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/WispPrimeHelmetBlueprint	Wisp Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/WispPrimeSystemsBlueprint	Wisp Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/WukongPrimeBlueprint	Wukong Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/WukongPrimeChassisBlueprint	Wukong Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/WukongPrimeHelmetBlueprint	Wukong Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/WukongPrimeSystemsBlueprint	Wukong Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/XakuPrimeBlueprint	Xaku Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/XakuPrimeChassisBlueprint	Xaku Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/XakuPrimeHelmetBlueprint	Xaku Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/XakuPrimeSystemsBlueprint	Xaku Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/YareliPrimeBlueprint	Yareli Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/YareliPrimeChassisBlueprint	Yareli Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/YareliPrimeHelmetBlueprint	Yareli Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/YareliPrimeSystemsBlueprint	Yareli Prime Systems Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ZephyrPrimeBlueprint	Zephyr Prime Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ZephyrPrimeChassisBlueprint	Zephyr Prime Chassis Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ZephyrPrimeHelmetBlueprint	Zephyr Prime Neuroptics Blueprint
+/Lotus/Types/Recipes/WarframeRecipes/ZephyrPrimeSystemsBlueprint	Zephyr Prime Systems Blueprint
+/Lotus/Types/Recipes/Weapons/AcceltraPrimeBlueprint	Acceltra Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AfentisPrimeBlueprint	Afentis Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AfurisPrimeBlueprint	Afuris Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AkariusPrimeBlueprint	Akarius Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AkboltoPrimeBlueprint	Akbolto Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AkbroncoPrimeBlueprint	Akbronco Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AkjagaraPrimeBlueprint	Akjagara Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AklexPrimeBlueprint	Aklex Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AkmagnusPrimeBlueprint	Akmagnus Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AksomatiPrimeBlueprint	Aksomati Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AkstilettoPrimeBlueprint	Akstiletto Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AkvastoPrimeBlueprint	Akvasto Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AlternoxPrimeBlueprint	Alternox Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AnkyrosPrimeBlueprint	Ankyros Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AstillaPrimeBlueprint	Astilla Prime Blueprint
+/Lotus/Types/Recipes/Weapons/AthodaiPrimeBlueprint	Athodai Prime Blueprint
+/Lotus/Types/Recipes/Weapons/BazaPrimeBlueprint	Baza Prime Blueprint
+/Lotus/Types/Recipes/Weapons/BoarPrimeBlueprint	Boar Prime Blueprint
+/Lotus/Types/Recipes/Weapons/BoltorPrimeBlueprint	Boltor Prime Blueprint
+/Lotus/Types/Recipes/Weapons/BowPrimeBlueprint	Paris Prime Blueprint
+/Lotus/Types/Recipes/Weapons/BratonPrimeBlueprint	Braton Prime Blueprint
+/Lotus/Types/Recipes/Weapons/BroncoPrimeBlueprint	Bronco Prime Blueprint
+/Lotus/Types/Recipes/Weapons/BurstonPrimeBlueprint	Burston Prime Blueprint
+/Lotus/Types/Recipes/Weapons/CedoPrimeBlueprint	Cedo Prime Blueprint
+/Lotus/Types/Recipes/Weapons/CobraCranePrimeBlueprint	Cobra & Crane Prime Blueprint
+/Lotus/Types/Recipes/Weapons/CorinthPrimeBlueprint	Corinth Prime Blueprint
+/Lotus/Types/Recipes/Weapons/CorufellPrimeBlueprint	Corufell Prime Blueprint
+/Lotus/Types/Recipes/Weapons/CorvasPrimeBlueprint	Corvas Prime Blueprint
+/Lotus/Types/Recipes/Weapons/DestrezaPrimeBlueprint	Destreza Prime Blueprint
+/Lotus/Types/Recipes/Weapons/DualKeresPrimeBlueprint	Dual Keres Prime Blueprint
+/Lotus/Types/Recipes/Weapons/DualZorenPrimeBlueprint	Dual Zoren Prime Blueprint
+/Lotus/Types/Recipes/Weapons/EpitaphPrimeBlueprint	Epitaph Prime Blueprint
+/Lotus/Types/Recipes/Weapons/FangPrimeBlueprint	Fang Prime Blueprint
+/Lotus/Types/Recipes/Weapons/FragorPrimeBlueprint	Fragor Prime Blueprint
+/Lotus/Types/Recipes/Weapons/FulminPrimeBlueprint	Fulmin Prime Blueprint
+/Lotus/Types/Recipes/Weapons/GlaivePrimeBlueprint	Glaive Prime Blueprint
+/Lotus/Types/Recipes/Weapons/GramPrimeBlueprint	Gram Prime Blueprint
+/Lotus/Types/Recipes/Weapons/GuandaoPrimeBlueprint	Guandao Prime Blueprint
+/Lotus/Types/Recipes/Weapons/GunsenPrimeBlueprint	Gunsen Prime Blueprint
+/Lotus/Types/Recipes/Weapons/HystrixPrimeBlueprint	Hystrix Prime Blueprint
+/Lotus/Types/Recipes/Weapons/KarystPrimeBlueprint	Karyst Prime Blueprint
+/Lotus/Types/Recipes/Weapons/KestrelPrimeBlueprint	Kestrel Prime Blueprint
+/Lotus/Types/Recipes/Weapons/KnellPrimeBlueprint	Knell Prime Blueprint
+/Lotus/Types/Recipes/Weapons/KogakePrimeBlueprint	Kogake Prime Blueprint
+/Lotus/Types/Recipes/Weapons/KompressaPrimeBlueprint	Kompressa Prime Blueprint
+/Lotus/Types/Recipes/Weapons/KronenPrimeBlueprint	Kronen Prime Blueprint
+/Lotus/Types/Recipes/Weapons/LarkspurPrimeBlueprint	Larkspur Prime Blueprint
+/Lotus/Types/Recipes/Weapons/LatronPrimeBlueprint	Latron Prime Blueprint
+/Lotus/Types/Recipes/Weapons/LexPrimeBlueprint	Lex Prime Blueprint
+/Lotus/Types/Recipes/Weapons/MagnusPrimeBlueprint	Magnus Prime Blueprint
+/Lotus/Types/Recipes/Weapons/MasseterPrimeBlueprint	Masseter Prime Blueprint
+/Lotus/Types/Recipes/Weapons/NagantakaPrimeBlueprint	Nagantaka Prime Blueprint
+/Lotus/Types/Recipes/Weapons/NinkondiPrimeBlueprint	Ninkondi Prime Blueprint
+/Lotus/Types/Recipes/Weapons/OkinaPrimeBlueprint	Okina Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PanderoPrimeBlueprint	Pandero Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PangolinPrimeBlueprint	Pangolin Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PantheraPrimeBlueprint	Panthera Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PerigalePrimeBlueprint	Perigale Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PhantasmaPrimeBlueprint	Phantasma Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PolearmPrimeBlueprint	Orthos Prime Blueprint
+/Lotus/Types/Recipes/Weapons/Prime1HShotgunBlueprint	Euphona Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeBallisticaBlueprint	Ballistica Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeBoBlueprint	Bo Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeCernosBlueprint	Cernos Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeCronusLongSwordBlueprint	Dakra Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeDaikyuBlueprint	Daikyu Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeDualKamasBlueprint	Dual Kamas Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeGalatineBlueprint	Galatine Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeHikouBlueprint	Hikou Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeLiDaggerBlueprint	Spira Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeLightningGunBlueprint	Vadarya Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeNamiSkylaBlueprint	Nami Skyla Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeNikanaBlueprint	Nikana Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeScindoBlueprint	Scindo Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeScytheBlueprint	Reaper Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeTigrisBlueprint	Tigris Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PrimeVenkaClawsBlueprint	Venka Prime Blueprint
+/Lotus/Types/Recipes/Weapons/PyranaPrimeBlueprint	Pyrana Prime Blueprint
+/Lotus/Types/Recipes/Weapons/QuassusPrimeBlueprint	Quassus Prime Blueprint
+/Lotus/Types/Recipes/Weapons/RedeemerPrimeBlueprint	Redeemer Prime Blueprint
+/Lotus/Types/Recipes/Weapons/RubicoPrimeBlueprint	Rubico Prime Blueprint
+/Lotus/Types/Recipes/Weapons/SarofangPrimeBlueprint	Sarofang Prime Blueprint
+/Lotus/Types/Recipes/Weapons/ScourgePrimeBlueprint	Scourge Prime Blueprint
+/Lotus/Types/Recipes/Weapons/SicarusPrimeBlueprint	Sicarus Prime Blueprint
+/Lotus/Types/Recipes/Weapons/SilvaAegisPrimeBlueprint	Silva & Aegis Prime Blueprint
+/Lotus/Types/Recipes/Weapons/SomaPrimeBlueprint	Soma Prime Blueprint
+/Lotus/Types/Recipes/Weapons/SteflosPrimeBlueprint	Steflos Prime Blueprint
+/Lotus/Types/Recipes/Weapons/StradavarPrimeBlueprint	Stradavar Prime Blueprint
+/Lotus/Types/Recipes/Weapons/StrunPrimeBlueprint	Strun Prime Blueprint
+/Lotus/Types/Recipes/Weapons/SybarisPrimeBlueprint	Sybaris Prime Blueprint
+/Lotus/Types/Recipes/Weapons/TatsuPrimeBlueprint	Tatsu Prime Blueprint
+/Lotus/Types/Recipes/Weapons/TekkoPrimeBlueprint	Tekko Prime Blueprint
+/Lotus/Types/Recipes/Weapons/TenoraPrimeBlueprint	Tenora Prime Blueprint
+/Lotus/Types/Recipes/Weapons/TiberonPrimeBlueprint	Tiberon Prime Blueprint
+/Lotus/Types/Recipes/Weapons/TipedoPrimeBlueprint	Tipedo Prime Blueprint
+/Lotus/Types/Recipes/Weapons/TrumnaPrimeBlueprint	Trumna Prime Blueprint
+/Lotus/Types/Recipes/Weapons/VastoPrimeBlueprint	Vasto Prime Blueprint
+/Lotus/Types/Recipes/Weapons/VectisPrimeBlueprint	Vectis Prime Blueprint
+/Lotus/Types/Recipes/Weapons/VeloxPrimeBlueprint	Velox Prime Blueprint
+/Lotus/Types/Recipes/Weapons/VentoPrimeBlueprint	Venato Prime Blueprint
+/Lotus/Types/Recipes/Weapons/VolnusPrimeBlueprint	Volnus Prime Blueprint
+/Lotus/Types/Recipes/Weapons/WeaponParts/AcceltraPrimeBarrel	Acceltra Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/AcceltraPrimeReceiver	Acceltra Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/AcceltraPrimeStock	Acceltra Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/AfentisPrimeBarrel	Afentis Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/AfentisPrimeBlade	Afentis Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/AfentisPrimeHandle	Afentis Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/AfurisPrimeBarrel	Afuris Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/AfurisPrimeLink	Afuris Prime Link
+/Lotus/Types/Recipes/Weapons/WeaponParts/AfurisPrimeReceiver	Afuris Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkariusPrimeBarrel	Akarius Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkariusPrimeLink	Akarius Prime Link
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkariusPrimeReceiver	Akarius Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkboltoPrimeBarrel	Akbolto Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkboltoPrimeLink	Akbolto Prime Link
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkboltoPrimeReceiver	Akbolto Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkbroncoPrimeLink	Akbronco Prime Link
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkjagaraPrimeBarrel	Akjagara Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkjagaraPrimeLink	Akjagara Prime Link
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkjagaraPrimeReceiver	Akjagara Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/AklexPrimeLink	Aklex Prime Link
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkmagnusPrimeLink	Akmagnus Prime Link
+/Lotus/Types/Recipes/Weapons/WeaponParts/AksomatiPrimeBarrel	Aksomati Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/AksomatiPrimeLink	Aksomati Prime Link
+/Lotus/Types/Recipes/Weapons/WeaponParts/AksomatiPrimeReceiver	Aksomati Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkstilettoPrimeBarrel	Akstiletto Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkstilettoPrimeLink	Akstiletto Prime Link
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkstilettoPrimeReceiver	Akstiletto Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/AkvastoPrimeLink	Akvasto Prime Link
+/Lotus/Types/Recipes/Weapons/WeaponParts/AlternoxPrimeBarrel	Alternox Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/AlternoxPrimeReceiver	Alternox Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/AlternoxPrimeStock	Alternox Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/AnkyrosPrimeBlade	Ankyros Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/AnkyrosPrimeGauntlet	Ankyros Prime Gauntlet
+/Lotus/Types/Recipes/Weapons/WeaponParts/AstillaPrimeBarrel	Astilla Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/AstillaPrimeReceiver	Astilla Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/AstillaPrimeStock	Astilla Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/AthodaiPrimeBarrel	Athodai Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/AthodaiPrimeReceiver	Athodai Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/BazaPrimeBarrel	Baza Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/BazaPrimeReceiver	Baza Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/BazaPrimeStock	Baza Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/BoarPrimeBarrel	Boar Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/BoarPrimeReceiver	Boar Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/BoarPrimeStock	Boar Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/BoltorPrimeBarrel	Boltor Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/BoltorPrimeReceiver	Boltor Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/BoltorPrimeStock	Boltor Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/BratonPrimeBarrel	Braton Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/BratonPrimeReceiver	Braton Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/BratonPrimeStock	Braton Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/BroncoPrimeBarrel	Bronco Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/BroncoPrimeReceiver	Bronco Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/BurstonPrimeBarrel	Burston Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/BurstonPrimeReceiver	Burston Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/BurstonPrimeStock	Burston Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/CedoPrimeBarrel	Cedo Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/CedoPrimeReceiver	Cedo Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/CedoPrimeStock	Cedo Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/CobraCranePrimeBlade	Cobra & Crane Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/CobraCranePrimeGuard	Cobra & Crane Prime Guard
+/Lotus/Types/Recipes/Weapons/WeaponParts/CobraCranePrimeHandle	Cobra & Crane Prime Hilt
+/Lotus/Types/Recipes/Weapons/WeaponParts/CorinthPrimeBarrel	Corinth Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/CorinthPrimeReceiver	Corinth Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/CorinthPrimeStock	Corinth Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/CorufellPrimeBarrel	Corufell Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/CorufellPrimeHandle	Corufell Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/CorufellPrimeReceiver	Corufell Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/CorvasPrimeBarrel	Corvas Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/CorvasPrimeReceiver	Corvas Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/CorvasPrimeStock	Corvas Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/DestrezaPrimeBlade	Destreza Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/DestrezaPrimeHandle	Destreza Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/DualKeresPrimeBlade	Dual Keres Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/DualKeresPrimeHandle	Dual Keres Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/DualZorenPrimeBlade	Dual Zoren Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/DualZorenPrimeHandle	Dual Zoren Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/EpitaphPrimeBarrel	Epitaph Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/EpitaphPrimeReceiver	Epitaph Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/FragorPrimeHandle	Fragor Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/FragorPrimeHead	Fragor Prime Head
+/Lotus/Types/Recipes/Weapons/WeaponParts/FulminPrimeBarrel	Fulmin Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/FulminPrimeReceiver	Fulmin Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/FulminPrimeStock	Fulmin Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/GlaivePrimeBlade	Glaive Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/GlaivePrimeDisc	Glaive Prime Disc
+/Lotus/Types/Recipes/Weapons/WeaponParts/GramPrimeBlade	Gram Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/GramPrimeHandle	Gram Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/GuandaoPrimeBlade	Guandao Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/GuandaoPrimeHandle	Guandao Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/GunsenPrimeBlade	Gunsen Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/GunsenPrimeHandle	Gunsen Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/HystrixPrimeBarrel	Hystrix Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/HystrixPrimeReceiver	Hystrix Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/KarystPrimeBlade	Karyst Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/KarystPrimeHandle	Karyst Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/KestrelPrimeBlade	Kestrel Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/KestrelPrimeGrip	Kestrel Prime Grip
+/Lotus/Types/Recipes/Weapons/WeaponParts/KnellPrimeBarrel	Knell Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/KnellPrimeReceiver	Knell Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/KogakePrimeBoot	Kogake Prime Boot
+/Lotus/Types/Recipes/Weapons/WeaponParts/KogakePrimeGauntlet	Kogake Prime Gauntlet
+/Lotus/Types/Recipes/Weapons/WeaponParts/KompressaPrimeBarrel	Kompressa Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/KompressaPrimeReceiver	Kompressa Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/KronenPrimeBlade	Kronen Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/KronenPrimeHandle	Kronen Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/LarkspurPrimeBarrel	Larkspur Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/LarkspurPrimeReceiver	Larkspur Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/LarkspurPrimeStock	Larkspur Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/LatronPrimeBarrel	Latron Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/LatronPrimeReceiver	Latron Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/LatronPrimeStock	Latron Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/LexPrimeBarrel	Lex Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/LexPrimeReceiver	Lex Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/MagnusPrimeBarrel	Magnus Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/MagnusPrimeReceiver	Magnus Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/MasseterPrimeBlade	Masseter Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/MasseterPrimeHandle	Masseter Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/NagantakaPrimeBarrel	Nagantaka Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/NagantakaPrimeReceiver	Nagantaka Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/NagantakaPrimeStock	Nagantaka Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/NautilusPrimeCarapace	Nautilus Prime Carapace
+/Lotus/Types/Recipes/Weapons/WeaponParts/NautilusPrimeCerebrum	Nautilus Prime Cerebrum
+/Lotus/Types/Recipes/Weapons/WeaponParts/NautilusPrimeSystems	Nautilus Prime Systems
+/Lotus/Types/Recipes/Weapons/WeaponParts/NinkondiPrimeChain	Ninkondi Prime Chain
+/Lotus/Types/Recipes/Weapons/WeaponParts/NinkondiPrimeHandle	Ninkondi Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/OkinaPrimeBlade	Okina Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/OkinaPrimeHandle	Okina Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/PanderoPrimeBarrel	Pandero Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/PanderoPrimeReceiver	Pandero Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/PangolinPrimeBlade	Pangolin Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/PangolinPrimeHandle	Pangolin Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/PantheraPrimeBarrel	Panthera Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/PantheraPrimeReceiver	Panthera Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/PantheraPrimeStock	Panthera Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/PerigalePrimeBarrel	Perigale Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/PerigalePrimeReceiver	Perigale Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/PerigalePrimeStock	Perigale Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/PhantasmaPrimeBarrel	Phantasma Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/PhantasmaPrimeReceiver	Phantasma Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/PhantasmaPrimeStock	Phantasma Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/Prime1HShotgunBarrel	Euphona Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/Prime1HShotgunReceiver	Euphona Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeBallisticaLowerLimb	Ballistica Prime Lower Limb
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeBallisticaReceiver	Ballistica Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeBallisticaString	Ballistica Prime String
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeBallisticaUpperLimb	Ballistica Prime Upper Limb
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeBoHandle	Bo Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeBoOrnament	Bo Prime Ornament
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeBowGrip	Paris Prime Grip
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeBowLowerLimb	Paris Prime Lower Limb
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeBowString	Paris Prime String
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeBowUpperLimb	Paris Prime Upper Limb
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeCarrierCarapace	Carrier Prime Carapace
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeCarrierCerebrum	Carrier Prime Cerebrum
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeCarrierSystems	Carrier Prime Systems
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeCernosGrip	Cernos Prime Grip
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeCernosLowerLimb	Cernos Prime Lower Limb
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeCernosString	Cernos Prime String
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeCernosUpperLimb	Cernos Prime Upper Limb
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeCronusLongSwordBlade	Dakra Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeCronusLongSwordHandle	Dakra Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeDaikyuGrip	Daikyu Prime Grip
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeDaikyuLowerLimb	Daikyu Prime Lower Limb
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeDaikyuString	Daikyu Prime String
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeDaikyuUpperLimb	Daikyu Prime Upper Limb
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeDethcubeCarapace	Dethcube Prime Carapace
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeDethcubeCerebrum	Dethcube Prime Cerebrum
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeDethcubeSystems	Dethcube Prime Systems
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeDualKamasBlade	Dual Kamas Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeDualKamasHandle	Dual Kamas Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeFangBlade	Fang Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeFangHandle	Fang Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeGalatineBlade	Galatine Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeGalatineHandle	Galatine Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeHeliosCarapace	Helios Prime Carapace
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeHeliosCerebrum	Helios Prime Cerebrum
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeHeliosSystems	Helios Prime Systems
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeHikouHolster	Hikou Prime Pouch
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeHikouStars	Hikou Prime Stars
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeLiDaggerBlade	Spira Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeLiDaggerHolster	Spira Prime Pouch
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeLightningGunBarrel	Vadarya Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeLightningGunReceiver	Vadarya Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeLightningGunStock	Vadarya Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeNamiSkylaBlade	Nami Skyla Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeNamiSkylaHandle	Nami Skyla Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeNikanaBlade	Nikana Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeNikanaHandle	Nikana Prime Hilt
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimePolearmBlade	Orthos Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimePolearmHandle	Orthos Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeScindoBlade	Scindo Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeScindoHandle	Scindo Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeScytheBlade	Reaper Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeScytheHandle	Reaper Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeTigrisBarrel	Tigris Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeTigrisReceiver	Tigris Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeTigrisStock	Tigris Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeVenkaClawsBlade	Venka Prime Blades
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeVenkaClawsGauntlet	Venka Prime Gauntlet
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeWyrmCarapace	Wyrm Prime Carapace
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeWyrmCerebrum	Wyrm Prime Cerebrum
+/Lotus/Types/Recipes/Weapons/WeaponParts/PrimeWyrmSystems	Wyrm Prime Systems
+/Lotus/Types/Recipes/Weapons/WeaponParts/PyranaPrimeBarrel	Pyrana Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/PyranaPrimeReceiver	Pyrana Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/QuassusPrimeBlade	Quassus Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/QuassusPrimeHandle	Quassus Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/RedeemerPrimeBlade	Redeemer Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/RedeemerPrimeHandle	Redeemer Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/RubicoPrimeBarrel	Rubico Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/RubicoPrimeReceiver	Rubico Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/RubicoPrimeStock	Rubico Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/SarofangPrimeBlade	Sarofang Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/SarofangPrimeHandle	Sarofang Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/ScourgePrimeBarrel	Scourge Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/ScourgePrimeBlade	Scourge Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/ScourgePrimeHandle	Scourge Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/ShadePrimeCarapace	Shade Prime Carapace
+/Lotus/Types/Recipes/Weapons/WeaponParts/ShadePrimeCerebrum	Shade Prime Cerebrum
+/Lotus/Types/Recipes/Weapons/WeaponParts/ShadePrimeSystems	Shade Prime Systems
+/Lotus/Types/Recipes/Weapons/WeaponParts/SicarusPrimeBarrel	Sicarus Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/SicarusPrimeReceiver	Sicarus Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/SilvaAegisPrimeBlade	Silva & Aegis Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/SilvaAegisPrimeGuard	Silva & Aegis Prime Guard
+/Lotus/Types/Recipes/Weapons/WeaponParts/SilvaAegisPrimeHandle	Silva & Aegis Prime Hilt
+/Lotus/Types/Recipes/Weapons/WeaponParts/SomaPrimeBarrel	Soma Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/SomaPrimeReceiver	Soma Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/SomaPrimeStock	Soma Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/SteflosPrimeBarrel	Steflos Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/SteflosPrimeReceiver	Steflos Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/SteflosPrimeStock	Steflos Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/StradavarPrimeBarrel	Stradavar Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/StradavarPrimeReceiver	Stradavar Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/StradavarPrimeStock	Stradavar Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/StrunPrimeBarrel	Strun Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/StrunPrimeReceiver	Strun Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/StrunPrimeStock	Strun Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/SybarisPrimeBarrel	Sybaris Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/SybarisPrimeReceiver	Sybaris Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/SybarisPrimeStock	Sybaris Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/TatsuPrimeBlade	Tatsu Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/TatsuPrimeHandle	Tatsu Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/TekkoPrimeBlade	Tekko Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/TekkoPrimeGauntlet	Tekko Prime Gauntlet
+/Lotus/Types/Recipes/Weapons/WeaponParts/TenoraPrimeBarrel	Tenora Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/TenoraPrimeReceiver	Tenora Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/TenoraPrimeStock	Tenora Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/TiberonPrimeBarrel	Tiberon Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/TiberonPrimeReceiver	Tiberon Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/TiberonPrimeStock	Tiberon Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/TipedoPrimeHandle	Tipedo Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/TipedoPrimeOrnament	Tipedo Prime Ornament
+/Lotus/Types/Recipes/Weapons/WeaponParts/TrumnaPrimeBarrel	Trumna Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/TrumnaPrimeReceiver	Trumna Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/TrumnaPrimeStock	Trumna Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/VastoPrimeBarrel	Vasto Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/VastoPrimeReceiver	Vasto Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/VectisPrimeBarrel	Vectis Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/VectisPrimeReceiver	Vectis Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/VectisPrimeStock	Vectis Prime Stock
+/Lotus/Types/Recipes/Weapons/WeaponParts/VeloxPrimeBarrel	Velox Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/VeloxPrimeReceiver	Velox Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/VentoPrimeBlade	Venato Prime Blade
+/Lotus/Types/Recipes/Weapons/WeaponParts/VentoPrimeHandle	Venato Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/VolnusPrimeHandle	Volnus Prime Handle
+/Lotus/Types/Recipes/Weapons/WeaponParts/VolnusPrimeHead	Volnus Prime Head
+/Lotus/Types/Recipes/Weapons/WeaponParts/ZaktiPrimeBarrel	Zakti Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/ZaktiPrimeReceiver	Zakti Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/ZhugePrimeBarrel	Zhuge Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/ZhugePrimeReceiver	Zhuge Prime Receiver
+/Lotus/Types/Recipes/Weapons/WeaponParts/ZhugePrimeStock	Zhuge Prime Grip
+/Lotus/Types/Recipes/Weapons/WeaponParts/ZhugePrimeString	Zhuge Prime String
+/Lotus/Types/Recipes/Weapons/WeaponParts/ZylokPrimeBarrel	Zylok Prime Barrel
+/Lotus/Types/Recipes/Weapons/WeaponParts/ZylokPrimeReceiver	Zylok Prime Receiver
+/Lotus/Types/Recipes/Weapons/ZaktiPrimeBlueprint	Zakti Prime Blueprint
+/Lotus/Types/Recipes/Weapons/ZhugePrimeBlueprint	Zhuge Prime Blueprint
+/Lotus/Types/Recipes/Weapons/ZylokPrimeBlueprint	Zylok Prime Blueprint
+/Lotus/Upgrades/Mods/Immortal/ImmortalEightMod	Khra
+/Lotus/Upgrades/Mods/Immortal/ImmortalFiveMod	Ris
+/Lotus/Upgrades/Mods/Immortal/ImmortalFourMod	Vome
+/Lotus/Upgrades/Mods/Immortal/ImmortalOneMod	Lohk
+/Lotus/Upgrades/Mods/Immortal/ImmortalSevenMod	Netra
+/Lotus/Upgrades/Mods/Immortal/ImmortalSixMod	Fass
+/Lotus/Upgrades/Mods/Immortal/ImmortalThreeMod	Jahu
+/Lotus/Upgrades/Mods/Immortal/ImmortalTwoMod	Xata

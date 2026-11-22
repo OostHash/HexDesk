@@ -117,7 +117,7 @@ export function useItemOrders(slug: string, rank: number | null, enabled = true)
 
 type CreateOrderArgs = CommandArgs<"wfm_create_order">;
 
-/** A 401 refreshes the token once and retries, like the current app. */
+/** A 401 refreshes the token once and retries. */
 async function createOrder(args: CreateOrderArgs) {
   try {
     return await invoke("wfm_create_order", args);

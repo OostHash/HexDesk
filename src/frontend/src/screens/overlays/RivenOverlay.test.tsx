@@ -34,7 +34,7 @@ const mount = (client: QueryClient) =>
     </QueryClientProvider>,
   );
 
-/** Sends a view once the window listens (it says so with riven-window-ready). */
+/** Sends a view once the window listens. */
 async function show(view: RivenView) {
   await vi.waitFor(async () => {
     await emit("riven-view", view);
@@ -60,15 +60,28 @@ const comparison: RivenView = {
   ],
 };
 
-it("asks the main window for the current view once it listens", async () => {
-  const { client } = setup();
-  const ready = vi.fn();
-  await listen("riven-window-ready", ready);
+it("confirms a live view it drew, with its number", async () => {
+  const { client, calls } = setup();
   await mount(client);
-  await vi.waitFor(() => {
-    expect(ready).toHaveBeenCalled();
+  await vi.waitFor(async () => {
+    await emit("riven-view", { kind: "scanning", rollCount: 1, view: 7 });
+    expect(calls.some((c) => c.cmd === "overlay_rendered")).toBe(true);
   });
   await expect.element(page.getByText("Scanning stats…")).toBeVisible();
+  expect(calls.find((c) => c.cmd === "overlay_rendered")?.args).toEqual({ overlay: "riven", view: 7, summary: "scanning, roll 1" });
+});
+
+it("shows the Settings preview only while no live check is shown", async () => {
+  const { client } = setup();
+  await mount(client);
+  await show({ ...comparison, view: 3 });
+  await emit("riven-preview", {});
+  await expect.element(page.getByRole("button", { name: "Refresh" })).toBeVisible();
+  await emit("riven-view", null);
+  await vi.waitFor(async () => {
+    await emit("riven-preview", {});
+    expect(page.getByRole("heading", { name: "Tenora Prime" }).query()).not.toBeNull();
+  });
 });
 
 it("shows verdict, score, negatives and the rolled stats", async () => {
@@ -129,22 +142,16 @@ it("saves the roll and tells the other windows", async () => {
   });
 });
 
-it("asks for a new check and for closing", async () => {
-  const { client } = setup();
-  const check = vi.fn();
-  const hide = vi.fn<(payload: { reason?: string }) => void>();
-  await listen("riven-manual-check", check);
-  await listen<{ reason?: string }>("riven-overlay-hide", (e) => {
-    hide(e.payload);
-  });
+it("asks the backend for a new check and to close a live check", async () => {
+  const { client, calls } = setup();
   await mount(client);
-  await show(PREVIEW_VIEW);
+  await show({ ...comparison, isComparison: false, view: 4 });
   await page.getByRole("button", { name: "New roll" }).click();
   await vi.waitFor(() => {
-    expect(check).toHaveBeenCalled();
+    expect(calls.some((c) => c.cmd === "check_riven")).toBe(true);
   });
   await page.getByRole("button", { name: "Close riven check" }).click();
   await vi.waitFor(() => {
-    expect(hide).toHaveBeenCalledWith({ reason: "x-button" });
+    expect(calls.some((c) => c.cmd === "overlay_closed")).toBe(true);
   });
 });

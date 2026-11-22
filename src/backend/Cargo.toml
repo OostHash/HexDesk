@@ -1,6 +1,6 @@
 [package]
 name = "hexdesk-backend"
-version = "1.0.1"
+version.workspace = true
 description = "HexDesk desktop backend"
 authors = ["HexDesk contributors"]
 edition = "2021"
@@ -32,23 +32,18 @@ memchr = "2"
 ureq = { version = "2", features = ["json"] }
 tungstenite = { version = "0.26", features = ["native-tls"] }
 native-tls = "0.2"
-whirlpool = "0.10"
 lzma-rs = "0.3"
+hexdesk-capture = { path = "crates/capture" }
+hexdesk-diag = { path = "crates/diag" }
+hexdesk-logging = { path = "crates/logging" }
+hexdesk-overlays = { path = "crates/overlays" }
+hexdesk-persist = { path = "crates/persist" }
+hexdesk-player = { path = "crates/player" }
 tracing = "0.1"
-tracing-appender = "0.2"
-tracing-log = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-snap-layout = "1"
-# ── BEGIN ocrs fallback ─────────────────────────────────────────────────────
-# Pure-Rust neural-net OCR; used when Windows.Media.Ocr has no language packs.
-# To remove: delete ocr_fallback.rs, remove `mod ocr_fallback` from lib.rs,
-# remove the fallback block in ocr.rs (search "BEGIN ocrs fallback"), and
-# delete the four lines below.
-ocrs = "0.7"
-rten = "0.9"
-# ── END ocrs fallback ───────────────────────────────────────────────────────
 
 [package.metadata.cargo-machete]
 # native-tls isn't imported directly — it's the backend enabled by
@@ -70,15 +65,4 @@ windows-sys = { version = "0.52", features = [
     "Win32_Security_Credentials",
     "Win32_Storage_FileSystem",
     "Win32_Globalization",
-] }
-windows = { version = "0.58", features = [
-    "Media_Ocr",
-    "Graphics_Imaging",
-    "Storage_Streams",
-    "Foundation_Collections",
-    "Globalization",
-    "Win32_Graphics_Dxgi",
-    "Win32_Graphics_Dxgi_Common",
-    "Win32_Graphics_Direct3D",
-    "Win32_Graphics_Direct3D11",
 ] }

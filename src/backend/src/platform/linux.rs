@@ -3,7 +3,7 @@
 use super::*;
 
 pub fn find_warframe_pid() -> Option<u32> {
-    // TODO: implement via /proc or process enumeration
+    // Not implemented yet (Linux support, #19); /proc process enumeration would do it.
     None
 }
 

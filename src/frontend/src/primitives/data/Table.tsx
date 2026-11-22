@@ -49,7 +49,7 @@ const ESTIMATED_ROW_HEIGHT = 32;
 
 /**
  * Semantic <table> with sticky header, sortable columns (aria-sort) and row
- * virtualisation for long lists (plan 7.9). Row height and text follow
+ * virtualisation for long lists. Row height and text follow
  * density (h-control-*, text-list, cell padding).
  */
 export function Table<T>({

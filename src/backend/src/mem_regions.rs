@@ -81,8 +81,8 @@ pub trait RegionSource {
 /// Caller-supplied predicate for skipping uninteresting memory regions.
 pub type RegionFilter = Box<dyn Fn(&MemoryRegionInfo) -> bool + Send>;
 
-/// Open a region source for the given process. Returns `None` on unsupported
-/// platforms or when the process cannot be opened.
+/// Open a region source for the given process. Fails with the OS error on
+/// unsupported platforms or when the process cannot be opened.
 pub fn open_region_source(
     pid: u32,
     min_region: usize,
@@ -90,9 +90,9 @@ pub fn open_region_source(
     chunk: usize,
     deadline: Option<std::time::Instant>,
     filter: Option<RegionFilter>,
-) -> Option<Box<dyn RegionSource>> {
-    let handle = Platform::open_process(pid).ok()?;
-    Some(Box::new(ProcessRegions::new(
+) -> Result<Box<dyn RegionSource>, String> {
+    let handle = Platform::open_process(pid)?;
+    Ok(Box::new(ProcessRegions::new(
         handle, min_region, read_cap, chunk, deadline, filter,
     )))
 }

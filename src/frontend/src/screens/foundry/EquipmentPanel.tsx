@@ -37,7 +37,7 @@ import { CraftCard, FoundryWikiMenu, RecipeButton, StatusBadges, TrackButton, ty
 import { useCraftInfo } from "./useCraftInfo";
 
 const VIEW_KEY = "ff-view-foundry";
-/** The current app has five views; icons/text-cards map to Cards, list-compact to List. */
+/** Stored view names from older settings: icons/text-cards are Cards, list-compact is List. */
 const readView = (): View => {
   const v = localStorage.getItem(VIEW_KEY);
   return v === "list" || v === "list-compact" ? "list" : "cards";
@@ -62,7 +62,7 @@ const CHIP_GROUPS: ReadonlyArray<{ label: string; chips: readonly ChipDef[] }> =
     label: "Ownership",
     chips: [
       { key: "filterOwned", label: "Owned" },
-      // Treats Forma and Kuva as always owned when filtering, like the current app.
+      // Treats Forma and Kuva as always owned when filtering.
       { key: "ignoreFormaKuva", label: "Count Forma/Kuva as owned" },
     ],
   },
@@ -112,7 +112,7 @@ export function EquipmentPanel({ filters, onFiltersChange, onOpen }: Props) {
   const items = craftable.data ?? EMPTY_ITEMS;
   const progress = useMemo(() => categoryProgress(items, own), [items, own]);
   const catProgress = progress[filters.activeCat] ?? { done: 0, total: 0 };
-  // Chosen in the toolbar; the old Settings value counts until then.
+  // Chosen in the toolbar; an older stored setting counts until then.
   const [pageSize, setPageSize] = usePageSize("foundry", settings?.foundryPageSize);
   const [cardScale, setCardScale] = useCardScale("foundry");
   const [showImages, setShowImages] = useShowImages("foundry");

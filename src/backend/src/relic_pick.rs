@@ -1,130 +1,8 @@
 use std::collections::HashMap;
-use tauri::{Emitter, Manager, State};
-use tracing::{debug, info};
+use tauri::Manager;
+use tracing::info;
 
 use crate::app_state::AppState;
-use crate::events;
-
-// ── Relic pick overlay ────────────────────────────────────────────────────────
-
-/// One overlay's saved x/y offset (logical pixels) from settings.json.
-/// Missing settings or missing axes mean 0, which keeps the built-in placement.
-fn saved_offset(app: &tauri::AppHandle, prefix: &str) -> (f64, f64) {
-    use tauri::Manager;
-    let Some(state) = app.try_state::<AppState>() else {
-        return (0.0, 0.0);
-    };
-    let Ok(map) = crate::settings::read_settings_map(&state.settings_path) else {
-        return (0.0, 0.0);
-    };
-    let Some(obj) = map.get("overlayOffsets").and_then(|v| v.as_object()) else {
-        return (0.0, 0.0);
-    };
-    let axis = |suffix: &str| -> f64 {
-        obj.get(&format!("{prefix}{suffix}"))
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0)
-    };
-    (axis("X"), axis("Y"))
-}
-
-pub(crate) fn relic_pick_show(app: &tauri::AppHandle) {
-    use tauri::Manager;
-    let Some(win) = app.get_webview_window("relic-pick-overlay") else {
-        return;
-    };
-    // Position: right edge of the primary monitor, 20px from top.
-    let (x, _dpi) = win
-        .primary_monitor()
-        .ok()
-        .flatten()
-        .map(|m| {
-            let dpi = m.scale_factor();
-            let w = m.size().width as f64 / dpi;
-            (w - 440.0, dpi)
-        })
-        .unwrap_or((1920.0 - 440.0, 1.0));
-    // User offset on top of that default (issue #73).
-    let (off_x, off_y) = saved_offset(app, "relicPick");
-    let _ = win.set_position(tauri::Position::Logical(tauri::LogicalPosition {
-        x: x + off_x,
-        y: 20.0 + off_y,
-    }));
-    let _ = win.show();
-}
-
-pub(crate) fn relic_pick_hide(app: &tauri::AppHandle) {
-    use tauri::Manager;
-    let Some(win) = app.get_webview_window("relic-pick-overlay") else {
-        return;
-    };
-    let _ = win.hide();
-}
-
-/// Debug: run OCR on the top-left quarter of the Warframe window and report the detected era.
-#[tauri::command]
-pub(crate) fn debug_detect_fissure_era() -> String {
-    match crate::ocr::detect_fissure_era() {
-        Some(era) => format!("Detected era: {}", era),
-        None => "No era detected — OCR found no known fissure era label in the top-left quarter."
-            .to_string(),
-    }
-}
-
-/// Debug: manually fire the relic pick overlay for a given era.
-#[tauri::command]
-pub(crate) fn test_relic_pick_overlay(era: String, app: tauri::AppHandle) -> String {
-    let payload = build_relic_pick_payload(&era, &app);
-    let relic_count = payload["relics"].as_array().map_or(0, |a| a.len());
-    relic_pick_show(&app);
-    let _ = app.emit(events::RELIC_PICK_OPEN, &payload);
-    format!(
-        "Emitted relic-pick-open: era={}, {} relics in inventory",
-        era, relic_count
-    )
-}
-
-/// Debug/preview: hide the relic pick overlay again (pairs with test_relic_pick_overlay).
-#[tauri::command]
-pub(crate) fn hide_relic_pick_overlay(app: tauri::AppHandle) {
-    relic_pick_hide(&app);
-}
-
-/// Position and show the pick window without emitting a payload — used by the
-/// outline toggle and by live offset changes, which only need the placement.
-#[tauri::command]
-pub(crate) fn show_relic_pick_window(app: tauri::AppHandle) {
-    relic_pick_show(&app);
-}
-
-/// Debug: return the last ~4 KB of EE.log so we can see what strings appear when
-/// opening the relic selection screen. Call this immediately after opening the screen.
-#[tauri::command]
-pub(crate) fn debug_ee_log_tail() -> String {
-    use std::io::{Read, Seek, SeekFrom};
-    let log_path = match dirs::data_local_dir() {
-        Some(d) => d.join("Warframe").join("EE.log"),
-        None => return "Cannot find LocalAppData".to_string(),
-    };
-    let mut f = match std::fs::File::open(&log_path) {
-        Ok(f) => f,
-        Err(e) => return format!("Cannot open EE.log: {}", e),
-    };
-    let len = f.seek(SeekFrom::End(0)).unwrap_or(0);
-    let start = len.saturating_sub(4096);
-    if f.seek(SeekFrom::Start(start)).is_err() {
-        return "Seek failed".to_string();
-    }
-    let mut buf = String::new();
-    let _ = f.read_to_string(&mut buf);
-    // Skip partial first line if we started mid-file
-    let tail = if start > 0 {
-        buf.find('\n').map(|i| &buf[i + 1..]).unwrap_or(&buf)
-    } else {
-        &buf
-    };
-    tail.to_string()
-}
 
 #[derive(serde::Serialize, Clone)]
 struct RelicPickReward {
@@ -143,6 +21,9 @@ struct RelicPickRelic {
     base_name: String,  // "Lith A1"
     refinement: String, // "intact" | "exceptional" | "flawless" | "radiant"
     count: i64,
+    /// Whether the relic list on screen showed it; None when that is not
+    /// known.
+    on_screen: Option<bool>,
     unowned_score: f64,
     ducat_score: f64,
     plat_score: f64,
@@ -167,17 +48,101 @@ fn relic_drop_rate(rarity: &str, refinement: &str) -> f64 {
     }
 }
 
-pub(crate) fn build_relic_pick_payload(era: &str, app: &tauri::AppHandle) -> serde_json::Value {
+/// The names of every relic of an era as the relic list shows them, such as
+/// "Meso V13"; every era for "ALL".
+pub(crate) fn era_relic_names(era: &str, app: &tauri::AppHandle) -> Vec<String> {
+    let prefix = era_prefix(era).unwrap_or("");
+    let items = app
+        .state::<AppState>()
+        .wfcd_items
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .iter()
+        .filter(|i| i.category == "Relics" && i.name.starts_with(prefix))
+        .filter_map(|i| i.name.rsplit_once(' ').map(|(base, _)| base.to_string()))
+        .collect::<std::collections::BTreeSet<_>>();
+    items.into_iter().collect()
+}
+
+/// The relics of an era the inventory says the player has, as the relic
+/// list names them ("Meso V13").
+pub(crate) fn owned_relic_names(era: &str, app: &tauri::AppHandle) -> Vec<String> {
+    let prefix = era_prefix(era).unwrap_or("");
     let state = app.state::<AppState>();
-    // era_prefix matches wfcd_items display names (e.g. "Lith A1 Intact" starts with "Lith ")
-    let era_prefix = match era {
-        "LITH" => "Lith ",
-        "MESO" => "Meso ",
-        "NEO" => "Neo ",
-        "AXI" => "Axi ",
-        "ALL" => "",
-        _ => return serde_json::json!({ "era": era, "relics": [] }),
+    let quantities = state
+        .current_quantities
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
+    let names = state
+        .wfcd_items
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .iter()
+        .filter(|i| i.category == "Relics" && i.name.starts_with(prefix))
+        .filter(|i| quantities.get(&i.unique_name).is_some_and(|&q| q > 0))
+        .filter_map(|i| i.name.rsplit_once(' ').map(|(base, _)| base.to_string()))
+        .collect::<std::collections::BTreeSet<_>>();
+    names.into_iter().collect()
+}
+
+/// The start of the relic names of an era ("Lith A1 Intact" starts with
+/// "Lith "); empty for "ALL", None for an unknown era.
+fn era_prefix(era: &str) -> Option<&'static str> {
+    match era {
+        "LITH" => Some("Lith "),
+        "MESO" => Some("Meso "),
+        "NEO" => Some("Neo "),
+        "AXI" => Some("Axi "),
+        "ALL" => Some(""),
+        _ => None,
+    }
+}
+
+/// How the relic list on screen changed a relic against the inventory, for
+/// the log.
+pub(crate) struct ScreenChange {
+    pub relic: String,
+    pub change: String,
+}
+
+/// Owned tiles that OCR did not identify. The collected counter is more
+/// reliable than the number of tile names OCR found, so it also accounts for
+/// tiles that OCR missed entirely.
+fn unread_owned_tiles(list: &hexdesk_overlays::read::relic_list::RelicList) -> usize {
+    let named_owned = list
+        .tiles
+        .iter()
+        .filter(|tile| tile.owned == Some(true) && tile.relic.is_some())
+        .count();
+    list.collected.map_or_else(
+        || {
+            list.tiles
+                .iter()
+                .filter(|tile| tile.owned == Some(true) && tile.relic.is_none())
+                .count()
+        },
+        |(owned, _)| (owned as usize).saturating_sub(named_owned),
+    )
+}
+
+/// The Relic Pick payload: every relic of the era the player has, scored.
+/// What the relic list on screen shows wins over the inventory, which the
+/// game does not update during a mission: a faded tile leaves its relic out
+/// and a count badge sets the count. On a list that is complete on screen, a
+/// relic that is not shown is left out too, or, while some tiles could not
+/// be named, kept and marked as not on screen. A tile never adds a relic the
+/// inventory does not list: OCR misreads one relic as another.
+pub(crate) fn build_relic_pick_payload(
+    era: &str,
+    app: &tauri::AppHandle,
+    screen: Option<&hexdesk_overlays::read::relic_list::RelicList>,
+) -> (serde_json::Value, Vec<ScreenChange>) {
+    let state = app.state::<AppState>();
+    let Some(era_prefix) = era_prefix(era) else {
+        return (serde_json::json!({ "era": era, "relics": [] }), Vec::new());
     };
+    let mut changes = Vec::new();
 
     let quantities = state
         .current_quantities
@@ -219,45 +184,12 @@ pub(crate) fn build_relic_pick_payload(era: &str, app: &tauri::AppHandle) -> ser
         .filter_map(|item| item.vaulted.map(|v| (item.name.to_lowercase(), v)))
         .collect();
 
-    // quantities is keyed by Lotus paths, not display names.
-    // Build display-name → Lotus path for direct lookup.
-    let name_to_unique: HashMap<String, String> = wfcd_items
-        .iter()
-        .map(|item| (item.name.to_lowercase(), item.unique_name.clone()))
-        .collect();
-
-    // Build reverse of recipes: component display name (lower) → parent display names.
-    // Used to detect "owned" when the part was consumed crafting the parent (e.g. built Daikyu Prime).
-    let recipes_lock = state.recipes.lock().unwrap_or_else(|e| e.into_inner());
-    let mut comp_to_parents: HashMap<String, Vec<String>> = HashMap::new();
-    for (parent_name, components) in recipes_lock.iter() {
-        for comp in components {
-            comp_to_parents
-                .entry(comp.name.to_lowercase())
-                .or_default()
-                .push(parent_name.clone());
-        }
-    }
-    drop(recipes_lock);
-
-    // Returns true if the item itself OR any parent item (built result) is in inventory.
+    // A reward counts as owned when the player has it or an item built with
+    // it; the rules live in src/backend/crates/player.
+    let catalogue = crate::player::catalogue(app);
+    let inventory = crate::player::inventory(app);
     let is_owned = |item_name: &str| -> bool {
-        let key = item_name.to_lowercase();
-        let direct = name_to_unique
-            .get(&key)
-            .and_then(|uname| quantities.get(uname))
-            .is_some_and(|&q| q > 0);
-        if direct {
-            return true;
-        }
-        comp_to_parents.get(&key).is_some_and(|parents| {
-            parents.iter().any(|p| {
-                name_to_unique
-                    .get(&p.to_lowercase())
-                    .and_then(|uname| quantities.get(uname))
-                    .is_some_and(|&q| q > 0)
-            })
-        })
+        hexdesk_player::sets::has_item_or_build(&catalogue, &inventory, item_name)
     };
 
     // Refinement suffixes as they appear in display names (capitalised).
@@ -270,21 +202,92 @@ pub(crate) fn build_relic_pick_payload(era: &str, app: &tauri::AppHandle) -> ser
 
     // Iterate wfcd_items for the relic catalog.
     // unique_name ("/Lotus/Upgrades/Relics/...") matches current_quantities keys from the blob.
+    // Relics the inventory has at any refinement, as "Lith A1".
+    let owned_bases: std::collections::HashSet<String> = wfcd_items
+        .iter()
+        .filter(|item| item.category == "Relics")
+        .filter(|item| quantities.get(&item.unique_name).is_some_and(|&q| q > 0))
+        .filter_map(|item| item.name.rsplit_once(' ').map(|(base, _)| base.to_string()))
+        .collect();
+
     let mut relics: Vec<RelicPickRelic> = wfcd_items
         .iter()
         .filter(|item| item.category == "Relics")
         .filter(|item| era_prefix.is_empty() || item.name.starts_with(era_prefix))
         .filter_map(|item| {
-            let count = *quantities.get(&item.unique_name).unwrap_or(&0);
-            if count <= 0 {
-                return None;
-            }
-
+            let in_inventory = *quantities.get(&item.unique_name).unwrap_or(&0);
             let (suffix_cap, refinement) = REFINEMENTS
                 .iter()
                 .find(|(cap, _)| item.name.ends_with(cap))?;
             let refinement = refinement.to_string();
             let base_name = item.name[..item.name.len() - suffix_cap.len() - 1].to_string();
+
+            // When two tiles name this relic, OCR misread one of them; the
+            // one the player has wins, so a misread can never remove a relic.
+            let tile = screen.and_then(|list| {
+                let mut named = list.tiles.iter().filter(|t| {
+                    t.relic.as_deref() == Some(base_name.as_str())
+                        && t.refinement.eq_ignore_ascii_case(&refinement)
+                });
+                let first = named.clone().next();
+                named.find(|t| t.owned == Some(true)).or(first)
+            });
+            let complete = screen.is_some_and(|list| list.complete);
+            let unread = screen.map_or(0, unread_owned_tiles);
+            let mut on_screen = None;
+            let (count, change) = match tile.and_then(|t| t.owned.map(|owned| (owned, t.count))) {
+                Some((false, _)) => (
+                    0,
+                    (in_inventory > 0)
+                        .then(|| format!("not owned on screen, inventory {in_inventory}")),
+                ),
+                // Refining moves a relic from one refinement to another, so a
+                // relic the inventory has at another refinement is added.
+                Some((true, badge)) if in_inventory <= 0 && owned_bases.contains(&base_name) => {
+                    on_screen = Some(true);
+                    let count = badge.map_or(1, i64::from);
+                    (
+                        count,
+                        Some(format!(
+                            "owned on screen; the inventory has it at another refinement: added, count {count}"
+                        )),
+                    )
+                }
+                Some((true, _)) if in_inventory <= 0 => (
+                    0,
+                    Some("owned on screen, not in inventory: not added".to_string()),
+                ),
+                Some((true, badge)) => {
+                    on_screen = Some(true);
+                    let count = badge.map_or(in_inventory, i64::from);
+                    let change = (count != in_inventory)
+                        .then(|| format!("count {count} on screen, inventory {in_inventory}"));
+                    (count, change)
+                }
+                None if complete && in_inventory > 0 && unread == 0 => (
+                    0,
+                    Some(format!("not on the complete list on screen, inventory {in_inventory}")),
+                ),
+                None if complete && in_inventory > 0 => {
+                    on_screen = Some(false);
+                    (
+                        in_inventory,
+                        Some(format!(
+                            "not confirmed on the complete list ({unread} owned tiles unread), inventory {in_inventory}: kept, marked not on screen"
+                        )),
+                    )
+                }
+                None => (in_inventory, None),
+            };
+            if let Some(change) = change {
+                changes.push(ScreenChange {
+                    relic: item.name.clone(),
+                    change,
+                });
+            }
+            if count <= 0 {
+                return None;
+            }
 
             // Rewards keyed by display name in relic_rewards (after wfcd.rs fix).
             let reward_list: Vec<RelicPickReward> = relic_rewards
@@ -332,6 +335,7 @@ pub(crate) fn build_relic_pick_payload(era: &str, app: &tauri::AppHandle) -> ser
                 base_name,
                 refinement,
                 count,
+                on_screen,
                 unowned_score,
                 ducat_score,
                 plat_score,
@@ -350,76 +354,40 @@ pub(crate) fn build_relic_pick_payload(era: &str, app: &tauri::AppHandle) -> ser
         relics.len(),
         era
     );
-    serde_json::json!({ "era": era, "relics": relics })
+    (serde_json::json!({ "era": era, "relics": relics }), changes)
 }
 
-/// Reposition the pre-declared relic-overlay window and bring it on screen.
-/// The overlay is pre-declared in tauri.conf.json at y=-3000 (off-screen) so
-/// WebView2 initialises at app startup. We never create/destroy it — just move it.
-#[tauri::command]
-pub(crate) fn show_overlay_window(
-    app: tauri::AppHandle,
-    x: i32,
-    y: i32,
-    w: u32,
-    h: u32,
-) -> Result<(), String> {
-    use tauri::Manager;
-    let win = app
-        .get_webview_window("relic-overlay")
-        .ok_or_else(|| "relic-overlay window not found".to_string())?;
-    let _ = win.set_size(tauri::Size::Physical(tauri::PhysicalSize {
-        width: w,
-        height: h,
-    }));
-    // Caller passes physical pixels, offsets are stored as logical — scale them
-    // with the window's own monitor so the shift reads the same at any DPI.
-    let (off_x, off_y) = saved_offset(&app, "relic");
-    let scale = win.scale_factor().unwrap_or(1.0);
-    let _ = win.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-        x: x + (off_x * scale).round() as i32,
-        y: y + (off_y * scale).round() as i32,
-    }));
-    let _ = win.show();
-    let _ = win.set_always_on_top(true);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hexdesk_overlays::read::relic_list::{RelicList, RelicTile};
 
-    // On Windows 10, WebView2 defers loading the page when the window starts
-    // off-screen. If it's still on about:blank, navigate to the overlay URL now.
-    if let Ok(url) = win.url() {
-        if url.as_str() == "about:blank" || url.as_str().starts_with("about:") {
-            debug!(%url, "WebView2 deferred load detected, navigating to overlay URL");
-            let overlay_url = if cfg!(debug_assertions) {
-                "http://localhost:1420/index.html?overlay"
-            } else {
-                "tauri://localhost/index.html?overlay"
-            };
-            if let Ok(nav_url) = tauri::Url::parse(overlay_url) {
-                let _ = win.navigate(nav_url);
-            }
+    fn tile(relic: Option<&str>) -> RelicTile {
+        RelicTile {
+            relic: relic.map(str::to_string),
+            text: relic.unwrap_or("unread").to_string(),
+            refinement: "Intact",
+            owned: Some(true),
+            count: None,
         }
     }
 
-    Ok(())
-}
+    #[test]
+    fn collected_counter_includes_tiles_ocr_missed_entirely() {
+        let list = RelicList {
+            tiles: vec![
+                tile(Some("Neo V12")),
+                tile(Some("Neo T11")),
+                tile(Some("Neo A16")),
+                tile(Some("Neo K10")),
+                tile(Some("Neo V13")),
+                tile(Some("Neo Y2")),
+                tile(None),
+            ],
+            collected: Some((8, 8)),
+            complete: true,
+        };
 
-/// Move the relic-overlay window back off-screen (visual "close" without destroying it).
-/// Destroying and recreating transparent WebView2 windows deadlocks on Windows.
-#[tauri::command]
-pub(crate) fn move_overlay_offscreen(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri::Manager;
-    if let Some(win) = app.get_webview_window("relic-overlay") {
-        let _ = win.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-            x: 0,
-            y: -3000,
-        }));
+        assert_eq!(unread_owned_tiles(&list), 2);
     }
-    Ok(())
-}
-
-/// Pull and clear the last locked relic reward payload { items, positions }.
-/// Overlay.tsx calls this on mount so it never misses rewards that arrived before
-/// its relic-rewards listener was registered (the tauri://created → React mount gap).
-#[tauri::command]
-pub(crate) fn get_pending_relic_rewards(state: State<'_, AppState>) -> Option<serde_json::Value> {
-    state.pending_relic_rewards.lock().ok()?.take()
 }

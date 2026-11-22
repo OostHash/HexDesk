@@ -70,7 +70,7 @@ const EMPTY_CRAFTING: InventoryUpdateCrafting = [];
 const EMPTY_SHARDS: ShardMap = {};
 const EMPTY_FORMA: Readonly<Record<string, number>> = {};
 
-/** Full pass replaces, otherwise only non-empty updates merge (current app). */
+/** A full pass replaces; any other update merges only what is not empty. */
 function replaceOrMerge<T>(queryClient: QueryClient, key: readonly unknown[], incoming: Record<string, T> | undefined, full: boolean) {
   if (!incoming) return;
   if (full) queryClient.setQueryData(key, incoming);
@@ -128,7 +128,7 @@ export function useOwnership(): { ownership: Ownership; isPending: boolean; isEr
 }
 
 /**
- * Writes an inventory-update event into the cache, like the current app:
+ * Writes an inventory-update event into the cache:
  * quantities are replaced, mastery is merged, consumed suits only replace
  * the cache when the scanner reported any.
  */

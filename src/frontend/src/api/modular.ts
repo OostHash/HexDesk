@@ -35,7 +35,7 @@ export function modularPrefsFrom(settings: SettingsFile | undefined): ModularPre
   };
 }
 
-/** Modular window settings plus a setter per list (shared settings file, same keys as the current app). */
+/** Modular window settings plus a setter per list (shared settings file). */
 export function useModularPrefs() {
   const { data, isSuccess } = useSettings();
   const { mutate, mutateAsync } = useSaveSettings();

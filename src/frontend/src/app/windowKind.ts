@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "../api/env";
 
-export type WindowKind = "main" | "overlay" | "modular" | "changelog" | "riven-overlay" | "relic-pick-overlay";
+export type WindowKind = "main" | "overlay" | "modular" | "changelog" | "riven-overlay" | "relic-pick-overlay" | "overlay-status";
 
 const BY_MARKER: ReadonlyArray<readonly [string, WindowKind]> = [
   ["overlay", "overlay"],
@@ -9,6 +9,7 @@ const BY_MARKER: ReadonlyArray<readonly [string, WindowKind]> = [
   ["changelog", "changelog"],
   ["rivenoverlay", "riven-overlay"],
   ["relicpickoverlay", "relic-pick-overlay"],
+  ["overlaystatus", "overlay-status"],
 ];
 
 const BY_LABEL: Readonly<Record<string, WindowKind>> = {
@@ -17,6 +18,7 @@ const BY_LABEL: Readonly<Record<string, WindowKind>> = {
   "changelog-popout": "changelog",
   "riven-overlay": "riven-overlay",
   "relic-pick-overlay": "relic-pick-overlay",
+  "overlay-status": "overlay-status",
 };
 
 /**

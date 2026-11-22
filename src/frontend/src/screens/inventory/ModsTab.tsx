@@ -23,7 +23,7 @@ const SORT_LABEL: Readonly<Record<ModFilters["sort"], string>> = {
   za: "Name, Z–A",
 };
 
-/** Mods and arcanes with copies per rank and prices. Filters are local, like the current app. */
+/** Mods and arcanes with copies per rank and prices. Filters are local. */
 export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) {
   const catalog = useCatalogList();
   const { ownership: own } = useOwnership();

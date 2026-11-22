@@ -1,12 +1,10 @@
 /**
- * Rivens: analyzer helpers and owned rivens (vault/frontend-ports/rivens.md).
+ * Rivens: analyzer helpers and owned rivens.
  *
- * Stat values follow calamity-inc/warframe-riven-info RivenParser.js, as in
- * the current app:
+ * Stat values follow calamity-inc/warframe-riven-info RivenParser.js:
  *   buff  = cap * (1.5 * omega * 10) * 1.25^curses * lerp(0.9, 1.1, raw) * buffAtten[buffs] * (rank + 1)
  *   curse = -cap * (1.5 * omega * 10) * lerp * curseAtten[buffs] * buffAtten[curses] * (rank + 1)
- * Kitgun caps equal Pistol caps; Zaw caps equal Melee caps. The tables below
- * are copied unchanged from src/market/MarketHelper.tsx.
+ * Kitgun caps equal Pistol caps; Zaw caps equal Melee caps.
  */
 
 // AG=Archgun  ME=Melee/Zaw  PL=Pistol/Kitgun  RI=Rifle  SG=Shotgun
@@ -488,7 +486,7 @@ export const veiledSlug = (category: string): string | null => VEILED_SLUG[categ
 
 export type AuctionForm = { type: "auction" | "direct"; start: string; buyout: string; direct: string; minRep: string };
 
-/** Validates the sell form like the current app; returns prices or an error message. */
+/** Validates the sell form; returns prices or an error message. */
 export function auctionPrices(f: AuctionForm): { start: number; buyout: number | null; minRep: number } | { error: string } {
   if (f.type === "direct") {
     const p = Number.parseInt(f.direct, 10);

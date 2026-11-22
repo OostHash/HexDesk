@@ -3,8 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 /**
  * Every screen in every token set except dark (the screen specs cover dark):
- * axe with colour contrast, plus a screenshot (plan fase 7, vault
- * theming-7c.md). Preferences go in before the first paint, as in the app.
+ * axe with colour contrast, plus a screenshot. Preferences go in before the
+ * first paint, as in the app.
  */
 
 const SETS = [

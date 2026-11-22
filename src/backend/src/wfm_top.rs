@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use hexdesk_diag::{info, DiagError, Kind, Source};
 use tauri::{Emitter, Manager, State};
-use tracing::{info, warn};
 
 use crate::app_state::AppState;
 use crate::events;
@@ -67,7 +67,13 @@ pub(crate) fn start_wfm_top_scan(app: tauri::AppHandle) {
                 ),
                 Err(e) => {
                     WFM_SCAN_RUNNING.store(false, Ordering::SeqCst);
-                    warn!("WFM top-items scan could not read the catalog: {e}");
+                    let _ = DiagError::new(
+                        Source::Market,
+                        Kind::Unavailable,
+                        "Top-items scan stopped: the item catalogue could not be read",
+                    )
+                    .caused_by_text(e)
+                    .log();
                     return;
                 }
             };
@@ -130,12 +136,23 @@ pub(crate) fn start_wfm_top_scan(app: tauri::AppHandle) {
         let results = match scan_result {
             Ok(results) => results,
             Err(error) => {
-                warn!("WFM top-items scan failed to join: {error}");
+                let _ = DiagError::new(
+                    Source::Market,
+                    Kind::Internal,
+                    "Top-items scan stopped: its worker thread failed",
+                )
+                .caused_by_text(error)
+                .log();
                 return;
             }
         };
         if results.is_empty() {
-            warn!("WFM top-items scan returned no market data");
+            let _ = DiagError::new(
+                Source::Market,
+                Kind::Unavailable,
+                "Top-items scan found no market data",
+            )
+            .log();
             return;
         }
 
@@ -155,7 +172,12 @@ pub(crate) fn start_wfm_top_scan(app: tauri::AppHandle) {
             let _ = std::fs::write(&disk_cache_path, json);
         }
         state.wfm.set_top_items(results.clone());
-        info!(changed, "WFM top-items ranking refreshed");
+        info!(
+            market,
+            changed,
+            items = results.len(),
+            "Top-items ranking refreshed"
+        );
         let _ = app.emit(events::WFM_TOP_UPDATED, results);
     });
 }
@@ -173,7 +195,13 @@ fn image_index(state: &AppState) -> HashMap<String, String> {
     match state.wfcd_items.lock() {
         Ok(items) => index_images(&items),
         Err(e) => {
-            warn!("WFM top-items image lookup could not read the catalog: {e}");
+            let _ = DiagError::new(
+                Source::Market,
+                Kind::Internal,
+                "Top-items images skipped: the item catalogue could not be read",
+            )
+            .caused_by_text(e)
+            .log();
             HashMap::new()
         }
     }

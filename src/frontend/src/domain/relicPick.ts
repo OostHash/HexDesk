@@ -1,4 +1,4 @@
-/** Relic pick overlay rules (vault overlay-relic-pick.md). Pure functions. */
+/** Relic pick overlay rules. Pure functions. */
 
 export type PickReward = { name: string; rarity: string; drop_rate: number; ducats: number; plat: number; vaulted: boolean; owned: boolean };
 export type PickRelic = {
@@ -6,12 +6,15 @@ export type PickRelic = {
   base_name: string;
   refinement: string;
   count: number;
+  /** Whether the relic list on screen showed it; null or missing when unknown. */
+  on_screen?: boolean | null;
   unowned_score: number;
   ducat_score: number;
   plat_score: number;
   rewards: PickReward[];
 };
-export type RelicPick = { era: string; relics: PickRelic[] };
+/** `view` numbers what the backend sent, so the window can confirm drawing it. */
+export type RelicPick = { era: string; relics: PickRelic[]; view?: number };
 
 export const PICK_PRIORITIES = ["unowned", "ducat", "platinum"] as const;
 export type PickPriority = (typeof PICK_PRIORITIES)[number];
@@ -49,9 +52,13 @@ export function scoreLabel(relic: PickRelic, priority: PickPriority): string {
   return `${(s * 100).toFixed(0)}% new`;
 }
 
-/** The three best relics for the priority. */
+/** The three best confirmed relics for the priority. Never recommend a relic
+ * that a complete on-screen list did not confirm. */
 export const topRelics = (pick: RelicPick, priority: PickPriority): PickRelic[] =>
-  [...pick.relics].sort((a, b) => pickScore(b, priority) - pickScore(a, priority)).slice(0, 3);
+  [...pick.relics]
+    .filter((relic) => relic.on_screen !== false)
+    .sort((a, b) => pickScore(b, priority) - pickScore(a, priority))
+    .slice(0, 3);
 
 const RARITY_ORDER: Readonly<Record<string, number>> = { Gold: 0, Silver: 1, Bronze: 2 };
 
@@ -72,7 +79,7 @@ export function recommendedRefinement(rarity: string): "Radiant" | "Exceptional"
 
 export const refinementLabel = (r: string) => r.charAt(0).toUpperCase() + r.slice(1);
 
-/** The current app's example for Settings → Overlays → Show. */
+/** The example for Settings → Overlays → Show. */
 export const PREVIEW_PICK: RelicPick = {
   era: "ALL",
   relics: [
@@ -128,4 +135,11 @@ export const PREVIEW_PICK: RelicPick = {
       ],
     },
   ],
+};
+
+/** One line saying what the overlay shows, for the backend log. */
+export const pickSummary = (pick: RelicPick, priority: PickPriority): string => {
+  const relics = topRelics(pick, priority);
+  const listed = relics.map((r) => `${r.base_name} ${r.refinement} x${String(r.count)}`).join(", ");
+  return `${pick.era}: ${relics.length === 0 ? "no relics" : listed}`;
 };

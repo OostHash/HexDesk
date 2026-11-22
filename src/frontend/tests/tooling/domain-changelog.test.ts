@@ -4,6 +4,7 @@ import {
   changeKey,
   describeChange,
   filterChanges,
+  formatChangeTime,
   formatClockTime,
   latestBatch,
   maxLogHeight,
@@ -61,6 +62,11 @@ it("formats hours and minutes in the clock setting", () => {
   const t = Date.UTC(2026, 10, 12, 15, 4) / 1000;
   expect(formatClockTime(t, "24h", "en-GB")).toMatch(/^\d{2}:04$/);
   expect(formatClockTime(t, "12h", "en-US")).toMatch(/:04 (AM|PM)$/);
+});
+
+it("shows the day and month with the time of a change", () => {
+  const t = Date.UTC(2026, 10, 19, 12, 4) / 1000;
+  expect(formatChangeTime(t, "24h", "en-GB")).toMatch(/^(18|19|20) Nov · \d{2}:04$/);
 });
 
 it("caps the dock at 800 px or 80 % of the window, never below 100", () => {

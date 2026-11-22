@@ -3,7 +3,7 @@ import { Tab as AriaTab, TabList as AriaTabList, TabPanel as AriaTabPanel, Tabs 
 import { cn } from "../cn";
 
 /**
- * Tabs on React Aria (plan 7.7): role="tablist", roving tabindex, arrow
+ * Tabs on React Aria: role="tablist", roving tabindex, arrow
  * keys, Home/End, aria-selected and panel wiring. Compose Tabs > TabList >
  * Tab and TabPanel with matching ids.
  */

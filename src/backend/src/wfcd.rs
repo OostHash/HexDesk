@@ -95,7 +95,7 @@ pub struct FetchResult {
 /// Fetch the complete list of relic reward display names from the Warframe Wiki's
 /// Module:Void Lua table via the MediaWiki API.
 /// Returns a set of lower-cased names like "xaku prime neuroptics blueprint".
-#[tracing::instrument(level = "debug", skip_all)]
+#[tracing::instrument(target = "hexdesk::catalogue", level = "debug", skip_all)]
 fn fetch_wiki_reward_names() -> HashSet<String> {
     let mut names: HashSet<String> = HashSet::new();
 
@@ -258,9 +258,9 @@ fn ducat_value_from_rarities(rarities: &HashSet<&str>) -> Option<u32> {
 // Upstream sources
 // ==============================================================================
 
-/// warframe-items stopped publishing the combined `All.json` once it outgrew
-/// what the repository would carry, so the catalogue is rebuilt from the
-/// per-category files that file used to be a concatenation of.
+/// warframe-items does not publish a combined `All.json` (it outgrew what the
+/// repository would carry), so the catalogue is built from the per-category
+/// files.
 ///
 /// `Enemy`, `Node` and `Quests` are deliberately left out: nothing in them can
 /// be owned, and node entries are discarded downstream in any case.
@@ -389,7 +389,7 @@ impl DiskStore {
     }
 
     fn write_etags(etags: &str) {
-        if let Err(e) = cache::atomic_write(&Self::etags_path(), etags.as_bytes()) {
+        if let Err(e) = hexdesk_persist::atomic_write(&Self::etags_path(), etags.as_bytes()) {
             warn!("cannot store catalogue ETags: {e}");
         }
     }
@@ -406,7 +406,7 @@ impl BodyStore for DiskStore {
 
     fn write(&self, name: &str, body: &str) {
         let path = Self::dir().join(format!("{name}.json"));
-        if let Err(e) = cache::atomic_write(&path, body.as_bytes()) {
+        if let Err(e) = hexdesk_persist::atomic_write(&path, body.as_bytes()) {
             warn!("cannot store {name}: {e}");
         }
     }
@@ -427,7 +427,7 @@ enum Probe {
 }
 
 /// Ask about one source, taking the first mirror that answers with usable JSON.
-#[tracing::instrument(level = "debug", skip_all, fields(source = %spec.name, answer, bytes))]
+#[tracing::instrument(target = "hexdesk::catalogue", level = "debug", skip_all, fields(source = %spec.name, answer, bytes))]
 fn probe_source(spec: &SourceSpec, etag: Option<&str>, force: bool, fetch: &FetchFn<'_>) -> Probe {
     let span = tracing::Span::current();
     let sent = if force { None } else { etag };
@@ -472,7 +472,7 @@ struct Resolved {
 
 /// Turn a probe into a body, reaching for the stored copy where the server did
 /// not supply one.
-#[tracing::instrument(level = "debug", skip_all, fields(source = %spec.name, origin))]
+#[tracing::instrument(target = "hexdesk::catalogue", level = "debug", skip_all, fields(source = %spec.name, origin))]
 fn resolve_source(
     spec: &SourceSpec,
     etag: Option<&str>,
@@ -551,7 +551,7 @@ fn resolve_source(
 ///
 /// The bodies are megabytes each over one connection apiece, so this is waiting
 /// on the network rather than on a CPU.
-#[tracing::instrument(level = "debug", skip_all, fields(sources = specs.len(), force))]
+#[tracing::instrument(target = "hexdesk::catalogue", level = "debug", skip_all, fields(sources = specs.len(), force))]
 fn probe_all(
     specs: &[SourceSpec],
     etags: &BTreeMap<String, String>,
@@ -608,7 +608,7 @@ pub fn fetch_items(prev_etags: Option<&str>, force: bool) -> Result<Fetched<Fetc
     Ok(fetched)
 }
 
-#[tracing::instrument(level = "info", skip_all, fields(force))]
+#[tracing::instrument(target = "hexdesk::catalogue", level = "info", skip_all, fields(force))]
 fn fetch_items_with(
     prev_etags: Option<&str>,
     force: bool,
@@ -892,7 +892,7 @@ struct ExportRecipe {
 }
 
 /// Read DE's recipe export, keyed by resultType (= what gets crafted).
-#[tracing::instrument(level = "debug", skip_all)]
+#[tracing::instrument(target = "hexdesk::catalogue", level = "debug", skip_all)]
 fn parse_export_recipes(json: Option<&serde_json::Value>) -> HashMap<String, ExportRecipe> {
     let mut map: HashMap<String, ExportRecipe> = HashMap::new();
     let json = match json {
@@ -939,7 +939,7 @@ fn parse_export_recipes(json: Option<&serde_json::Value>) -> HashMap<String, Exp
 /// Read the syndicate store catalog from warframe-drop-data/syndicates.json.
 /// This covers all vendor-purchased items: sigils, specters, health restores,
 /// weapon blueprints, augment mods — items that WFCD's `drops` field mostly omits.
-#[tracing::instrument(level = "debug", skip_all)]
+#[tracing::instrument(target = "hexdesk::catalogue", level = "debug", skip_all)]
 fn parse_syndicate_store_catalog(
     json: Option<&serde_json::Value>,
     items: &[WfcdItem],
@@ -1154,6 +1154,20 @@ fn resolve_syn_item(
     (stub_id, normed, category.to_string(), None, None)
 }
 
+/// Names for recipe tree nodes: the final catalogue names, over the names
+/// items had before renaming, which still cover items no longer listed.
+fn recipe_tree_names(
+    mut before: HashMap<String, String>,
+    items: &[WfcdItem],
+) -> HashMap<String, String> {
+    before.extend(
+        items
+            .iter()
+            .map(|i| (i.unique_name.clone(), i.name.clone())),
+    );
+    before
+}
+
 /// Label for a node in a recipe tree: the catalogue's name, else DE's name
 /// tables. A uniqueName no table knows is shown as its own last path segment,
 /// verbatim, so the gap is visible rather than dressed up as a real name.
@@ -1286,7 +1300,7 @@ fn wfcd_category_to_display(wfcd_cat: &str) -> &'static str {
 /// Read relic → reward mappings from WFCD Relics.json.
 /// Each entry is one specific refinement (Bronze/Silver/Gold/Platinum) with a
 /// uniqueName that matches the EE.log path exactly — no normalization needed.
-#[tracing::instrument(level = "debug", skip_all)]
+#[tracing::instrument(target = "hexdesk::catalogue", level = "debug", skip_all)]
 fn parse_relics_rewards(
     json: Option<&serde_json::Value>,
     image_by_name: &HashMap<String, String>,
@@ -1405,7 +1419,7 @@ fn parse_relics_rewards(
     result
 }
 
-#[tracing::instrument(level = "debug", skip_all)]
+#[tracing::instrument(target = "hexdesk::catalogue", level = "debug", skip_all)]
 fn fetch_from_wfcd(
     all_items_raw: &[&serde_json::Value],
     recipes_json: Option<&serde_json::Value>,
@@ -1618,7 +1632,7 @@ fn fetch_from_wfcd(
                         Some(u) => u.trim().to_string(),
                         None => continue,
                     };
-                    // WFCD's components[] no longer carry a `name`. Look the
+                    // WFCD's components[] do not carry a `name`. Look the
                     // component's uniqueName up in DE's name tables; the result is
                     // the full display name ("Ash Prime Chassis"), parent included.
                     let resolved = resolver.resolve(&cunique);
@@ -1977,6 +1991,11 @@ fn fetch_from_wfcd(
         }
     }
 
+    // Recipe trees name their nodes after the items as they are now: Pass 3
+    // renamed warframe components ("Ash Prime Chassis Blueprint" became the
+    // part "Ash Prime Chassis") and added their blueprints.
+    let display_names = recipe_tree_names(display_names, &items);
+
     // Build recipe trees
     let mut recipes: HashMap<String, Vec<RecipeComponent>> = HashMap::new();
     for (parent_unique, item_json) in &raw_craftable {
@@ -2008,7 +2027,7 @@ fn fetch_from_wfcd(
         }
     }
 
-    // WFCD's components[] no longer carry an `imageName`, so every part and blueprint
+    // WFCD's components[] do not carry an `imageName`, so every part and blueprint
     // above inherited its parent's image (all of Yareli Prime's parts wore
     // Yareli Prime's portrait). Give each the icon DE's data lists for its own
     // uniqueName; entries DE has no icon for keep what they have. This runs before
@@ -2048,7 +2067,7 @@ fn fetch_from_wfcd(
     // Build relic_rewards from pre-fetched Relics.json.
     let relic_rewards = parse_relics_rewards(relics_json, &image_by_name);
 
-    // Backfill ducat values that WFCD's components[] no longer carries (the same
+    // Backfill ducat values that WFCD's components[] do not carry (the same
     // upstream schema change that dropped `name`/`imageName` from every component
     // sub-object also dropped `ducats`, but with no parent-item fallback available —
     // see `ducat_value_from_rarities`). This must run before blueprint_names below,
@@ -2092,7 +2111,10 @@ fn fetch_from_wfcd(
                 }
             }
         }
-        info!(backfilled, "backfilled ducat values from relic drop rarity (WFCD components[] no longer carries them)");
+        info!(
+            backfilled,
+            "backfilled ducat values from relic drop rarity (WFCD components[] do not carry them)"
+        );
     }
 
     // Build blueprint_names: blueprint_path → (display_name, ducats)

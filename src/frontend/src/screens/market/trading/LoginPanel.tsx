@@ -7,7 +7,7 @@ import { Checkbox, FormField, Input } from "../../../primitives/forms";
 
 const ACCOUNT_URL = "https://warframe.market/settings/account";
 
-/** warframe.market login (email and password only, like the current app). */
+/** warframe.market login (email and password only). */
 export function LoginPanel() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

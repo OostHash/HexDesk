@@ -6,7 +6,7 @@
 @import "./generated/domain.css";
 
 /*
- * Tailwind's default colour palette is off (plan 6.5): bg-white/6,
+ * Tailwind's default colour palette is off: bg-white/6,
  * text-gray-400 and bg-black/60 simply do not exist here. Spacing, radius,
  * typography and motion stay on Tailwind's standard scales.
  */
@@ -17,7 +17,7 @@
 /*
  * Semantic roles as Tailwind colours. `inline` makes utilities reference
  * var(--ff-*) directly, so data-theme / data-density switch them at runtime.
- * Domain colours are deliberately not exposed here (plan 6.7).
+ * Domain colours are deliberately not exposed here.
  */
 @theme inline {
   --color-bg: var(--ff-bg);
@@ -49,13 +49,54 @@
   --shadow-2: var(--ff-shadow-2);
   --shadow-3: var(--ff-shadow-3);
 
-  /* Density-sensitive exceptions (plan 6.8): h-control-md, px-cell-x, text-list. */
+  /* Density-sensitive exceptions: h-control-md, px-cell-x, text-list. */
   --spacing-control-sm: var(--ff-control-sm);
   --spacing-control-md: var(--ff-control-md);
   --spacing-control-lg: var(--ff-control-lg);
   --spacing-cell-x: var(--ff-cell-x);
   --spacing-cell-y: var(--ff-cell-y);
   --text-list: var(--ff-font-size-list);
+}
+
+/*
+ * Changelog shadow and motion. feed-step lasts one feed step (FEED_STEP_MS in
+ * src/frontend/src/domain/changelog.ts): the row fades in, stays, fades out.
+ * Use with motion-safe: so reduced motion shows the rows without movement.
+ */
+@theme {
+  /* The open changelog lifts above the screen it covers. */
+  --shadow-dock-up: 0 -8px 24px rgb(0 0 0 / 0.18);
+  --animate-feed-step: feed-step 4.5s ease both;
+  --animate-row-arrive: row-arrive 160ms ease-out both;
+  --animate-fade-in: fade-in 180ms ease-out both;
+
+  @keyframes feed-step {
+    from {
+      opacity: 0;
+    }
+    4%,
+    96% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes row-arrive {
+    from {
+      max-height: 0;
+      opacity: 0;
+    }
+    to {
+      max-height: 3rem;
+      opacity: 1;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
 }
 
 @layer base {
@@ -83,7 +124,7 @@
     overflow: hidden;
   }
 
-  /* Scroll lock while a modal <dialog> is open (plan 7.8). */
+  /* Scroll lock while a modal <dialog> is open. */
   html:has(dialog:modal) {
     overflow: hidden;
   }
@@ -91,7 +132,8 @@
   /* Overlay windows stay transparent; only the main window paints --ff-bg. */
   html[data-window="overlay"],
   html[data-window="riven-overlay"],
-  html[data-window="relic-pick-overlay"] {
+  html[data-window="relic-pick-overlay"],
+  html[data-window="overlay-status"] {
     background: transparent;
   }
 
@@ -101,7 +143,7 @@
   }
 
   /*
-   * Windows High Contrast (vault theming-7a.md): Windows picks the colours and
+   * Windows High Contrast: Windows picks the colours and
    * drops backgrounds, so states that only had a background get system colours.
    */
   @media (forced-colors: active) {

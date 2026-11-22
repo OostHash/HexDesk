@@ -6,8 +6,8 @@ type Props = { label: string; children: ReactNode };
 type State = { error: Error | null };
 
 /**
- * Catches a render error in one screen so the rest of the app keeps working
- * (current app: shared/ErrorBoundary). "Try again" mounts the screen anew.
+ * Catches a render error in one screen so the rest of the app keeps working.
+ * "Try again" mounts the screen anew.
  * The shell gives each screen its own key, so switching screens resets it.
  */
 export class ScreenBoundary extends Component<Props, State> {

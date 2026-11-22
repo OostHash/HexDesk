@@ -181,7 +181,6 @@ export const rivenFixtures = {
       return null;
     },
   } satisfies Fixture<null, { id: string; label: string }>,
-  get_riven_session_log: { default: () => "12:00:01 riven-unveiled Soma\n12:00:04 analysis GREAT (0.92)" } satisfies Fixture<string>,
   get_rivens: { default: () => OWNED_RIVENS, empty: () => [] } satisfies Fixture<OwnedRiven[]>,
   get_weapon_dispositions: { default: () => ({ "/Weapons/Soma": 0.65, "/Weapons/Lato": 1.45 }) } satisfies Fixture<Record<string, number>>,
   wfm_create_riven_auction: { alwaysDefault: true, default: () => ({ id: "auction-new" }) } satisfies Fixture<unknown, { params: unknown }>,

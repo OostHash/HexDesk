@@ -130,6 +130,26 @@ describe("Checkbox, Switch, Slider", () => {
     await userEvent.keyboard("{Home}{ArrowRight}");
     await expect.element(slider).toHaveAttribute("aria-valuetext", "90%");
   });
+
+  it("Slider commits each keyboard step through the native change event", async () => {
+    const onCommit = vi.fn();
+    function Controlled() {
+      const [value, setValue] = useState(1);
+      return (
+        <FormField label="Text size">
+          <Slider value={value} onValueChange={setValue} onValueCommit={onCommit} min={0.8} max={2} step={0.1} />
+        </FormField>
+      );
+    }
+    const screen = await render(<Controlled />);
+    const slider = screen.getByRole("slider", { name: "Text size" });
+    await userEvent.click(slider);
+    onCommit.mockClear();
+    await userEvent.keyboard("{Home}{ArrowRight}");
+    await vi.waitFor(() => {
+      expect(onCommit).toHaveBeenLastCalledWith(expect.closeTo(0.9));
+    });
+  });
 });
 
 describe("RadioGroup", () => {

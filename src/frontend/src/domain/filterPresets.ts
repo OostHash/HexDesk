@@ -1,7 +1,7 @@
 /**
  * Filter presets shared by Inventory, Relics, Foundry and Market. Stored in
- * the settings file as `filterPresets`, in the current app's format, so both
- * apps read the same presets. Presets of modules this app does not edit are
+ * the settings file as `filterPresets`; the format is kept stable so saved
+ * presets keep working. Presets of modules this app does not edit are
  * kept untouched: a save never drops them.
  */
 
@@ -15,7 +15,7 @@ export type StoredPreset = {
   pinned?: boolean;
   color?: string;
   dividerAfter?: boolean;
-  /** Module-specific, in the stored (current app) format. */
+  /** Module-specific, in the stored format. */
   filters: unknown;
 };
 
@@ -113,7 +113,7 @@ export const removePreset = (s: PresetSettings, id: string) => update(s, id, () 
 
 /**
  * Moves a preset one place up or down among presets of the same module and
- * pin state (the keyboard alternative to dragging in the current app).
+ * pin state (the keyboard alternative to dragging).
  */
 export function movePreset(settings: PresetSettings, id: string, direction: -1 | 1): PresetSettings {
   const target = settings.presets.find((p) => p.id === id);

@@ -58,7 +58,7 @@ const mount = ({ client, onOpenInventory }: ReturnType<typeof setup>) =>
     </QueryClientProvider>,
   );
 
-const toggle = () => page.getByRole("button", { name: "Changelog" });
+const toggle = () => page.getByRole("button", { name: "Changelog", exact: true });
 
 it("opens and lists every change with its range, rank and amount", async () => {
   const ctx = setup();
@@ -96,8 +96,18 @@ it("treats the loaded log as history, and a new batch as an arrival with a feed"
     ...(prev ?? []),
   ]);
   await expect.element(page.getByRole("status")).toHaveTextContent("+1 increased");
-  // Collapsed: the new change runs as a feed row.
+  // Collapsed: the new change runs as a full feed row, with its category and range.
   await expect.element(page.getByText("Increased by")).toBeInTheDocument();
+  await expect.element(page.getByText("150 → 175")).toBeVisible();
+  await expect.element(page.getByRole("button", { name: "Resources" })).toBeVisible();
+});
+
+it("opens the wiki menu with a right-click on a change", async () => {
+  const ctx = setup();
+  await mount(ctx);
+  await toggle().click();
+  await page.getByRole("list", { name: "Changes" }).getByText("100 → 150").click({ button: "right" });
+  await expect.element(page.getByRole("menuitem", { name: "Open wiki" })).toBeVisible();
 });
 
 it("opens Inventory on an item, a category or recent changes", async () => {
@@ -112,7 +122,8 @@ it("opens Inventory on an item, a category or recent changes", async () => {
   await list.getByRole("button", { name: "Mods" }).click();
   expect(getInventoryFilters()).toMatchObject({ filterRecent: true, category: "Mods", search: "" });
 
-  await page.getByRole("button", { name: "Show in Inventory" }).click();
+  // All text on the bar opens recent changes in Inventory, the scan time included.
+  await page.getByText(/last scan/).click();
   expect(getInventoryFilters()).toMatchObject({ filterRecent: true, category: "all" });
   expect(ctx.onOpenInventory).toHaveBeenCalledTimes(3);
 });

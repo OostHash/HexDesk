@@ -2,12 +2,12 @@ import type { InvokeArgs } from "@tauri-apps/api/core";
 import type { SyndicateStore, WeaponItem } from "../domain/completionist";
 import type { FoundryItem, RecipeComponent } from "../domain/foundry";
 import type { CacheStatuses } from "../domain/cache";
+import type { LogEntry } from "../domain/console";
 import type { RelicRewards } from "./events";
-import type { OcrRiven } from "../domain/rivenOverlay";
-import type { DebugFolder, SizedFolder } from "../domain/debug";
 import type { ChangeEntry } from "../domain/inventory";
 import type { WfmItemInfo, WfmItemOrders, WfmStatPoint } from "../domain/market";
 import type { CatalogItem } from "../domain/relics";
+import type { BackendCard } from "../domain/relicReward";
 import type { SnapshotPoint, TopItem, TrackedItem, Trade } from "../domain/statistics";
 import type { OwnedRiven, RivenAnalysis, SavedRiven, WfmRivenAttribute } from "../domain/rivens";
 import type { WfmAuction, WfmManagedOrder } from "../domain/trading";
@@ -26,6 +26,8 @@ export interface CommandMap {
   load_settings: { args: undefined; result: string };
   /** Merges the given top-level keys into the settings file; emits settings-updated. */
   save_settings: { args: { json: string }; result: null };
+  /** Allows the ocrs models, downloading them first, or stops using them. */
+  set_ocr_models: { args: { enabled: boolean }; result: null };
   /** Owned quantity per uniqueName. */
   get_current_quantities: { args: undefined; result: Record<string, number> };
   /** Cached companion-API inventory; only consumedSuits (Helminth) is used so far. */
@@ -104,7 +106,6 @@ export interface CommandMap {
   save_riven_roll: { args: { weapon: string; label: string; statsJson: string; verdict: string; score: number }; result: string };
   delete_saved_riven_roll: { args: { id: string }; result: null };
   rename_saved_riven_roll: { args: { id: string; label: string }; result: null };
-  get_riven_session_log: { args: undefined; result: string };
   /** Rivens from the inventory blob. */
   get_rivens: { args: undefined; result: OwnedRiven[] };
   /** Weapon uniqueName → riven disposition (omega). */
@@ -200,6 +201,8 @@ export interface CommandMap {
   get_pending_relic_rewards: { args: undefined; result: RelicRewards | null };
   /** Catalogue entries for these paths plus their prime-set siblings. */
   get_items_by_paths: { args: { paths: string[] }; result: CatalogItem[] };
+  /** Relic Reward cards with set parts and what the player owns of them. */
+  get_reward_cards: { args: { paths: string[] }; result: BackendCard[] };
   /** Cached warframe.market price by item name, or null. */
   get_item_price: { args: { itemName: string }; result: number | null };
   /** Foundry jobs the scanner saw. */
@@ -207,43 +210,50 @@ export interface CommandMap {
   /** Master switch for every overlay trigger in the backend. */
   set_overlays_enabled: { args: { enabled: boolean }; result: null };
   set_relic_pick_enabled: { args: { enabled: boolean }; result: null };
+  set_relic_reward_enabled: { args: { enabled: boolean }; result: null };
+  set_riven_enabled: { args: { enabled: boolean }; result: null };
+  /** Only the overlay key opens an overlay; EE.log lines still close one. */
+  set_overlay_manual: { args: { enabled: boolean }; result: null };
+  /** The key that shows or hides the overlays, as a Windows virtual-key code (0 for none). */
+  set_overlay_key: { args: { vk: number }; result: null };
+  /** The two keys (virtual-key codes) that answer the testing prompt; they must differ. */
+  set_testing_keys: { args: { correct: number; wrong: number }; result: null };
+  /** How many reported testing flows wait for an export. */
+  test_report_flows: { args: undefined; result: number };
+  /** Writes every reported testing flow into one zip in Downloads and returns its path. */
+  export_test_report: { args: undefined; result: string };
+  /** Removes every reported testing flow without writing a report. */
+  discard_test_report: { args: undefined; result: null };
+  /** Save the screen title capture on each overlay key press, shown in the activity console. */
+  set_overlay_key_capture: { args: { enabled: boolean }; result: null };
+  set_overlay_screenshot: { args: { enabled: boolean }; result: null };
+  /** Save the game frame with the areas each read uses outlined. */
+  set_overlay_areas: { args: { enabled: boolean }; result: null };
+  /** A saved screen capture as .bmp bytes, by file name. */
+  get_capture: { args: { name: string }; result: ArrayBuffer };
   /** Places and shows the relic pick window (no payload): previews and offset changes. */
   show_relic_pick_window: { args: undefined; result: null };
-  hide_relic_pick_overlay: { args: undefined; result: null };
-  /** Reads the riven card on screen (OCR). */
-  ocr_riven_screen: { args: undefined; result: OcrRiven };
-  /** Appends a line to the riven session log. */
-  ocr_riven_log_error: { args: { error: string }; result: null };
+  /** Parks the relic pick window off-screen while keeping its transparent WebView2 alive. */
+  park_relic_pick_window: { args: undefined; result: null };
+  /** Places the status line at the top centre of the game window. */
+  show_overlay_status_window: { args: undefined; result: null };
+  overlay_closed: { args: undefined; result: null };
+  overlay_rendered: { args: { overlay: "relic_pick" | "relic_reward" | "riven"; view: number; summary: string }; result: null };
+  /** Runs a riven check: a new roll on the riven screen, or the riven screen opened as by the overlay key. */
+  check_riven: { args: undefined; result: null };
+  /** Places and shows the riven window (no view): the Settings preview. */
+  show_riven_window: { args: undefined; result: null };
   /** Appends "[FE] msg" to the overlay session log (Settings → Debugging → Overlay log). */
   log_relic_fe: { args: { msg: string }; result: null };
-  // ── Debug and diagnostics (Settings → Debugging, vault debugging.md) ──
-  open_debug_folder: { args: { which: DebugFolder }; result: null };
-  /** Bytes in a debug folder or file. */
-  get_debug_data_size: { args: { which: SizedFolder }; result: number };
-  clear_debug_data: { args: { which: SizedFolder }; result: null };
-  /** Bytes in the relic captures folder. */
-  get_diag_folder_size: { args: undefined; result: number };
-  /** Empties the relic captures folder; returns the bytes left (0). */
-  clear_diag_folder: { args: undefined; result: number };
-  set_blob_log: { args: { enabled: boolean }; result: null };
-  set_api_log: { args: { enabled: boolean }; result: null };
-  get_overlay_session_log: { args: undefined; result: string };
-  /** Screenshot + scan log now; returns the folder. */
-  capture_diagnostics: { args: undefined; result: string };
-  /** Inventory strings from memory, one per line. */
-  dump_memory_probe: { args: undefined; result: string };
-  /** "started" or "stopped". */
-  toggle_raw_scan: { args: undefined; result: string };
-  /** Returns the log path; fails when it already runs. */
-  start_memory_relic_debug: { args: undefined; result: string };
-  stop_memory_relic_debug: { args: undefined; result: null };
-  debug_detect_fissure_era: { args: undefined; result: string };
-  test_relic_pick_overlay: { args: { era: string }; result: string };
-  debug_ee_log_tail: { args: undefined; result: string };
-  /** Returns the new state. */
-  toggle_debug_categorization: { args: undefined; result: boolean };
-  wfm_debug_dump: { args: { path: string }; result: string };
-  wfm_get_riven_attributes: { args: undefined; result: string[] };
+  // ── Diagnostics (Settings → Debugging, Settings → Console) ──
+  /** The most recent log entries, oldest first (activity console); new ones follow as diag-entry events. */
+  get_recent_logs: { args: { limit?: number }; result: LogEntry[] };
+  /** Removes diagnostic logs, OCR captures and test data not yet saved as a report, then starts a fresh active-session log. */
+  remove_logs: { args: undefined; result: null };
+  /** Writes the diagnostics zip (logs, system facts, settings; redacted) and returns its path. */
+  export_diagnostics: { args: { parts: DiagnosticsParts }; result: string };
+  /** Opens Explorer with an exported diagnostics zip selected. */
+  show_diagnostics_export: { args: { path: string }; result: null };
 }
 
 export type CommandName = keyof CommandMap;
@@ -253,3 +263,6 @@ export type CommandResult<C extends CommandName> = CommandMap[C]["result"];
 // Compile-time check: every entry has IPC-compatible arguments.
 type AssertSpecs<T extends Record<CommandName, CommandSpec>> = T;
 export type CheckedCommandMap = AssertSpecs<CommandMap>;
+
+/** Which parts go into a diagnostics export; the user picks them before exporting. */
+export type DiagnosticsParts = { system: boolean; settings: boolean; activity: boolean; logs: boolean };

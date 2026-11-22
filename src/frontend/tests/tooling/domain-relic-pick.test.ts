@@ -27,6 +27,11 @@ describe("ranking", () => {
     expect(topRelics(PREVIEW_PICK, "platinum").map((r) => r.base_name)).toEqual(["Axi R4", "Lith S1", "Meso N1"]);
     expect(topRelics({ era: "AXI", relics: [] }, "unowned")).toEqual([]);
   });
+
+  it("does not recommend relics the complete list did not confirm", () => {
+    const pick = { ...PREVIEW_PICK, relics: PREVIEW_PICK.relics.map((r) => (r.base_name === "Meso N1" ? { ...r, on_screen: false } : r)) };
+    expect(topRelics(pick, "ducat").map((r) => r.base_name)).toEqual(["Axi R4", "Lith S1"]);
+  });
   it("labels the score", () => {
     expect(scoreLabel(axi, "unowned")).toBe("38% new");
     expect(scoreLabel(meso, "ducat")).toBe("26 ducats EV");

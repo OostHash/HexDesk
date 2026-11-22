@@ -7,9 +7,8 @@ import { applyInventoryUpdate, quantitiesKeys } from "../../api/inventory";
 import { applyPriceUpdate } from "../../api/market";
 
 /**
- * Which cached queries a backend event makes stale (plan 5.4). Queries that
- * do not exist yet are simply not affected; keys are added as screens are
- * ported.
+ * Which cached queries a backend event makes stale. Queries that do not
+ * exist are not affected.
  */
 export const EVENT_INVALIDATIONS: Partial<Record<EventName, readonly QueryKey[]>> = {
   "catalogue-updated": [["catalog"], ["inventory"]],
@@ -17,6 +16,7 @@ export const EVENT_INVALIDATIONS: Partial<Record<EventName, readonly QueryKey[]>
   "trades-updated": [["trades"]],
   "settings-updated": [["settings"]],
   "riven-roll-saved": [["rivens", "saved"]],
+  "test-report-flows": [["testing", "flows"]],
 };
 
 /** Subscribes once per window and invalidates the mapped queries. Renders nothing. */

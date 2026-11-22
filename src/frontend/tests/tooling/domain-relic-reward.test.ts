@@ -1,90 +1,23 @@
 import { describe, expect, it } from "vitest";
-import type { RecipeComponent } from "../../src/domain/foundry";
-import type { CatalogItem } from "../../src/domain/relics";
 import {
   bestPick,
   cardWidth,
+  cardsFrom,
   cellLabel,
   columnCenters,
-  completeSets,
-  craftingCounts,
-  ownedCopies,
   overlayPriorityFrom,
   PREVIEW_CARDS,
-  rewardCards,
-  setComponents,
-  setNameOf,
+  rewardSummary,
   setPlatinum,
   stripBounds,
+  type BackendCard,
   type RewardCard,
-  type Stock,
 } from "../../src/domain/relicReward";
 
-const CAT: CatalogItem[] = [
-  { unique_name: "/Lotus/Powersuits/RhinoPrime", name: "Rhino Prime", category: "Warframes" },
-  { unique_name: "/Lotus/Recipes/RhinoPrimeBlueprint", name: "Rhino Prime Blueprint", category: "Blueprints", ducats: 15 },
-  { unique_name: "/Lotus/Recipes/RhinoPrimeChassisBlueprint", name: "Rhino Prime Chassis Blueprint", category: "Blueprints", ducats: 45 },
-  { unique_name: "/Lotus/Parts/RhinoPrimeChassis", name: "Rhino Prime Chassis", category: "Parts" },
-  { unique_name: "/Lotus/Recipes/RhinoPrimeSystemsBlueprint", name: "Rhino Prime Systems Blueprint", category: "Blueprints" },
-  { unique_name: "/Lotus/Misc/OrokinCell", name: "Orokin Cell", category: "Resources" },
-];
-const stock = (quantities: Record<string, number> = {}, crafting: Record<string, number> = {}): Stock => ({ quantities, crafting });
-const part = (unique_name: string, name: string, count = 1) =>
-  ({ unique_name, name, count, result_count: 1, components: [] }) as unknown as RecipeComponent;
-
-describe("set names", () => {
-  it.each([
-    ["Rhino Prime Chassis Blueprint", "Rhino Prime"],
-    ["Rhino Prime Blueprint", "Rhino Prime"],
-    ["Glaive Prime Disc", "Glaive Prime"],
-    ["Braton Prime Barrel Blueprint", "Braton Prime"],
-    ["Orokin Cell", null],
-  ])("%s → %s", (name, set) => {
-    expect(setNameOf(name)).toBe(set);
-  });
-  it("labels cells without the set name or a trailing Blueprint", () => {
+describe("cells", () => {
+  it("label cells without the set name or a trailing Blueprint", () => {
     expect(cellLabel("Rhino Prime Chassis Blueprint", "Rhino Prime")).toBe("Chassis");
     expect(cellLabel("Rhino Prime Blueprint", "Rhino Prime")).toBe("Blueprint");
-  });
-});
-
-describe("ownedCopies", () => {
-  it("counts the item, its other form and Foundry jobs, across StoreItems paths", () => {
-    const s = stock(
-      { "/Lotus/Recipes/RhinoPrimeChassisBlueprint": 1, "/Lotus/Parts/RhinoPrimeChassis": 1 },
-      { "/Lotus/Recipes/RhinoPrimeChassisBlueprint": 1 },
-    );
-    expect(ownedCopies("/Lotus/StoreItems/Recipes/RhinoPrimeChassisBlueprint", "Rhino Prime Chassis Blueprint", CAT, s)).toBe(3);
-  });
-  it("is 0 for what you do not have", () => {
-    expect(ownedCopies("/Lotus/Recipes/RhinoPrimeSystemsBlueprint", "Rhino Prime Systems Blueprint", CAT, stock())).toBe(0);
-  });
-  it("counts Foundry jobs by catalogue path", () => {
-    expect(craftingCounts([{ unique_name: "/Lotus/StoreItems/A" }, { unique_name: "/Lotus/A" }])).toEqual({ "/Lotus/A": 2 });
-  });
-});
-
-describe("set components", () => {
-  it("come from the recipe, parts and blueprints only", () => {
-    const recipe = [part("/Lotus/Recipes/RhinoPrimeBlueprint", "Rhino Prime Blueprint"), part("/Lotus/Misc/OrokinCell", "Orokin Cell", 2)];
-    expect(setComponents("Rhino Prime", recipe, CAT, stock())?.map((c) => c.name)).toEqual(["Rhino Prime Blueprint"]);
-  });
-  it("fall back to catalogue parts named after the set", () => {
-    expect(setComponents("Rhino Prime", undefined, CAT, stock())?.map((c) => c.name)).toEqual([
-      "Rhino Prime Blueprint",
-      "Rhino Prime Chassis Blueprint",
-      "Rhino Prime Chassis",
-      "Rhino Prime Systems Blueprint",
-    ]);
-    expect(setComponents("Nova Prime", undefined, CAT, stock())).toBeNull();
-  });
-  it("count complete sets, with an owned built item as at least one", () => {
-    const comps = [
-      { unique_name: "a", name: "A", needed: 1, owned: 2 },
-      { unique_name: "b", name: "B", needed: 2, owned: 2 },
-    ];
-    expect(completeSets(comps, false)).toBe(1);
-    expect(completeSets([{ unique_name: "a", name: "A", needed: 1, owned: 0 }], true)).toBe(1);
   });
   it("add up missing and total platinum from known prices", () => {
     expect(
@@ -130,16 +63,44 @@ describe("layout", () => {
   });
 });
 
-it("builds cards with prices, set parts and set value", () => {
-  const cards = rewardCards(["/Lotus/StoreItems/Recipes/RhinoPrimeChassisBlueprint", "?:Mystery"], {
-    catalog: CAT,
-    stock: stock({ "/Lotus/Recipes/RhinoPrimeBlueprint": 1 }),
-    recipes: new Map(),
-    prices: new Map([
+it("adds prices and set value to the backend's cards", () => {
+  const backend: BackendCard[] = [
+    {
+      path: "/Lotus/Recipes/RhinoPrimeChassisBlueprint",
+      name: "Rhino Prime Chassis Blueprint",
+      unknown: false,
+      category: "Blueprints",
+      vaulted: true,
+      ducats: 45,
+      set_name: "Rhino Prime",
+      parts: [
+        { path: "/Lotus/Recipes/RhinoPrimeBlueprint", name: "Rhino Prime Blueprint", needed: 1, owned: { total: 1 }, ducats: 15 },
+        { path: "/Lotus/Parts/RhinoPrimeChassis", name: "Rhino Prime Chassis", needed: 1, owned: { total: 0 }, ducats: null },
+      ],
+      built: { total: 0 },
+      complete_sets: 0,
+    },
+    {
+      path: "?:Mystery",
+      name: "Mystery",
+      unknown: true,
+      category: null,
+      vaulted: null,
+      ducats: null,
+      set_name: null,
+      parts: null,
+      built: null,
+      complete_sets: null,
+    },
+  ];
+  const cards = cardsFrom(
+    backend,
+    new Map([
       ["Rhino Prime Chassis Blueprint", 9],
       ["Rhino Prime Blueprint", 20],
+      ["Rhino Prime Chassis", 9],
     ]),
-  });
+  );
   expect(cards[0]).toMatchObject({
     name: "Rhino Prime Chassis Blueprint",
     plat: 9,
@@ -150,4 +111,14 @@ it("builds cards with prices, set parts and set value", () => {
     missingPlat: 9,
   });
   expect(cards[1]).toMatchObject({ name: "Mystery", unknown: true, category: "Unrecognized" });
+});
+
+describe("rewardSummary", () => {
+  it("says per card what the overlay shows and which parts are owned", () => {
+    expect(rewardSummary(PREVIEW_CARDS.slice(0, 3))).toBe(
+      "Rhino Prime Blueprint 20p: full item not owned (Blueprint 0/1, Chassis Blueprint 1/1, Neuroptics Blueprint 0/1, Systems Blueprint 1/1)" +
+        " | Nyx Prime Neuroptics Blueprint 30p: full item owned (Blueprint 1/1, Chassis Blueprint 1/1, Neuroptics Blueprint 1/1, Systems Blueprint 1/1)" +
+        " | Glaive Prime Disc 9p",
+    );
+  });
 });

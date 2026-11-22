@@ -1,13 +1,26 @@
 use tauri::State;
 
 use crate::app_state::AppState;
-use crate::cache::atomic_write;
 use crate::catalogue::fix_category;
 use crate::inventory_state::{load_inventory_state_cache, CachedItem};
 use crate::resolver::ItemResolver;
 use crate::wfm::{to_wfm_slug, WfmItem, WfmRivenAttribute};
+use hexdesk_persist::atomic_write;
 // Moved to credentials.rs in the credentials batch.
 use crate::credentials::wfm_delete_credentials;
+use hexdesk_diag::{DiagError, Kind, Source};
+
+/// A failure inside HexDesk itself: a worker task that stopped or a poisoned
+/// lock.
+fn internal_error<E: std::fmt::Display>(e: E) -> DiagError {
+    DiagError::new(
+        Source::Market,
+        Kind::Internal,
+        "warframe.market request stopped inside HexDesk",
+    )
+    .caused_by_text(e)
+    .log()
+}
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,14 +49,17 @@ pub(crate) struct RivenAuctionParams {
 
 /// Use the stored refresh token to silently get a new access token.
 #[tauri::command]
-pub(crate) fn wfm_refresh_token(state: State<AppState>) -> Result<(), String> {
+pub(crate) fn wfm_refresh_token(state: State<AppState>) -> Result<(), DiagError> {
     state.wfm.refresh()
 }
 
 /// Restore a session from saved token data (JSON string).
 /// Returns (username, status) so the frontend can set both in one step.
 #[tauri::command]
-pub(crate) fn wfm_set_jwt(state: State<AppState>, jwt: String) -> Result<(String, String), String> {
+pub(crate) fn wfm_set_jwt(
+    state: State<AppState>,
+    jwt: String,
+) -> Result<(String, String), DiagError> {
     // `jwt` is the JSON bundle saved by wfm_save_credentials (or, for old saves,
     // a bare access token — restore_from_json handles both).
     state.wfm.restore_from_json(&jwt)
@@ -57,7 +73,7 @@ pub(crate) fn wfm_login(
     state: State<AppState>,
     email: String,
     password: String,
-) -> Result<String, String> {
+) -> Result<String, DiagError> {
     state.wfm.login(&email, &password)
 }
 
@@ -68,7 +84,7 @@ pub(crate) fn wfm_get_item_orders(
     state: State<AppState>,
     url_name: String,
     mod_rank: Option<u32>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, DiagError> {
     state.wfm.item_orders(&url_name, mod_rank)
 }
 
@@ -77,7 +93,7 @@ pub(crate) fn wfm_get_item_orders(
 pub(crate) fn wfm_get_item_statistics(
     state: State<AppState>,
     url_name: String,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, DiagError> {
     state.wfm.item_statistics(&url_name)
 }
 
@@ -88,9 +104,17 @@ pub(crate) fn wfm_get_item_statistics(
 /// appear not to have happened. The delete sits here rather than at the call
 /// site so every route to a logout inherits it.
 #[tauri::command]
-pub(crate) async fn wfm_logout(state: State<'_, AppState>) -> Result<(), String> {
+pub(crate) async fn wfm_logout(state: State<'_, AppState>) -> Result<(), DiagError> {
     state.wfm.clear_session();
-    wfm_delete_credentials().await
+    wfm_delete_credentials().await.map_err(|e| {
+        DiagError::new(
+            Source::Market,
+            Kind::Io,
+            "Signed out, but the saved warframe.market sign-in could not be removed",
+        )
+        .caused_by_text(e)
+        .log()
+    })
 }
 
 /// Return (username, status) for the current session, or None if not logged in.
@@ -104,7 +128,7 @@ pub(crate) fn wfm_get_session(state: State<AppState>) -> Option<(String, String)
 /// Call this after session restore so the UI reflects what WFM actually has,
 /// not just the hardcoded default.
 #[tauri::command]
-pub(crate) fn wfm_fetch_status(state: State<AppState>) -> Result<String, String> {
+pub(crate) fn wfm_fetch_status(state: State<AppState>) -> Result<String, DiagError> {
     state.wfm.fetch_status()
 }
 
@@ -116,7 +140,7 @@ pub(crate) fn wfm_get_jwt(state: State<AppState>) -> Option<String> {
 
 /// Fetch the authenticated user's active buy + sell orders.
 #[tauri::command]
-pub(crate) fn wfm_get_orders(state: State<AppState>) -> Result<serde_json::Value, String> {
+pub(crate) fn wfm_get_orders(state: State<AppState>) -> Result<serde_json::Value, DiagError> {
     state.wfm.my_orders()
 }
 
@@ -128,26 +152,12 @@ pub(crate) fn wfm_get_orders(state: State<AppState>) -> Result<serde_json::Value
 pub(crate) async fn wfm_set_status(
     state: State<'_, AppState>,
     status: String,
-) -> Result<(), String> {
+) -> Result<(), DiagError> {
     // The WebSocket round-trip is blocking; run it off the async runtime.
     let wfm = state.wfm.clone();
     tokio::task::spawn_blocking(move || wfm.set_status(&status))
         .await
-        .map_err(|e| format!("Task: {}", e))?
-}
-
-/// Debug: return the raw JSON from any authenticated WFM endpoint.
-#[tauri::command]
-pub(crate) fn wfm_debug_dump(state: State<AppState>, path: String) -> Result<String, String> {
-    state.wfm.debug_dump(&path)
-}
-
-/// Collect known riven attribute url_names by sampling real auction listings.
-/// /v1/riven/attributes was removed; this scrapes url_names from search results instead.
-/// Exposed so the browser console can call: window.__wfmAttrs()
-#[tauri::command]
-pub(crate) fn wfm_get_riven_attributes(state: State<AppState>) -> Result<Vec<String>, String> {
-    state.wfm.riven_attributes()
+        .map_err(internal_error)?
 }
 
 /// Get the internal WFM item ID for a URL slug (needed to create orders).
@@ -157,7 +167,7 @@ pub(crate) fn wfm_get_riven_attributes(state: State<AppState>) -> Result<Vec<Str
 pub(crate) fn wfm_get_item_info(
     state: State<AppState>,
     url_name: String,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, DiagError> {
     let mut data = state.wfm.item_info(&url_name)?;
 
     // Enrich with modMaxRank from inventory_state_cache.json — the canonical source.
@@ -191,7 +201,7 @@ pub(crate) fn wfm_create_order(
     quantity: u32,
     visible: bool,
     mod_rank: Option<u32>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, DiagError> {
     state
         .wfm
         .create_order(&item_id, &order_type, platinum, quantity, visible, mod_rank)
@@ -205,7 +215,7 @@ pub(crate) fn wfm_update_order(
     platinum: u32,
     quantity: u32,
     visible: bool,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, DiagError> {
     state
         .wfm
         .update_order(&order_id, platinum, quantity, visible)
@@ -213,7 +223,7 @@ pub(crate) fn wfm_update_order(
 
 /// Delete an order.
 #[tauri::command]
-pub(crate) fn wfm_delete_order(state: State<AppState>, order_id: String) -> Result<(), String> {
+pub(crate) fn wfm_delete_order(state: State<AppState>, order_id: String) -> Result<(), DiagError> {
     state.wfm.delete_order(&order_id)
 }
 
@@ -223,7 +233,7 @@ pub(crate) fn wfm_close_order(
     state: State<AppState>,
     order_id: String,
     quantity: u32,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, DiagError> {
     state.wfm.close_order(&order_id, quantity)
 }
 
@@ -232,7 +242,7 @@ pub(crate) fn wfm_close_order(
 pub(crate) fn wfm_create_riven_auction(
     state: State<AppState>,
     params: RivenAuctionParams,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, DiagError> {
     let json = state.wfm.create_riven_auction(
         &params.weapon_url_name,
         &params.riven_name,
@@ -258,7 +268,7 @@ pub(crate) fn wfm_create_riven_auction(
 #[tauri::command]
 pub(crate) async fn wfm_get_my_riven_auctions(
     state: tauri::State<'_, AppState>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, DiagError> {
     let stored_ids = state
         .auction_ids
         .lock()
@@ -267,7 +277,7 @@ pub(crate) async fn wfm_get_my_riven_auctions(
     let wfm = state.wfm.clone();
     tauri::async_runtime::spawn_blocking(move || wfm.my_riven_auctions(&stored_ids))
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(internal_error)?
 }
 
 fn save_auction_ids(state: &State<AppState>) {
@@ -306,7 +316,7 @@ pub(crate) fn wfm_switch_riven_type(
     starting_price: u32,
     buyout_price: Option<u32>,
     visible: bool,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, DiagError> {
     let json = state.wfm.switch_riven_type(
         &auction_id,
         new_is_direct_sell,
@@ -327,7 +337,10 @@ pub(crate) fn wfm_switch_riven_type(
 
 /// Delete a riven auction via the /close endpoint.
 #[tauri::command]
-pub(crate) fn wfm_delete_auction(state: State<AppState>, auction_id: String) -> Result<(), String> {
+pub(crate) fn wfm_delete_auction(
+    state: State<AppState>,
+    auction_id: String,
+) -> Result<(), DiagError> {
     state.wfm.delete_auction(&auction_id)?;
     state
         .auction_ids
@@ -347,7 +360,7 @@ pub(crate) fn wfm_update_auction(
     starting_price: u32,
     buyout_price: Option<u32>,
     visible: bool,
-) -> Result<(), String> {
+) -> Result<(), DiagError> {
     state
         .wfm
         .update_auction(&auction_id, starting_price, buyout_price, visible)
@@ -359,13 +372,13 @@ pub(crate) fn wfm_set_auction_visible(
     state: State<AppState>,
     auction_id: String,
     visible: bool,
-) -> Result<(), String> {
+) -> Result<(), DiagError> {
     state.wfm.set_auction_visible(&auction_id, visible)
 }
 
 /// Fetch warframe.market item list using v2 API (v1 /items returns 404).
 #[tauri::command]
-pub(crate) fn fetch_wfm_items(state: State<AppState>) -> Result<Vec<WfmItem>, String> {
+pub(crate) fn fetch_wfm_items(state: State<AppState>) -> Result<Vec<WfmItem>, DiagError> {
     state.wfm.items()
 }
 
@@ -376,10 +389,10 @@ pub(crate) fn fetch_wfm_items(state: State<AppState>) -> Result<Vec<WfmItem>, St
 pub(crate) fn get_item_price(
     item_name: String,
     state: State<AppState>,
-) -> Result<Option<u32>, String> {
+) -> Result<Option<u32>, DiagError> {
     // 1. Check relics.run bulk price cache (no network call needed)
     {
-        let prices = state.relics_run_prices.lock().map_err(|e| e.to_string())?;
+        let prices = state.relics_run_prices.lock().map_err(internal_error)?;
         let key = item_name.to_lowercase();
         if let Some(&price) = prices.get(&key) {
             return Ok(Some(price));
@@ -407,7 +420,7 @@ pub(crate) fn get_item_price(
     if let Some(plat) = price {
         let cache_path = &state.inventory_state_cache_path;
         let mut inv = load_inventory_state_cache(cache_path);
-        let items = state.wfcd_items.lock().map_err(|e| e.to_string())?;
+        let items = state.wfcd_items.lock().map_err(internal_error)?;
         // Key the cache entry on the canonical unique_name, not the display string.
         let unique = ItemResolver::from_items(&items)
             .by_display(&item_name)

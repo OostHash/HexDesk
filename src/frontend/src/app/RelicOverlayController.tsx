@@ -12,8 +12,8 @@ export const STATUS_MS = 4000;
 
 /**
  * Main window: tells the backend which overlays may run, and places the relic
- * reward window over the game when the reward screen opens (current app:
- * useOverlays). The overlay window draws the cards itself.
+ * reward window over the game when the reward screen opens. The overlay
+ * window draws the cards itself.
  */
 export function RelicOverlayController() {
   const queryClient = useQueryClient();
@@ -26,13 +26,51 @@ export function RelicOverlayController() {
     current.current = prefs;
   });
 
-  const { overlaysEnabled, relicPickEnabled } = prefs;
+  const {
+    overlaysEnabled,
+    rewardEnabled,
+    relicPickEnabled,
+    rivenEnabled,
+    overlayManual,
+    overlayKey,
+    testingKeys,
+    overlayKeyCapture,
+    overlayScreenshot,
+    overlayAreas,
+  } = prefs;
+  const testingCorrectKey = testingKeys.correct;
+  const testingWrongKey = testingKeys.wrong;
   useEffect(() => {
     if (!isSuccess || !isTauri()) return;
-    syncOverlaySwitches({ ...current.current, overlaysEnabled, relicPickEnabled }).catch((error: unknown) => {
+    syncOverlaySwitches({
+      ...current.current,
+      overlaysEnabled,
+      rewardEnabled,
+      relicPickEnabled,
+      rivenEnabled,
+      overlayManual,
+      overlayKey,
+      testingKeys: { correct: testingCorrectKey, wrong: testingWrongKey },
+      overlayKeyCapture,
+      overlayScreenshot,
+      overlayAreas,
+    }).catch((error: unknown) => {
       console.error("overlays: syncing switches failed", error);
     });
-  }, [isSuccess, overlaysEnabled, relicPickEnabled]);
+  }, [
+    isSuccess,
+    overlaysEnabled,
+    rewardEnabled,
+    relicPickEnabled,
+    rivenEnabled,
+    overlayManual,
+    overlayKey,
+    testingCorrectKey,
+    testingWrongKey,
+    overlayKeyCapture,
+    overlayScreenshot,
+    overlayAreas,
+  ]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -82,7 +120,7 @@ export function RelicOverlayController() {
     keep(onEvent("relic-screen", hide));
     keep(onEvent("overlays-disabled", hide));
     keep(
-      onEvent("ff-status", (text) => {
+      onEvent("status-line", (text) => {
         setOverlayStatus(queryClient, text);
         window.clearTimeout(statusTimer);
         statusTimer = window.setTimeout(() => {

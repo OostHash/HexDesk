@@ -1,6 +1,6 @@
 import type { TreeNode } from "../../primitives/data";
 
-/** Foundry recipe tree with all four statuses (plan fase 5). */
+/** Foundry recipe tree with all four statuses. */
 export const foundryTree: TreeNode[] = [
   {
     key: "excalibur-prime",

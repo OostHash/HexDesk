@@ -52,7 +52,7 @@ describe("contrast", () => {
     { name: `${name} high contrast`, high: true, theme: highContrastThemes[name] },
     { name: `${name} high contrast + colour-blind palette`, high: true, theme: { ...highContrastThemes[name], ...cvdHighContrastThemes[name] } },
   ]);
-  // High contrast: 7:1 for text (plan 6.11), and borders that read as edges (WCAG 1.4.11).
+  // High contrast: 7:1 for text, and borders that read as edges (WCAG 1.4.11).
   const pairsFor = (high: boolean) =>
     high
       ? [

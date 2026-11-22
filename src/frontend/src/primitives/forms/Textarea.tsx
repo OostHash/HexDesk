@@ -5,7 +5,7 @@ import { useFieldControl } from "./FormField";
 
 type Props = ComponentProps<"textarea"> & { invalid?: boolean };
 
-/** Native <textarea>; no auto-resize (plan 7.5). */
+/** Native <textarea>; no auto-resize. */
 export function Textarea({ invalid, id, required, rows = 3, className, ...rest }: Props) {
   const field = useFieldControl({ id, invalid, required });
   return (

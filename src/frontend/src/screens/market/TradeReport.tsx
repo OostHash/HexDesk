@@ -45,7 +45,7 @@ function Panel({ title, children, className }: { title: string; children: ReactN
   );
 }
 
-/** Item name with a ranked bar under it (the old donut, as bars beside the figures). */
+/** Item name with a ranked bar under it, so shares read beside the figures. */
 const nameWithBar = (name: ReactNode, value: number, max: number) => (
   <span className="flex min-w-40 flex-col gap-1">
     <span className="truncate">{name}</span>

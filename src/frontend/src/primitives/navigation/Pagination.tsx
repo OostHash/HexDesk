@@ -4,7 +4,7 @@ import { cn } from "../cn";
 import { strings } from "../strings";
 
 type Props = {
-  /** Zero-based page index, like the current app. */
+  /** Zero-based page index. */
   page: number;
   pageCount: number;
   onPageChange: (page: number) => void;
@@ -13,7 +13,7 @@ type Props = {
   /** Plural noun for itemCount, e.g. "relics". */
   itemLabel?: string;
   /**
-   * What the list holds, e.g. "800 relics · 32 owned"; replaces itemCount.
+   * What the list holds, e.g. "800 relics · 32 owned".
    * Shown after the page, and on its own when everything fits on one page.
    */
   summary?: string;
@@ -23,7 +23,7 @@ type Props = {
 };
 
 /**
- * Previous/next paging, matching the current app's behaviour: hidden for a
+ * Previous/next paging: hidden for a
  * single page (only the summary stays), disabled buttons at the ends. The
  * status line is aria-live so screen readers hear the new page.
  */

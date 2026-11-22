@@ -1,7 +1,6 @@
 /**
  * Layer 1: raw colour values. Only tokens.ts reads this file; components never
- * do. Values start from the current app (src/styles/tailwind.css) and may
- * change where contrast or consistency asks for it (plan 6.3).
+ * do. Values change where contrast or consistency asks for it.
  */
 export const palette = {
   neutral: {

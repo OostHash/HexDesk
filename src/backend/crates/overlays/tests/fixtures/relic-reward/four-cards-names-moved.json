@@ -1,0 +1,322 @@
+{
+  "engine": "windows",
+  "width": 2560,
+  "height": 1152,
+  "lines": [
+    {
+      "text": "FISSURE/REW",
+      "words": [
+        {
+          "text": "FISSURE/REW",
+          "left": 0.21953125,
+          "top": 0.0546875,
+          "width": 0.1515625,
+          "height": 0.046006944
+        }
+      ]
+    },
+    {
+      "text": "@ Owned",
+      "words": [
+        {
+          "text": "@",
+          "left": 0.25351563,
+          "top": 0.26822916,
+          "width": 0.009765625,
+          "height": 0.021701388
+        },
+        {
+          "text": "Owned",
+          "left": 0.27109376,
+          "top": 0.26822916,
+          "width": 0.035546876,
+          "height": 0.019965278
+        }
+      ]
+    },
+    {
+      "text": "12 Crafted",
+      "words": [
+        {
+          "text": "12",
+          "left": 0.3953125,
+          "top": 0.2690972,
+          "width": 0.01171875,
+          "height": 0.019097222
+        },
+        {
+          "text": "Crafted",
+          "left": 0.4109375,
+          "top": 0.26822916,
+          "width": 0.037890624,
+          "height": 0.019965278
+        }
+      ]
+    },
+    {
+      "text": "Alternox Prime Receiver",
+      "words": [
+        {
+          "text": "Alternox",
+          "left": 0.25507814,
+          "top": 0.5043403,
+          "width": 0.03828125,
+          "height": 0.020833334
+        },
+        {
+          "text": "Prime",
+          "left": 0.29726562,
+          "top": 0.5043403,
+          "width": 0.026171874,
+          "height": 0.020833334
+        },
+        {
+          "text": "Receiver",
+          "left": 0.3269531,
+          "top": 0.5043403,
+          "width": 0.0390625,
+          "height": 0.020833334
+        }
+      ]
+    },
+    {
+      "text": "2 X Forma Blueprint",
+      "words": [
+        {
+          "text": "2",
+          "left": 0.39140624,
+          "top": 0.5060764,
+          "width": 0.005078125,
+          "height": 0.019097222
+        },
+        {
+          "text": "X",
+          "left": 0.3996094,
+          "top": 0.5060764,
+          "width": 0.005859375,
+          "height": 0.019097222
+        },
+        {
+          "text": "Forma",
+          "left": 0.40898436,
+          "top": 0.5060764,
+          "width": 0.02890625,
+          "height": 0.019097222
+        },
+        {
+          "text": "Blueprint",
+          "left": 0.44179687,
+          "top": 0.5043403,
+          "width": 0.041015625,
+          "height": 0.026041666
+        }
+      ]
+    },
+    {
+      "text": "North420",
+      "words": [
+        {
+          "text": "North420",
+          "left": 0.28515625,
+          "top": 0.5842014,
+          "width": 0.037109375,
+          "height": 0.019097222
+        }
+      ]
+    },
+    {
+      "text": "q7lux242",
+      "words": [
+        {
+          "text": "q7lux242",
+          "left": 0.40546876,
+          "top": 0.5842014,
+          "width": 0.04609375,
+          "height": 0.019097222
+        }
+      ]
+    },
+    {
+      "text": "@ Owned",
+      "words": [
+        {
+          "text": "@",
+          "left": 0.50625,
+          "top": 0.26822916,
+          "width": 0.009375,
+          "height": 0.021701388
+        },
+        {
+          "text": "Owned",
+          "left": 0.52382815,
+          "top": 0.26822916,
+          "width": 0.035546876,
+          "height": 0.019965278
+        }
+      ]
+    },
+    {
+      "text": "Afentis Prime Barrel",
+      "words": [
+        {
+          "text": "Afentis",
+          "left": 0.5167969,
+          "top": 0.5043403,
+          "width": 0.032421876,
+          "height": 0.020833334
+        },
+        {
+          "text": "Prime",
+          "left": 0.5527344,
+          "top": 0.5043403,
+          "width": 0.026171874,
+          "height": 0.020833334
+        },
+        {
+          "text": "Barrel",
+          "left": 0.5828125,
+          "top": 0.5043403,
+          "width": 0.026171874,
+          "height": 0.020833334
+        }
+      ]
+    },
+    {
+      "text": "Pathfinder081 50",
+      "words": [
+        {
+          "text": "Pathfinder081",
+          "left": 0.5136719,
+          "top": 0.5824653,
+          "width": 0.07460938,
+          "height": 0.020833334
+        },
+        {
+          "text": "50",
+          "left": 0.5914062,
+          "top": 0.5824653,
+          "width": 0.01875,
+          "height": 0.024305556
+        }
+      ]
+    },
+    {
+      "text": "Crafted",
+      "words": [
+        {
+          "text": "Crafted",
+          "left": 0.6472656,
+          "top": 0.26822916,
+          "width": 0.0375,
+          "height": 0.019965278
+        }
+      ]
+    },
+    {
+      "text": "Lex Prime Blueprint",
+      "words": [
+        {
+          "text": "Lex",
+          "left": 0.64453125,
+          "top": 0.5060764,
+          "width": 0.015234375,
+          "height": 0.019097222
+        },
+        {
+          "text": "Prime",
+          "left": 0.66328126,
+          "top": 0.5043403,
+          "width": 0.0265625,
+          "height": 0.020833334
+        },
+        {
+          "text": "Blueprint",
+          "left": 0.6933594,
+          "top": 0.5043403,
+          "width": 0.041015625,
+          "height": 0.026041666
+        }
+      ]
+    },
+    {
+      "text": "Wanderl 089",
+      "words": [
+        {
+          "text": "Wanderl",
+          "left": 0.6550781,
+          "top": 0.5842014,
+          "width": 0.032421876,
+          "height": 0.019097222
+        },
+        {
+          "text": "089",
+          "left": 0.690625,
+          "top": 0.5842014,
+          "width": 0.016796876,
+          "height": 0.019097222
+        }
+      ]
+    },
+    {
+      "text": "Endless Bonus Affinity Booster | 1 Relic Opened",
+      "words": [
+        {
+          "text": "Endless",
+          "left": 0.3738281,
+          "top": 0.8828125,
+          "width": 0.040625,
+          "height": 0.019965278
+        },
+        {
+          "text": "Bonus",
+          "left": 0.41835937,
+          "top": 0.8836806,
+          "width": 0.0328125,
+          "height": 0.019097222
+        },
+        {
+          "text": "Affinity",
+          "left": 0.4546875,
+          "top": 0.8828125,
+          "width": 0.0375,
+          "height": 0.026041666
+        },
+        {
+          "text": "Booster",
+          "left": 0.49648437,
+          "top": 0.8836806,
+          "width": 0.040625,
+          "height": 0.019097222
+        },
+        {
+          "text": "|",
+          "left": 0.5410156,
+          "top": 0.8836806,
+          "width": 0.0015625,
+          "height": 0.0234375
+        },
+        {
+          "text": "1",
+          "left": 0.54726565,
+          "top": 0.8836806,
+          "width": 0.003125,
+          "height": 0.019097222
+        },
+        {
+          "text": "Relic",
+          "left": 0.5566406,
+          "top": 0.8828125,
+          "width": 0.024609376,
+          "height": 0.019965278
+        },
+        {
+          "text": "Opened",
+          "left": 0.58515626,
+          "top": 0.8828125,
+          "width": 0.039453126,
+          "height": 0.026041666
+        }
+      ]
+    }
+  ]
+}

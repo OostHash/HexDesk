@@ -271,12 +271,34 @@ pub fn open_process(pid: u32) -> Result<Box<dyn ProcessHandle>, String> {
     }
 }
 
-// ─── Screen Capture ───────────────────────────────────────────────────────────
-// Delegated to crate::ocr::windows — ocr is self-contained with its own
-// Windows capture code, no circular dependency needed.
+/// Whether this process runs with an elevated token.
+pub fn is_elevated() -> Option<bool> {
+    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows_sys::Win32::Security::{
+        GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY,
+    };
+    use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
-// ─── OCR Engine ───────────────────────────────────────────────────────────────
-// Delegated to crate::ocr::windows — same as above.
+    unsafe {
+        let mut token: HANDLE = 0;
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) == 0 {
+            return None;
+        }
+        let mut elevation = TOKEN_ELEVATION { TokenIsElevated: 0 };
+        let mut returned = 0u32;
+        let ok = GetTokenInformation(
+            token,
+            TokenElevation,
+            &mut elevation as *mut _ as *mut core::ffi::c_void,
+            std::mem::size_of::<TOKEN_ELEVATION>() as u32,
+            &mut returned,
+        );
+        CloseHandle(token);
+        (ok != 0).then_some(elevation.TokenIsElevated != 0)
+    }
+}
+
+// Screen capture and OCR live in src/backend/crates/capture.
 
 // ─── Locale ───────────────────────────────────────────────────────────────────
 
@@ -292,17 +314,6 @@ pub fn get_system_locale() -> String {
         String::from_utf16_lossy(&buf[..(len as usize - 1)])
     } else {
         "en-US".to_string()
-    }
-}
-
-pub fn initialize_com() {
-    unsafe {
-        windows_sys::Win32::System::Com::CoInitializeEx(
-            std::ptr::null(),
-            windows_sys::Win32::System::Com::COINIT_MULTITHREADED
-                .try_into()
-                .unwrap(),
-        );
     }
 }
 

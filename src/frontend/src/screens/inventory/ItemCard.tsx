@@ -1,7 +1,7 @@
 import { Hammer, Star, TrendingDown, TrendingUp } from "lucide-react";
 import { imageSources } from "../../api/catalog";
 import { openExternal } from "../../api/links";
-import type { InventoryRow, ModCounts } from "../../domain/inventory";
+import { formatAge, type InventoryRow, type ModCounts } from "../../domain/inventory";
 import { wikiUrl } from "../../domain/wiki";
 import { ItemImage } from "../../patterns/ItemImage";
 import { WikiMenu } from "../../patterns/WikiMenu";
@@ -54,7 +54,7 @@ export function ChangeBadge({ recent }: { recent: ItemExtras["recent"] }) {
   return (
     <Badge tone={up ? "success" : "danger"} icon={up ? TrendingUp : TrendingDown}>
       {up ? "+" : "−"}
-      {fmt(Math.abs(recent.delta))} · {recent.minutesAgo === 0 ? "now" : `${String(recent.minutesAgo)}m`}
+      {fmt(Math.abs(recent.delta))} · {formatAge(recent.minutesAgo)}
     </Badge>
   );
 }

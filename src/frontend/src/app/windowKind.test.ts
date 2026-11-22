@@ -19,6 +19,7 @@ describe("resolveWindowKind", () => {
     ["?changelog", "changelog"],
     ["?rivenoverlay", "riven-overlay"],
     ["?relicpickoverlay", "relic-pick-overlay"],
+    ["?overlaystatus", "overlay-status"],
   ] as const)("reads query marker %s", (search, kind) => {
     expect(resolveWindowKind(at(search))).toBe(kind);
   });

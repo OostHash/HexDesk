@@ -1,85 +1,24 @@
-//! Subscriber setup: a compact daily-rolling file log plus a coloured console
-//! log, both fed from the same `tracing` events.
+//! Starts logging for the app. The subscriber, the log files and their
+//! retention live in `src/backend/crates/logging`.
 
-use std::sync::OnceLock;
+pub(crate) use hexdesk_logging::{clear, set_retention, shutdown};
 
-use tracing_subscriber::{
-    fmt,
-    layer::{Layer, SubscriberExt},
-    util::SubscriberInitExt,
-    EnvFilter,
-};
-
-/// Dropping the `WorkerGuard` flushes the non-blocking writer's buffer, so it
-/// has to outlive every log call; otherwise the last events (including a
-/// panic) never reach disk.
-static FILE_GUARD: OnceLock<tracing_appender::non_blocking::WorkerGuard> = OnceLock::new();
-
-/// Installs the global subscriber, log-crate bridge and panic hook. Safe to
-/// call more than once; later calls do nothing.
-pub fn init() {
-    if FILE_GUARD.get().is_some() {
+/// Starts logging, keeping `retention_days` of daily logs.
+pub(crate) fn init(retention_days: u64) {
+    // Logs live in the state folder with the rest of the app's files, not in
+    // the Tauri log dir.
+    let log_dir = crate::paths::state_dir().join("logs");
+    let started = hexdesk_logging::init(hexdesk_logging::Options {
+        dir: log_dir.clone(),
+        retention_days,
+        file_filter: "warn,hexdesk=debug,hexdesk_backend=debug",
+        console_filter: "info,hexdesk=info,hexdesk_backend=info",
+    });
+    if let Err(error) = started {
+        // No subscriber is installed, so stderr is the only place left.
+        eprintln!("HexDesk logging could not start: {error}");
         return;
     }
-
-    // Logs live with the rest of the app's files, under the legacy storage
-    // name. The Tauri log dir is keyed on the app identifier and holds none of
-    // them, so release builds migrate their old files out of it below; dev
-    // builds never wrote there.
-    let log_dir = crate::paths::state_dir().join("logs");
-    let _ = std::fs::create_dir_all(&log_dir);
-
-    let appender = tracing_appender::rolling::Builder::new()
-        .rotation(tracing_appender::rolling::Rotation::DAILY)
-        .filename_prefix("hexdesk")
-        .filename_suffix("log")
-        .max_log_files(5)
-        .build(&log_dir)
-        .expect("log dir was just created");
-    // Non-blocking so the scanner and OCR hot loops never stall on disk I/O.
-    let (writer, guard) = tracing_appender::non_blocking(appender);
-    let _ = FILE_GUARD.set(guard);
-
-    let file_layer = fmt::layer()
-        .compact()
-        .with_ansi(false)
-        .with_target(true)
-        // Span-close events carry time.busy/time.idle, which is where the
-        // scanner and OCR timings surface.
-        .with_span_events(fmt::format::FmtSpan::CLOSE)
-        .with_writer(writer)
-        .with_filter(filter("warn,hexdesk_backend=debug"));
-
-    let console_layer = fmt::layer()
-        .compact()
-        .with_ansi(true)
-        .with_target(true)
-        .with_writer(std::io::stderr)
-        .with_filter(filter("info,hexdesk_backend=info"));
-
-    let _ = tracing_subscriber::registry()
-        .with(file_layer)
-        .with(console_layer)
-        .try_init();
-
-    let _ = tracing_log::LogTracer::init();
-
-    let previous = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        let payload = info.payload();
-        let message = payload
-            .downcast_ref::<&str>()
-            .copied()
-            .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
-            .unwrap_or("<non-string panic payload>");
-        tracing::error!(
-            location = %info.location().map_or_else(|| "unknown".to_string(), ToString::to_string),
-            message,
-            "panic"
-        );
-        previous(info);
-    }));
-
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),
         pid = std::process::id(),
@@ -87,8 +26,4 @@ pub fn init() {
         log_dir = %log_dir.display(),
         "HexDesk starting"
     );
-}
-
-fn filter(default: &str) -> EnvFilter {
-    EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default))
 }

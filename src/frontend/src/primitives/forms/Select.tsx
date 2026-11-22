@@ -10,7 +10,7 @@ type Props = Omit<ComponentProps<"select">, "size"> & {
   invalid?: boolean;
 };
 
-/** Native <select> with a decorative chevron (plan D11: native first). */
+/** Native <select> with a decorative chevron. */
 export function Select({ size, invalid, id, required, className, children, ...rest }: Props) {
   const field = useFieldControl({ id, invalid, required });
   return (

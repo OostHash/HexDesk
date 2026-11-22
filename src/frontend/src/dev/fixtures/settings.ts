@@ -10,6 +10,8 @@ const INITIAL: Record<string, unknown> = {
   timerFavorites: ["cetus-cycle", "duviri-cycle"],
   fissureWatches: [{ id: "w1", tier: "Lith", missionType: "Capture", variant: "any" }],
   fissureNotifications: true,
+  // The fixture changelog is dated before the page loads; a fixed window keeps it "recent".
+  recentWindow: "day",
 };
 
 function read(): Record<string, unknown> {
@@ -26,8 +28,17 @@ export function resetMockSettings() {
 }
 
 export const loadSettings: Fixture<string> = {
+  essential: true,
   default: () => JSON.stringify(read()),
   empty: () => "",
+  onboarding: () =>
+    JSON.stringify({
+      ...read(),
+      onboardingCompleted: false,
+      testingEnabled: false,
+      logRetentionDays: 1,
+      feedbackFrequency: "every-flow",
+    }),
 };
 
 export const saveSettings: Fixture<null, { json: string }> = {
@@ -35,6 +46,14 @@ export const saveSettings: Fixture<null, { json: string }> = {
   default: ({ json }) => {
     const patch = JSON.parse(json) as Record<string, unknown>;
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...read(), ...patch }));
+    return null;
+  },
+};
+
+export const setOcrModels: Fixture<null, { enabled: boolean }> = {
+  alwaysDefault: true,
+  default: ({ enabled }) => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...read(), ocrModels: enabled }));
     return null;
   },
 };

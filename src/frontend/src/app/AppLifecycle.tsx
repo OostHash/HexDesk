@@ -9,7 +9,6 @@ import {
   setBlobStatus,
   setScanner,
 } from "../api/app";
-import { installWfmConsoleHelpers, syncLoggers } from "../api/debug";
 import { isTauri } from "../api/env";
 import { onEvent } from "../api/events";
 import { invoke } from "../api/invoke";
@@ -26,7 +25,7 @@ const GEOMETRY_DEBOUNCE_MS = 400;
 const withTimeout = (work: Promise<unknown>, ms: number) => Promise.race([work, new Promise<void>((resolve) => window.setTimeout(resolve, ms))]);
 
 /**
- * The app core of the main window (vault app-core.md): memory scanner,
+ * The app core of the main window: memory scanner,
  * catalogue at start, updater, blob status, warframe.market auto-invisible,
  * closing and window geometry. Renders nothing; the header and Settings show
  * and drive the state it keeps in the query cache.
@@ -49,22 +48,11 @@ export function AppLifecycle() {
     });
   }, [queryClient, scannerEnabled, settingsLoaded]);
 
-  // ── Debug loggers follow the settings (vault debugging.md) ────────────────
-  const blobLog = settings?.blobLogEnabled === true;
-  const apiLog = settings?.apiLogEnabled === true;
-  useEffect(() => {
-    if (!settingsLoaded || !isTauri()) return;
-    syncLoggers(blobLog, apiLog).catch((error: unknown) => {
-      console.error("debug loggers: syncing failed", error);
-    });
-  }, [settingsLoaded, blobLog, apiLog]);
-
   // ── Once at start ─────────────────────────────────────────────────────────
   const started = useRef(false);
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    installWfmConsoleHelpers();
     // A failure keeps the cached catalogue; Settings offers a manual refresh.
     refreshCatalogue(queryClient, false).catch(() => undefined);
     // Fills the backend top-items cache so Statistics opens at once.
@@ -133,7 +121,7 @@ export function AppLifecycle() {
 
   // ── Window position and size ──────────────────────────────────────────────
   // Saved straight to the file: the window moving is not a settings change
-  // the UI needs to see (current app: App.tsx).
+  // the UI needs to see.
   useEffect(() => {
     if (!isTauri()) return;
     let disposed = false;

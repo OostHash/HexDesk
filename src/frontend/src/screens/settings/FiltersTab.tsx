@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { usePresetManager } from "../../api/presets";
 import type { PresetModule } from "../../domain/filterPresets";
+import { RECENT_WINDOW_LABEL, RECENT_WINDOWS, recentWindowFrom } from "../../domain/inventory";
 import { PresetList } from "../../patterns/PresetBar";
 import { FormField, Select } from "../../primitives/forms";
-import { SettingsGroup, SwitchRow } from "./parts";
+import { SettingsGroup, SwitchRow, useSettingsFile } from "./parts";
 
 const PAGES: ReadonlyArray<{ value: PresetModule; label: string }> = [
   { value: "inventory", label: "Inventory" },
@@ -12,12 +13,41 @@ const PAGES: ReadonlyArray<{ value: PresetModule; label: string }> = [
   { value: "relics", label: "Relic browser" },
 ];
 
+/** What "Changed recently" covers in Inventory: the filter, the recent sort and the change badges. */
+function RecentWindowGroup() {
+  const { settings, set } = useSettingsFile();
+  return (
+    <SettingsGroup title="Changed recently">
+      <FormField
+        layout="row"
+        label="Counts changes from"
+        description="Used by the Changed recently filter and sort in Inventory, and by the change badge on items."
+      >
+        <Select
+          className="w-56"
+          value={recentWindowFrom(settings.recentWindow)}
+          onChange={(event) => {
+            set({ recentWindow: event.target.value });
+          }}
+        >
+          {RECENT_WINDOWS.map((value) => (
+            <option key={value} value={value}>
+              {RECENT_WINDOW_LABEL[value]}
+            </option>
+          ))}
+        </Select>
+      </FormField>
+    </SettingsGroup>
+  );
+}
+
 export function FiltersTab() {
   const [page, setPage] = useState<PresetModule>("inventory");
   const manager = usePresetManager(page);
   const pageLabel = PAGES.find((p) => p.value === page)?.label ?? page;
   return (
     <>
+      <RecentWindowGroup />
       <SettingsGroup title="Filter presets">
         <SwitchRow
           label="Restore previous filters on active preset click"

@@ -7,6 +7,86 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-22
+
+### Added
+
+- A guided welcome screen for new installations covers appearance, screen
+  reading, the memory scanner, overlay controls and optional testing. Existing
+  installations continue normally, and the guide can be opened again from
+  Settings → General. It also links to the HexDesk Discord.
+- An activity console in Settings → Console shows inventory scans, overlay
+  reads, updates and errors as they happen. Entries can be filtered, opened
+  for details and copied into a bug report.
+- A diagnostics export creates one zip in Downloads with only the information
+  you choose. HexDesk attempts to redact known passwords, tokens, e-mail
+  addresses and player names; review the zip before sharing it.
+- Optional screen-reading feedback, off by default, lets testers mark a relic
+  reward, refinement or Riven as correct or incorrect using configurable
+  keys. Incorrect reads remain available after a restart and can be exported
+  or discarded from the header. Reports are saved locally only when you
+  choose to export them; HexDesk never uploads them automatically and never
+  captures the rest of your desktop.
+- Diagnostic logs can be kept for one to five days. **Remove logs** clears
+  existing logs, saved OCR captures and pending test data after confirmation,
+  while logging continues for the current session.
+- An overlay key opens or hides the overlay for the current game screen.
+  Manual mode only reads a screen when that key is pressed, while a small
+  click-through status line shows what the overlay is doing.
+- Optional enhanced OCR downloads about 12 MB of models to read small relic
+  counts and refinement tags that Windows OCR misses.
+- Updates can be checked and installed from Settings → General.
+
+### Changed
+
+- Settings is now a full screen with clearer categories, a more useful General
+  page and the app version and update status in one place. Overlay keys are
+  assigned by pressing the key you want instead of choosing from a list.
+- The navigation uses larger, screen-specific icons and can collapse to icons
+  only. The modular window and changelog bars are easier to open and close,
+  and the changelog shows clearer, dated inventory changes.
+- "Changed recently" can cover the current HexDesk session, the last hour,
+  24 hours, 7 days or the complete changelog. Item badges show how long ago a
+  change happened.
+- Relic Reward appears as soon as two complete reads agree, marks uncertain
+  card names and keeps closely spaced rewards separate. It also reacts more
+  reliably when the reward screen closes or changes.
+- Relic Pick opens sooner and follows the relics actually shown on screen,
+  including their counts and refinements. Small OCR mistakes and temporarily
+  missing text are handled more reliably.
+- The Riven check now runs in the background like the relic overlays, opening
+  and closing with the Riven screen without blocking the main window.
+- Logs and warframe.market errors now explain what failed. Repeated messages
+  are grouped, and Windows user names and player names are no longer written
+  to log files.
+
+### Removed
+
+- The old release-build debugging tools and separate session/debug files are
+  replaced by the activity console and diagnostics export. Debug files left
+  behind by earlier versions are cleaned up when HexDesk starts.
+
+### Fixed
+
+- The inventory and the changelog update right after a mission instead of
+  being delayed by about two minutes.
+- "Changed recently" defaults to the current HexDesk session instead of
+  showing every recorded change.
+- The main window is named HexDesk in Alt+Tab, the taskbar and Task Manager.
+- Clicking an active filter preset again turns it off and, when enabled,
+  restores the filters that were active before it.
+- The Relic Pick overlay closes by itself again when you pick a relic, back
+  out or start the mission. It no longer opens after the selection screen has
+  already closed.
+- Relic Reward and Relic Pick now count owned parts, blueprints, Foundry jobs,
+  built items and newly received rewards consistently. Warframe-part
+  blueprints no longer appear to be missing from a set.
+- Disabling Relic Reward stops its background screen reads, and enabling or
+  disabling the Relic Reward and Riven overlays takes effect immediately.
+- The Riven overlay no longer has a second border around it.
+- The mouse cursor and close button work on the Relic Pick overlay, and relic
+  rewards remain available there after restarting HexDesk.
+
 ## [1.0.1] - 2026-11-17
 
 ### Fixed

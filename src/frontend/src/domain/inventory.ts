@@ -4,8 +4,8 @@ import type { CatalogItem } from "./relics.ts";
 import { matchesTerms, splitSearchTerms } from "./relics.ts";
 
 /**
- * Inventory logic, same rules as the current app (vault/frontend-ports/inventory.md).
- * Filters keep the current app's shape, so saved presets stay compatible.
+ * Inventory logic.
+ * Filters keep a stable shape, so saved presets stay compatible.
  */
 
 export const CATEGORIES: ReadonlyArray<{ id: string; label: string }> = [
@@ -218,30 +218,79 @@ export type ChangeEntry = {
   rank?: number | null;
 };
 
-export const RECENT_SECONDS = 300;
+/** What "Changed recently" covers; chosen in Settings → Filters. */
+export const RECENT_WINDOWS = ["session", "hour", "day", "week", "all"] as const;
+export type RecentWindow = (typeof RECENT_WINDOWS)[number];
 
-export function lastChangedMap(changes: readonly ChangeEntry[]): Record<string, number> {
+export const RECENT_WINDOW_LABEL: Readonly<Record<RecentWindow, string>> = {
+  session: "Since HexDesk started",
+  hour: "Last hour",
+  day: "Last 24 hours",
+  week: "Last 7 days",
+  all: "Everything in the changelog",
+};
+
+/** The stored setting, or "since HexDesk started" when it is missing or unknown. */
+export const recentWindowFrom = (v: unknown): RecentWindow =>
+  typeof v === "string" && (RECENT_WINDOWS as readonly string[]).includes(v) ? (v as RecentWindow) : "session";
+
+const WINDOW_SECONDS: Readonly<Record<"hour" | "day" | "week", number>> = { hour: 3600, day: 86_400, week: 604_800 };
+
+/** Start of the window in unix seconds: changes at or after it count as recent. */
+export function recentSince(window: RecentWindow, nowSec: number, appStartedAt: number): number {
+  switch (window) {
+    case "session":
+      return appStartedAt;
+    case "all":
+      return 0;
+    default:
+      return nowSec - WINDOW_SECONDS[window];
+  }
+}
+
+/**
+ * Latest change time per item, counting only changes at or after `since`
+ * (unix seconds). Items without such a change are not in the map, so the
+ * "Changed recently" filter leaves them out.
+ */
+export function lastChangedMap(changes: readonly ChangeEntry[], since: number): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const c of changes) out[c.unique_name] = Math.max(out[c.unique_name] ?? 0, c.timestamp);
+  for (const c of changes) {
+    if (c.timestamp >= since) out[c.unique_name] = Math.max(out[c.unique_name] ?? 0, c.timestamp);
+  }
   return out;
 }
 
-/** Net change within the last five minutes, or null. */
-export function recentDelta(changes: readonly ChangeEntry[], uniqueName: string, nowSec: number): { delta: number; minutesAgo: number } | null {
-  const recent = changes.filter((c) => c.unique_name === uniqueName && nowSec - c.timestamp < RECENT_SECONDS);
+/** Net change of one item since `since` (unix seconds), and how long ago it last changed; null without changes. */
+export function recentDelta(
+  changes: readonly ChangeEntry[],
+  uniqueName: string,
+  since: number,
+  nowSec: number,
+): { delta: number; minutesAgo: number } | null {
+  const recent = changes.filter((c) => c.unique_name === uniqueName && c.timestamp >= since);
   const first = recent[0];
   if (!first) return null;
-  const whole = recent.find((c) => c.rank === undefined || c.rank === null);
-  const delta = whole ? whole.delta : recent.reduce((s, c) => s + c.delta, 0);
+  // Whole-item entries carry the quantity change; per-rank entries (mods) only count when there are none.
+  const whole = recent.filter((c) => c.rank === undefined || c.rank === null);
+  const delta = (whole.length > 0 ? whole : recent).reduce((s, c) => s + c.delta, 0);
   const latest = Math.max(...recent.map((c) => c.timestamp));
-  return { delta, minutesAgo: Math.floor((nowSec - latest) / 60) };
+  return { delta, minutesAgo: Math.max(0, Math.floor((nowSec - latest) / 60)) };
+}
+
+/** Short age for a change badge: now, 12m, 3h, 2d. */
+export function formatAge(minutes: number): string {
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${String(minutes)}m`;
+  if (minutes < 24 * 60) return `${String(Math.floor(minutes / 60))}h`;
+  return `${String(Math.floor(minutes / (24 * 60)))}d`;
 }
 
 // ── Presets ─────────────────────────────────────────────────────────────────
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** Same validation and legacy migration as the current app (types/filterPresets.ts). */
+/** Reads a stored Inventory preset, older shapes included; null when it is not valid. */
 export const inventoryPresetCodec: PresetCodec<InventoryFilters> = {
   module: "inventory",
   decode: (v) => {

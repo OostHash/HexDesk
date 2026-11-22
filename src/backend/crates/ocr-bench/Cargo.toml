@@ -1,0 +1,19 @@
+[package]
+name = "hexdesk-ocr-bench"
+version.workspace = true
+description = "HexDesk OCR bench: measures OCR engines against labelled game screens; a developer tool, not part of the app"
+authors = ["HexDesk contributors"]
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/OostHash/HexDesk"
+publish = false
+
+[[bin]]
+name = "ocr-bench"
+path = "src/main.rs"
+
+[dependencies]
+hexdesk-capture = { path = "../capture" }
+hexdesk-overlays = { path = "../overlays" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

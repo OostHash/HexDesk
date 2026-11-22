@@ -7,10 +7,8 @@ use crate::memory_scanner;
 use crate::wfcd::{RecipeComponent, RelicReward, SyndicateOffer, WfcdItem};
 use crate::wfm::Wfm;
 
-use crate::companion_api::ApiModCopy;
 use crate::monitor::CraftingJob;
 
-type OcrFrame = (Vec<u8>, u32, u32);
 type WorldstateCache = (
     std::time::Instant,
     Arc<serde_json::Value>,
@@ -62,9 +60,7 @@ pub struct AppState {
     pub relic_rewards_cache_path: PathBuf,
     pub quantities_cache_path: PathBuf,
     pub inventory_state_cache_path: PathBuf,
-    pub settings_path: PathBuf,
-    pub log_path: PathBuf,
-    pub changes_log_path: PathBuf,
+    pub settings: Arc<hexdesk_persist::Settings>,
     pub conn: Mutex<rusqlite::Connection>,
     pub wfcd_items: Mutex<Vec<WfcdItem>>,
     /// parent unique_name → recipe component tree
@@ -90,15 +86,6 @@ pub struct AppState {
     /// Last-known crafting jobs from memory scans. Shared with monitor thread.
     pub current_crafting: Arc<Mutex<Vec<CraftingJob>>>,
     pub monitor_active: Arc<AtomicBool>,
-    /// Controls the raw memory string-dump background thread.
-    pub raw_scan_active: Arc<AtomicBool>,
-    pub raw_scan_path: PathBuf,
-    /// When true, save a timestamped inventory blob to blobs/ on each full scan pass.
-    pub blob_log_enabled: Arc<AtomicBool>,
-    pub blob_log_dir: PathBuf,
-    /// When true, save the raw DE API response to api_logs/ on each fetch.
-    pub api_log_enabled: Arc<AtomicBool>,
-    pub api_log_dir: PathBuf,
     /// The warframe.market client: session, rate limiters, and the slug → price
     /// cache all live behind this one seam, shared (Arc) with the prefetch thread.
     pub wfm: Arc<Wfm>,
@@ -116,13 +103,6 @@ pub struct AppState {
     /// IDs of riven auctions created via HexDesk — persisted so hidden auctions survive restarts.
     pub auction_ids: Mutex<Vec<String>>,
     pub auction_ids_path: PathBuf,
-    /// Companion API quantities held in memory so the scanner includes them in cache writes.
-    pub api_quantities_cache: Arc<Mutex<HashMap<String, i64>>>,
-    /// Companion API mod copies held in memory so the scanner includes them in cache writes.
-    pub api_mod_copies_cache: Arc<Mutex<Vec<ApiModCopy>>>,
-    /// Most recent OCR frame (top ~48% of Warframe window, BGRA, width, height).
-    /// Stored by the OCR loop so auto-capture can write it without a second GPU readback.
-    pub last_ocr_frame: Arc<Mutex<Option<OcrFrame>>>,
     /// Local image cache directory — craftable item images downloaded here on first run.
     pub img_cache_dir: PathBuf,
     /// Port of the local HTTP image server (set in setup hook, 0 until started).
@@ -145,13 +125,6 @@ pub struct AppState {
     /// activation/expiry filtering stays anchored to the current time. Held
     /// behind `Arc` so serving a hit shares the ~1MB tree instead of cloning it.
     pub worldstate_cache: Mutex<Option<WorldstateCache>>,
-    /// When true, unmatched inventory paths are written to the Unmatched Paths debug folder.
-    pub debug_cat_enabled: Arc<AtomicBool>,
-    /// Subfolders under %LOCALAPPDATA%\warframe-companion\Debugging\
-    pub auto_capture_dir: PathBuf,
-    pub manual_capture_dir: PathBuf,
-    pub memory_probe_path: PathBuf,
-    pub unmatched_paths_dir: PathBuf,
     /// Merged bundled + user corrections: path → entry.
     /// Bundled file is embedded at compile time; user file from data dir overrides on a per-path basis.
     pub corrections: HashMap<String, CorrectionEntry>,
@@ -159,6 +132,13 @@ pub struct AppState {
     pub force_pid_check: Arc<AtomicBool>,
     /// When false, the Relic Pick Overlay is suppressed even when EE.log triggers it.
     pub relic_pick_overlay_enabled: Arc<AtomicBool>,
+    /// When false, the reward cards are not read on the fissure reward screen.
+    pub relic_reward_overlay_enabled: Arc<AtomicBool>,
+    /// Manual mode: only the overlay key opens an overlay; EE.log lines
+    /// still close one.
+    pub overlay_manual: Arc<AtomicBool>,
+    /// When false, the riven check does not run on a riven screen.
+    pub riven_overlay_enabled: Arc<AtomicBool>,
     /// When false, all automatically-triggered overlays are suppressed.
     pub overlays_enabled: Arc<AtomicBool>,
 }

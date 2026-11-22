@@ -45,7 +45,7 @@ export function useSavedRolls() {
   return useQuery({ queryKey: rivenKeys.saved, queryFn: () => invoke("get_saved_riven_rolls"), staleTime: Infinity });
 }
 
-/** Save, update (delete + save, like the current app), rename and delete saved rolls. */
+/** Save, update (delete + save), rename and delete saved rolls. */
 export function useRollActions() {
   const queryClient = useQueryClient();
   const refresh = () => queryClient.invalidateQueries({ queryKey: rivenKeys.saved });
@@ -74,8 +74,6 @@ export function useRollActions() {
   return { save, rename, remove };
 }
 
-export const fetchSessionLog = () => invoke("get_riven_session_log").catch(() => "Log unavailable");
-
 export function useOwnedRivens() {
   return useQuery({ queryKey: rivenKeys.owned, queryFn: () => invoke("get_rivens") });
 }
@@ -99,7 +97,7 @@ export function usePostAuction() {
   return useMutation({
     mutationFn: (params: CommandArgs<"wfm_create_riven_auction">["params"]) => invokeWfm("wfm_create_riven_auction", { params }),
     onSuccess: () => {
-      // warframe.market can take a moment to list it (current app: 1.5 s).
+      // warframe.market can take a moment to list it.
       window.setTimeout(() => {
         void queryClient.invalidateQueries({ queryKey: tradingKeys.auctions });
       }, 1500);

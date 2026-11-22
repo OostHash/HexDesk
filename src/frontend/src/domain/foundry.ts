@@ -4,8 +4,8 @@ import type { CatalogItem } from "./relics.ts";
 import { matchesTerms, splitSearchTerms } from "./relics.ts";
 
 /**
- * Foundry logic, same rules as the current app (vault/frontend-ports/foundry.md).
- * Filters keep the current app's shape, so saved presets stay compatible.
+ * Foundry logic.
+ * Filters keep a stable shape, so saved presets stay compatible.
  */
 
 export const FOUNDRY_CATEGORIES = [
@@ -84,7 +84,7 @@ export function effectiveMaxCap(item: FoundryItem): number | null {
 export const isLichWeapon = (item: { name: string }) => item.name.startsWith("Kuva ") || item.name.startsWith("Tenet ");
 const isPrime = (item: FoundryItem) => item.name.includes("Prime") || item.vaulted != null;
 
-/** Owned quantity; Helminth-subsumed warframes count as 0, like the current app. */
+/** Owned quantity; Helminth-subsumed warframes count as 0. */
 export const ownedQty = (own: Ownership, uniqueName: string) => (own.subsumed.has(uniqueName) ? 0 : (own.quantities[uniqueName] ?? 0));
 
 /** Recipes list the same component twice sometimes (Akbolto: 2× Bolto); sum those. */
@@ -281,8 +281,7 @@ export type RecipeTreeNode = {
 
 /**
  * Owned = enough of it; craftable = every direct part is there; partial =
- * some of it or some parts; missing = nothing. Counts are per craft, like
- * the current app.
+ * some of it or some parts; missing = nothing. Counts are per craft.
  */
 export function recipeTree(recipe: readonly RecipeComponent[], own: Ownership, parentKey = ""): RecipeTreeNode[] {
   return mergeComponents(recipe).map((c) => {
@@ -348,7 +347,7 @@ const SHARD_TYPES: ReadonlyArray<[prefix: string, type: string]> = [
   ["ACC_PURPLE", "Violet"],
 ];
 
-/** Same decoding as the current app: colour names or numbers 0–9 (5+ = Tauforged). */
+/** Shard colour from a colour name or a number 0–9 (5+ = Tauforged). */
 export function parseShard(raw: RawShard): ArchonShard {
   let color = raw.color.toUpperCase();
   const numeric = /^\d+$/.test(color);
@@ -383,8 +382,8 @@ const BOOL_KEYS = [
 ] as const;
 
 /**
- * Presets store everything except the category (types/filterPresets.ts in
- * the current app). Applying one keeps the category that is open now — the
+ * Presets store everything except the category. Applying one keeps the
+ * category that is open now — the
  * screen passes it in through `withCategory`.
  */
 export function foundryPresetCodec(activeCat: string): PresetCodec<FoundryFilters> {

@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../cn";
 
-const SIZE = { xs: "size-3", sm: "size-4", md: "size-5", lg: "size-6" } as const;
+const SIZE = { xs: "size-3", sm: "size-4", md: "size-5", lg: "size-6", xl: "size-10" } as const;
 
 export type IconSize = keyof typeof SIZE;
 

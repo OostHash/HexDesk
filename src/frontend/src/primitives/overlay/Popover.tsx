@@ -22,7 +22,7 @@ type Props = {
 
 /**
  * Non-modal panel on the native Popover API, positioned with CSS anchor
- * positioning (plan 7.2). The browser handles light dismiss (click outside,
+ * positioning. The browser handles light dismiss (click outside,
  * Escape), stacking of nested popovers, the top layer and aria-expanded on
  * the trigger.
  */

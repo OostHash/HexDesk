@@ -70,7 +70,7 @@ const PRICING_BASE: &str = "https://raw.githubusercontent.com/OostHash/HexDeskPr
 /// Returns (by_name, by_slug):
 ///   by_name: item display name (lowercase) → median sell price  (for get_item_price)
 ///   by_slug: authoritative WFM slug         → median sell price  (for wfm_price_cache)
-#[tracing::instrument(level = "debug", skip_all)]
+#[tracing::instrument(target = "hexdesk::market", level = "debug", skip_all)]
 pub(crate) fn fetch_relics_run_data() -> (HashMap<String, u32>, HashMap<String, u32>) {
     // items.json gives the authoritative name → WFM slug mapping for every tradeable item.
     let name_to_slug: HashMap<String, String> = ureq::get(&format!("{}/items.json", PRICING_BASE))

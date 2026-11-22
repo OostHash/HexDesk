@@ -18,8 +18,8 @@ type Props<T extends string> = {
 
 /**
  * Native radio group in a fieldset: arrow keys, one tab stop and the group
- * name come from the browser. The segmented look replaces button rows that
- * acted as radios in the current app (e.g. the fissure watch form).
+ * name come from the browser. Use it instead of button rows that act as
+ * radios (e.g. the fissure watch form).
  */
 export function RadioGroup<T extends string>({
   legend,

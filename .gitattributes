@@ -2,3 +2,7 @@
 # Prevents phantom "modified" files when a tool writes LF
 # while core.autocrlf expects CRLF in the worktree.
 * text=auto eol=lf
+
+# Test pictures (src/backend/crates/overlays/tests/fixtures) are raw bytes.
+*.pgm binary
+*.ppm binary

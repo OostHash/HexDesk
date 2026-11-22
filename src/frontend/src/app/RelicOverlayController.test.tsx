@@ -36,11 +36,30 @@ const mount = (client: QueryClient) =>
   );
 
 it("tells the backend the overlay switches once settings are read", async () => {
-  const { client, find } = setup({ relicPickEnabled: false });
+  const { client, find } = setup({ relicPickEnabled: false, overlayEnabled: false });
   await mount(client);
   await vi.waitFor(() => {
     expect(find("set_overlays_enabled")[0]?.args).toEqual({ enabled: true });
     expect(find("set_relic_pick_enabled")[0]?.args).toEqual({ enabled: false });
+    expect(find("set_relic_reward_enabled")[0]?.args).toEqual({ enabled: false });
+    expect(find("set_riven_enabled")[0]?.args).toEqual({ enabled: true });
+    expect(find("set_overlay_manual")[0]?.args).toEqual({ enabled: false });
+  });
+});
+
+it("tells the backend the overlay key, Home by default", async () => {
+  const { client, find } = setup();
+  await mount(client);
+  await vi.waitFor(() => {
+    expect(find("set_overlay_key")[0]?.args).toEqual({ vk: 0x24 });
+  });
+});
+
+it("tells the backend when there is no overlay key", async () => {
+  const { client, find } = setup({ overlayKey: "off" });
+  await mount(client);
+  await vi.waitFor(() => {
+    expect(find("set_overlay_key")[0]?.args).toEqual({ vk: 0 });
   });
 });
 
@@ -96,7 +115,7 @@ it("keeps the backend status line for the header", async () => {
   const { client } = setup();
   await mount(client);
   await vi.waitFor(async () => {
-    await emit("ff-status", "Reading rewards…");
+    await emit("status-line", "Reading rewards…");
     expect(client.getQueryData(["overlay", "status"])).toBe("Reading rewards…");
   });
 });

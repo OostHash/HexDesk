@@ -3,7 +3,7 @@ import { matchesWatch, sortByTier, type FissureWatch, type MatchedFissure } from
 import { mergeComponents, type RecipeComponent } from "./foundry";
 import type { WsFissure, WsStorm } from "./worldstate.types";
 
-/** Modular window rules (vault modular-window.md). */
+/** Modular window rules. */
 
 export const SECTION_IDS = ["tracking", "favorites", "timers", "fissures"] as const;
 export type SectionId = (typeof SECTION_IDS)[number];
@@ -13,7 +13,7 @@ export const POPOUT_SIZE = { minWidth: 180, minHeight: 300, height: 700 } as con
 
 const isSection = (v: unknown): v is SectionId => (SECTION_IDS as readonly unknown[]).includes(v);
 
-/** Stored order, unknown ids dropped, missing sections appended (current app). */
+/** Stored order, unknown ids dropped, missing sections appended. */
 export function sectionOrderFrom(raw: unknown): SectionId[] {
   const stored = Array.isArray(raw) ? raw.filter(isSection) : [];
   const unique = [...new Set(stored)];
@@ -51,7 +51,7 @@ export type TrackedNeed = { unique_name: string; name: string; needed: number; o
 const qty = (own: Ownership, uniqueName: string) => own.quantities[uniqueName] ?? 0;
 
 /**
- * What a tracked item still takes, like the current app: an intermediate you
+ * What a tracked item still takes: an intermediate you
  * own none of is broken down into its own recipe, otherwise it is compared
  * as is. The item itself is dropped (a data quirk); rows with the same name
  * are merged, counting the best-owned key. A–Z.

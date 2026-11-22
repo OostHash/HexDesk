@@ -3,7 +3,7 @@ import type { DomainColor } from "../../theme/domain";
 
 /**
  * Status tones every tone-aware primitive accepts. "domain" means: use the
- * --ff-tone variable, set via `domainTone()` from a domain colour (plan 6.7).
+ * --ff-tone variable, set via `domainTone()` from a domain colour.
  * The primitive itself never knows rarity, tier or syndicate names.
  */
 export type Tone = "neutral" | "accent" | "info" | "success" | "warning" | "danger" | "domain";

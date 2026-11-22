@@ -3,7 +3,7 @@ import { CONTRAST_CHOICES, DEFAULT_PREFERENCES, PREFERENCE_KEYS, THEME_CHOICES }
 
 /**
  * The inline <script> that sets the <html> attributes before the first paint,
- * so the page never flashes the wrong theme (plan 6.10). It is generated from
+ * so the page never flashes the wrong theme. It is generated from
  * the same constants as resolveAttributes() and injected into index.html and
  * mock.html by the Vite config; tests/tooling/prepaint.test.ts proves both
  * produce the same attributes.

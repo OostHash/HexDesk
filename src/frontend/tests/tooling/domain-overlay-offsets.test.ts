@@ -13,6 +13,7 @@ it("reads and changes one overlay's pair", () => {
   const offsets = { ...NO_OFFSETS, relicPickX: 40, relicPickY: -20 };
   expect(offsetOf(offsets, "relicPick")).toEqual({ x: 40, y: -20 });
   expect(offsetOf(offsets, "relic")).toEqual({ x: 0, y: 0 });
+  expect(offsetOf(offsets, "status")).toEqual({ x: 0, y: 0 });
   expect(withOffset(offsets, "relic", { y: 5000 })).toEqual({ ...offsets, relicY: 3000 });
   expect(withOffset(offsets, "relicPick", { x: 0, y: 0 })).toEqual(NO_OFFSETS);
   expect(offsets.relicPickX).toBe(40);

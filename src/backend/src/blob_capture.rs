@@ -3,11 +3,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
+use hexdesk_diag::{debug, info, DiagError, Kind, Level, Source};
 use tauri::{Emitter, Manager};
-use tracing::{debug, error, info, warn};
 
 use crate::app_state::AppState;
-use crate::cache::atomic_write;
 use crate::catalogue;
 use crate::db;
 use crate::events;
@@ -15,6 +14,7 @@ use crate::inventory_state::{build_inventory_from_blob, load_inventory_state_cac
 use crate::memory_scanner;
 use crate::monitor::{self, BlobStatusPayload, InventoryUpdate};
 use crate::BlobBuildParams;
+use hexdesk_persist::atomic_write;
 
 /// Shared state needed by the blob capture thread, extracted from AppState
 /// to keep the clone list at the spawn site manageable.
@@ -27,10 +27,6 @@ pub(crate) struct BlobCaptureDeps {
     pub shared_unique: Arc<Mutex<HashMap<String, i64>>>,
     pub shared_mods: Arc<Mutex<HashMap<String, memory_scanner::ModCount>>>,
     pub shared_crafting: Arc<Mutex<Vec<monitor::CraftingJob>>>,
-    pub blob_log_enabled: Arc<AtomicBool>,
-    pub blob_log_dir: std::path::PathBuf,
-    pub debug_cat_enabled: Arc<AtomicBool>,
-    pub unmatched_paths_dir: std::path::PathBuf,
     pub force_pid_check: Arc<AtomicBool>,
     pub blob_rx: Receiver<memory_scanner::BlobInventory>,
     pub blob_tx: Sender<memory_scanner::BlobInventory>,
@@ -53,10 +49,6 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
         shared_unique,
         shared_mods,
         shared_crafting,
-        blob_log_enabled,
-        blob_log_dir,
-        debug_cat_enabled,
-        unmatched_paths_dir,
         force_pid_check,
         blob_rx,
         blob_tx,
@@ -69,9 +61,6 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
         path_to_tradable,
         path_to_masterable,
         path_to_category,
-        path_to_item_type,
-        path_to_product_category,
-        path_to_wfcd_cat,
         alias_excluded,
         ignored_paths,
         stackable_paths,
@@ -85,7 +74,13 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
         let conn = match rusqlite::Connection::open(&db_path) {
             Ok(c) => c,
             Err(e) => {
-                error!(error = %e, "monitor DB open failed");
+                let _ = DiagError::new(
+                    Source::Scanner,
+                    Kind::Io,
+                    "Inventory scanning stopped: the inventory database could not be opened",
+                )
+                .caused_by(&e)
+                .log_at(Level::Error);
                 return;
             }
         };
@@ -197,7 +192,13 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
             while let Ok(blob) = blob_rx.try_recv() {
                 match section_baseline.evaluate(&blob.sections) {
                     Err(missing) => {
-                        warn!(?missing, "blob rejected: sections present in last good blob are missing - truncated capture");
+                        let _ = DiagError::new(
+                            Source::Scanner,
+                            Kind::Invalid,
+                            "Account blob rejected: sections that the last accepted blob had are missing",
+                        )
+                        .with("missing", missing.join(","))
+                        .log();
                         continue;
                     }
                     Ok(true) => {
@@ -209,7 +210,7 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                 }
 
                 if blob.content_hash != 0 && Some(blob.content_hash) == last_applied_hash {
-                    debug!("blob unchanged since last apply - skipping");
+                    debug!(scanner, "Account blob unchanged since the last one");
                     continue;
                 }
 
@@ -228,12 +229,7 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                     &alias_excluded,
                     &stackable_paths,
                     &path_aliases,
-                    &path_to_item_type,
-                    &path_to_product_category,
-                    &path_to_wfcd_cat,
                     &ignored_paths,
-                    &unmatched_paths_dir,
-                    &debug_cat_enabled,
                     &shared_quantities,
                     &shared_mods,
                     &shared_unique,
@@ -276,13 +272,20 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                     }
                 }
                 if current_pid != last_pid {
-                    if current_pid.is_some() {
-                        info!(
-                            ?last_pid,
-                            ?current_pid,
-                            "Warframe PID changed, clearing blob region cache"
-                        );
-                        memory_scanner::reset_last_blob_region();
+                    match current_pid {
+                        Some(pid) => {
+                            info!(
+                                scanner,
+                                pid,
+                                previous_pid = ?last_pid,
+                                hexdesk_elevated = memory_scanner::elevated_text(),
+                                "Warframe process found"
+                            );
+                            memory_scanner::reset_last_blob_region();
+                        }
+                        None => {
+                            info!(scanner, previous_pid = ?last_pid, "Warframe process no longer running");
+                        }
                     }
                     last_pid = current_pid;
                 }
@@ -344,10 +347,6 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                 if should_capture && !already_running {
                     blob_scan_active.store(true, Ordering::SeqCst);
                     last_blob_time = Some(std::time::Instant::now());
-                    // UTC, suffixed "Z" so filenames aren't mistaken for local wall-clock time.
-                    let ts = chrono::Utc::now().format("%Y-%m-%dT%H-%M-%SZ").to_string();
-                    let dir = blob_log_dir.clone();
-                    let save = blob_log_enabled.load(Ordering::SeqCst);
                     let active = blob_scan_active.clone();
                     let tx = blob_tx.clone();
                     let _ = app.emit(
@@ -357,7 +356,6 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                             detail: "Reading Warframe memory\u{2026}".into(),
                         },
                     );
-                    debug!(save, "blob capture starting");
                     std::thread::spawn(move || {
                         struct ClearOnDrop(Arc<AtomicBool>);
                         impl Drop for ClearOnDrop {
@@ -366,8 +364,10 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                             }
                         }
                         let _guard = ClearOnDrop(active);
-                        let count = memory_scanner::capture_all_blobs(&dir, &ts, tx, save);
-                        debug!(files_saved = count, save_flag = save, ts = %ts, "blob capture finished");
+                        let _op = hexdesk_diag::op!(scanner, "Inventory scan").entered();
+                        if let Err(e) = memory_scanner::capture_all_blobs(tx) {
+                            let _ = e.log();
+                        }
                     });
                 }
                 prev_game_running = true;
@@ -451,12 +451,7 @@ fn process_blob(
     alias_excluded: &std::collections::HashSet<String>,
     stackable_paths: &std::collections::HashSet<String>,
     path_aliases: &HashMap<String, String>,
-    path_to_item_type: &HashMap<String, String>,
-    path_to_product_category: &HashMap<String, String>,
-    path_to_wfcd_cat: &HashMap<String, String>,
     ignored_paths: &std::collections::HashSet<String>,
-    unmatched_paths_dir: &std::path::Path,
-    debug_cat_enabled: &AtomicBool,
     shared_quantities: &Arc<Mutex<HashMap<String, i64>>>,
     shared_mods: &Arc<Mutex<HashMap<String, memory_scanner::ModCount>>>,
     shared_unique: &Arc<Mutex<HashMap<String, i64>>>,
@@ -516,10 +511,13 @@ fn process_blob(
     // defence against incomplete blobs that slipped through parsing.
     let prev_unique_count = confirmed_unique.len();
     if blob.unique_items.is_empty() && prev_unique_count > 0 {
-        warn!(
-            "blob rejected at commit: 0 unique items vs {} previously — incomplete blob",
-            prev_unique_count
-        );
+        let _ = DiagError::new(
+            Source::Scanner,
+            Kind::Invalid,
+            "Account blob rejected: it has no Warframes or weapons, the previous one had some",
+        )
+        .with("previous_unique", prev_unique_count)
+        .log();
         return false;
     }
 
@@ -540,26 +538,13 @@ fn process_blob(
         monitor::apply_blob_to_state(blob, &mut inv_state, path_aliases, stackable_paths);
     }
 
-    // Debug: write paths with no WFCD entry or Misc fallback to the Unmatched Paths folder.
-    if debug_cat_enabled.load(Ordering::Relaxed) {
-        catalogue::write_debug_unmatched_paths(
-            blob,
-            catalogue::UnmatchedPathMaps {
-                path_to_name,
-                path_to_item_type,
-                path_to_product_category,
-                path_to_wfcd_cat,
-                path_to_category,
-            },
-            ignored_paths,
-            unmatched_paths_dir,
-        );
-    }
+    catalogue::log_unmatched_paths(blob, path_to_name, path_to_category, ignored_paths);
 
     // Sync shared state
     if let Ok(mut q) = shared_quantities.lock() {
         *q = known.clone();
     }
+    crate::player::scan_applied();
     if let Ok(mut sm) = shared_mods.lock() {
         *sm = known_mods.clone();
     }
@@ -625,7 +610,6 @@ fn process_blob(
                 .and_then(|g| g.clone()),
         },
     );
-
     let detail = format!(
         "{} unique · {} resources · {} mods · {} flavour",
         blob.unique_items.len(),
@@ -633,7 +617,14 @@ fn process_blob(
         blob.mods.len(),
         blob.flavour_items.len()
     );
-    info!(detail = %detail, "blob applied");
+    info!(
+        scanner,
+        unique = blob.unique_items.len(),
+        resources = blob.stackable_items.len(),
+        mods = blob.mods.len(),
+        flavour = blob.flavour_items.len(),
+        "Inventory updated from account blob"
+    );
     let _ = app.emit(
         events::BLOB_STATUS,
         BlobStatusPayload {

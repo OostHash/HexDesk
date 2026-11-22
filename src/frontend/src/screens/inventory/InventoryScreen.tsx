@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DEFAULT_MARKET_FILTERS, type MarketFilters } from "../../domain/market";
+import { ScreenTabBar } from "../../patterns/ScreenTabBar";
 import { Tab, TabList, TabPanel, Tabs } from "../../primitives/navigation";
 import { useInventoryFilters } from "../../state/inventoryFilters";
 import { openItemWindow } from "../../state/itemWindow";
@@ -25,13 +26,13 @@ export function InventoryScreen() {
 
   return (
     <Tabs selectedKey={tab} onSelectionChange={setTab} className="flex min-h-0 flex-1 flex-col gap-0">
-      <div className="shrink-0 border-b border-border bg-bg px-4 pt-2 lg:px-6">
+      <ScreenTabBar>
         <TabList label="Inventory" className="border-b-0">
           <Tab id="items">Items</Tab>
           <Tab id="sets">Prime Sets</Tab>
           <Tab id="mods">Mods &amp; Arcanes</Tab>
         </TabList>
-      </div>
+      </ScreenTabBar>
       <TabPanel id="items" className="flex min-h-0 flex-1 flex-col">
         <ItemsTab />
       </TabPanel>

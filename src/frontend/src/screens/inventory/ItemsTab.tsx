@@ -13,6 +13,8 @@ import {
   effectiveSort,
   inventoryPresetCodec,
   lastChangedMap,
+  recentSince,
+  recentWindowFrom,
   needsPrices,
   recentDelta,
   toggleRank,
@@ -38,6 +40,7 @@ import { Pagination, SidebarItem } from "../../primitives/navigation";
 import { ChangeBadge, FavoriteButton, ItemCard, ItemMenu, MasteryBadge, PriceBadges, type ItemExtras } from "./ItemCard";
 import { useInventoryFilters } from "../../state/inventoryFilters";
 import { useMinuteNow } from "../../state/useNow";
+import { APP_STARTED_AT } from "../../state/session";
 import { pageAfterResize, usePage, usePageSize, useScrollTopOn } from "../../patterns/PageSize";
 
 const VIEW_KEY = "ff-view-inventory";
@@ -97,7 +100,8 @@ export function ItemsTab() {
   };
 
   const items = useMemo(() => [...index.byName.values()] as InventoryCatalogItem[], [index]);
-  const lastChanged = useMemo(() => lastChangedMap(changes), [changes]);
+  const recentFrom = recentSince(recentWindowFrom(settings?.recentWindow), nowSec, APP_STARTED_AT);
+  const lastChanged = useMemo(() => lastChangedMap(changes, recentFrom), [changes, recentFrom]);
   const { rows } = useMemo(
     () => visibleItems(filters, { items, own: ownership, prices, lastChanged, mods }, fallbackSort),
     [filters, items, ownership, prices, lastChanged, mods, fallbackSort],
@@ -123,7 +127,7 @@ export function ItemsTab() {
       toggleFavorite(row.item.unique_name);
     },
     building: buildingByItem.get(row.item.unique_name) ?? null,
-    recent: recentDelta(changes, row.item.unique_name, nowSec),
+    recent: recentDelta(changes, row.item.unique_name, recentFrom, nowSec),
     baseUrl,
     mods,
   });
@@ -186,7 +190,7 @@ export function ItemsTab() {
       align: "end",
       cell: (r) => (
         <span className="inline-flex items-center gap-2">
-          <ChangeBadge recent={recentDelta(changes, r.item.unique_name, nowSec)} />
+          <ChangeBadge recent={recentDelta(changes, r.item.unique_name, recentFrom, nowSec)} />
           {fmt(r.qty)}
         </span>
       ),

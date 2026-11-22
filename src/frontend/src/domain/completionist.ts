@@ -1,6 +1,6 @@
 /**
  * Completionist logic: syndicate/lab item status and weapon mastery.
- * Pure functions; same rules as the current app (vault/frontend-ports/completionist.md).
+ * Pure functions.
  */
 
 export type SyndicateItem = {

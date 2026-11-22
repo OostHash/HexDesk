@@ -31,9 +31,8 @@ export const TIMER_LABELS = {
 export type TimerId = keyof typeof TIMER_LABELS;
 
 /**
- * Old ids that may still be saved. The current app's Duviri tile stored
- * "duviri-cycle" while everything else expected "duviri-spiral"
- * (vault/frontend-ports/timers.md).
+ * Old ids that may still be saved. An earlier Duviri tile stored
+ * "duviri-cycle" while everything else expected "duviri-spiral".
  */
 const ALIASES: Readonly<Record<string, TimerId>> = { "duviri-cycle": "duviri-spiral" };
 

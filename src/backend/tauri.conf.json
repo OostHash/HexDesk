@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "HexDesk",
-  "version": "1.0.1",
   "identifier": "com.oosthash.hexdesk",
   "build": {
     "beforeDevCommand": {
@@ -19,7 +18,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "",
+        "title": "HexDesk",
         "width": 800,
         "height": 600,
         "minWidth": 640,
@@ -50,6 +49,39 @@
         "title": "HexDesk Relic Picker",
         "width": 340,
         "height": 80,
+        "x": 0,
+        "y": -3000,
+        "visible": false,
+        "transparent": true,
+        "decorations": false,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "focus": false
+      },
+      {
+        "label": "overlay-status",
+        "url": "index.html#overlaystatus",
+        "title": "HexDesk Overlay Status",
+        "width": 440,
+        "height": 52,
+        "x": 0,
+        "y": -3000,
+        "transparent": true,
+        "decorations": false,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "focus": false
+      },
+      {
+        "label": "riven-overlay",
+        "url": "index.html#rivenoverlay",
+        "title": "HexDesk Riven",
+        "width": 300,
+        "height": 600,
         "x": 0,
         "y": -3000,
         "visible": false,

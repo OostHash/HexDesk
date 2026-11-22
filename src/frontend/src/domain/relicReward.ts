@@ -1,7 +1,4 @@
-import type { RecipeComponent } from "./foundry";
-import type { CatalogItem } from "./relics";
-
-/** Relic reward overlay rules (vault overlay-relic-reward.md). Pure functions. */
+/** Relic reward overlay: the backend's cards with prices, the best pick and the layout. Pure functions. */
 
 export const OVERLAY_PRIORITIES = ["completion", "setPlat", "plat", "ducat"] as const;
 export type OverlayPriority = (typeof OVERLAY_PRIORITIES)[number];
@@ -21,6 +18,8 @@ export type RewardCard = {
   key: string;
   name: string;
   unknown: boolean;
+  /** Matched, but the reads disagreed or only part of the name was read. */
+  uncertain?: boolean;
   category?: string;
   vaulted?: boolean;
   ducats?: number;
@@ -32,49 +31,7 @@ export type RewardCard = {
   totalPlat?: number;
 };
 
-const STORE = "/Lotus/StoreItems/";
-/** Catalogue paths drop the StoreItems segment the game uses. */
-export const catalogPath = (path: string) => path.replace(STORE, "/Lotus/");
-
 // ── Set names ───────────────────────────────────────────────────────────────
-
-const FRAME_PARTS = [" Neuroptics Blueprint", " Chassis Blueprint", " Systems Blueprint"];
-const PART_SUFFIXES = [
-  " Upper Limb",
-  " Lower Limb",
-  " Receiver",
-  " Barrel",
-  " Stock",
-  " Blade",
-  " Handle",
-  " Guard",
-  " Hilt",
-  " Link",
-  " Gauntlet",
-  " Carapace",
-  " Cerebrum",
-  " Systems",
-  " Head",
-  " Strike",
-  " Boot",
-  " String",
-  " Disc",
-  " Neuroptics",
-  " Chassis",
-  " Stars",
-];
-
-/** "Rhino Prime Chassis Blueprint" → "Rhino Prime"; null when it is not part of a set. */
-export function setNameOf(itemName: string): string | null {
-  for (const s of FRAME_PARTS) if (itemName.endsWith(s)) return itemName.slice(0, -s.length);
-  for (const s of PART_SUFFIXES) if (itemName.endsWith(s)) return itemName.slice(0, -s.length);
-  if (itemName.endsWith(" Blueprint")) {
-    const base = itemName.slice(0, -" Blueprint".length);
-    for (const s of PART_SUFFIXES) if (base.endsWith(s)) return base.slice(0, -s.length);
-    return base;
-  }
-  return null;
-}
 
 /** "Rhino Prime Chassis Blueprint" in set "Rhino Prime" → "Chassis Blueprint". */
 export const shortName = (fullName: string, setName: string) => (fullName.startsWith(`${setName} `) ? fullName.slice(setName.length + 1) : fullName);
@@ -85,111 +42,53 @@ export function cellLabel(fullName: string, setName: string): string {
   return s !== "Blueprint" && s.endsWith(" Blueprint") ? s.slice(0, -" Blueprint".length) : s;
 }
 
-// ── Ownership ───────────────────────────────────────────────────────────────
-
-export type Stock = { quantities: Readonly<Record<string, number>>; crafting: Readonly<Record<string, number>> };
-
-const lookup = (map: Readonly<Record<string, number>>, ...keys: Array<string | undefined>) => {
-  for (const k of keys) if (k !== undefined && map[k] !== undefined) return map[k];
-  return undefined;
+/**
+ * A reward card as the backend builds it (src/backend/crates/player/src/sets.rs):
+ * the item, and for a set item its parts with how many the player has.
+ */
+export type BackendCard = {
+  path: string;
+  name: string;
+  unknown: boolean;
+  category: string | null;
+  vaulted: boolean | null;
+  ducats: number | null;
+  set_name: string | null;
+  parts: Array<{ path: string; name: string; needed: number; owned: { total: number }; ducats: number | null }> | null;
+  built: { total: number } | null;
+  complete_sets: number | null;
 };
 
-/**
- * Copies of a set component you can use: the item itself, its other form
- * (a blueprint ↔ the built part) and Foundry jobs for either.
- */
-export function ownedCopies(uniqueName: string, displayName: string, catalog: readonly CatalogItem[], stock: Stock): number {
-  const path = catalogPath(uniqueName);
-  const entry = catalog.find((c) => catalogPath(c.unique_name) === path) ?? catalog.find((c) => c.name === displayName);
-  const entryPath = entry ? catalogPath(entry.unique_name) : path;
-  const direct = lookup(stock.quantities, entryPath, entry?.unique_name, path, uniqueName) ?? 0;
-
-  const other = displayName.endsWith(" Blueprint")
-    ? catalog.find((c) => c.name === displayName.slice(0, -" Blueprint".length) && c.category === "Parts")
-    : catalog.find((c) => c.name === `${displayName} Blueprint` && c.category === "Blueprints");
-  const otherPath = other ? catalogPath(other.unique_name) : undefined;
-  const alt = other ? (lookup(stock.quantities, otherPath, other.unique_name) ?? 0) : 0;
-  const crafting = lookup(stock.crafting, entryPath, path, uniqueName) ?? (otherPath ? (stock.crafting[otherPath] ?? 0) : 0);
-  return direct + alt + crafting;
-}
-
-/** Foundry jobs per catalogue path. */
-export function craftingCounts(jobs: ReadonlyArray<{ unique_name: string }>): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const j of jobs) {
-    const p = catalogPath(j.unique_name);
-    out[p] = (out[p] ?? 0) + 1;
-  }
-  return out;
-}
-
-// ── Cards ───────────────────────────────────────────────────────────────────
-
-/** The built item of a set (not a blueprint or part). */
-export const setEntryOf = (setName: string, catalog: readonly CatalogItem[]) =>
-  catalog.find((c) => c.name === setName && c.category !== "Blueprints" && c.category !== "Parts");
-
-/** A card per reward path, before prices and set data arrive. "?:text" is unrecognised OCR text. */
-export function baseCards(paths: readonly string[], catalog: readonly CatalogItem[]): RewardCard[] {
-  return paths.map((path, i) => {
-    if (path.startsWith("?:")) return { key: `${path}-${String(i)}`, name: path.slice(2), unknown: true, category: "Unrecognized" };
-    const p = catalogPath(path);
-    const meta = catalog.find((c) => catalogPath(c.unique_name) === p);
-    return {
-      key: `${path}-${String(i)}`,
-      name: meta?.name ?? path.split("/").pop() ?? path,
+/** The cards to draw: the backend's cards with platinum prices added. */
+export function cardsFrom(cards: readonly BackendCard[], prices: ReadonlyMap<string, number>): RewardCard[] {
+  return cards.map((c, i) => {
+    const key = `${c.path}-${String(i)}`;
+    if (c.unknown) return { key, name: c.name, unknown: true, category: "Unrecognized" };
+    const plat = prices.get(c.name);
+    const card: RewardCard = {
+      key,
+      name: c.name,
       unknown: false,
-      ...(meta?.category ? { category: meta.category } : {}),
-      ...(meta?.vaulted != null ? { vaulted: meta.vaulted } : {}),
-      ...(meta?.ducats != null ? { ducats: meta.ducats } : {}),
+      ...(c.category != null ? { category: c.category } : {}),
+      ...(c.vaulted != null ? { vaulted: c.vaulted } : {}),
+      ...(c.ducats != null ? { ducats: c.ducats } : {}),
+      ...(plat !== undefined ? { plat } : {}),
     };
-  });
-}
-
-/**
- * The parts of a set with what you own: from the built item's recipe (parts
- * and blueprints only), else every catalogue part or blueprint named after
- * the set (at least two, one needed each).
- */
-export function setComponents(
-  setName: string,
-  recipe: readonly RecipeComponent[] | undefined,
-  catalog: readonly CatalogItem[],
-  stock: Stock,
-): RewardComponent[] | null {
-  const isPart = (uniqueName: string) => {
-    const meta = catalog.find((c) => catalogPath(c.unique_name) === catalogPath(uniqueName));
-    return meta?.category === "Parts" || meta?.category === "Blueprints";
-  };
-  const fromRecipe = (recipe ?? []).filter((c) => isPart(c.unique_name));
-  if (fromRecipe.length > 0) {
-    return fromRecipe.map((c) => {
-      const meta = catalog.find((m) => catalogPath(m.unique_name) === catalogPath(c.unique_name));
+    if (!c.parts || !c.set_name) return card;
+    const components: RewardComponent[] = c.parts.map((p) => {
+      const price = prices.get(p.name);
       return {
-        unique_name: c.unique_name,
-        name: c.name,
-        needed: c.count || 1,
-        owned: ownedCopies(c.unique_name, c.name, catalog, stock),
-        ...(meta?.ducats != null ? { ducats: meta.ducats } : {}),
+        unique_name: p.path,
+        name: p.name,
+        needed: p.needed,
+        owned: p.owned.total,
+        ...(price !== undefined ? { plat: price } : {}),
+        ...(p.ducats != null ? { ducats: p.ducats } : {}),
       };
     });
-  }
-  const byPrefix = catalog
-    .filter((c) => c.name.startsWith(`${setName} `) && (c.category === "Parts" || c.category === "Blueprints"))
-    .map((c) => ({
-      unique_name: c.unique_name,
-      name: c.name,
-      needed: 1,
-      owned: ownedCopies(c.unique_name, c.name, catalog, stock),
-      ...(c.ducats != null ? { ducats: c.ducats } : {}),
-    }));
-  return byPrefix.length >= 2 ? byPrefix : null;
-}
-
-/** Whole sets you could build; owning the built item counts as at least one. */
-export function completeSets(components: readonly RewardComponent[], builtOwned: boolean): number {
-  const sets = components.length > 0 ? Math.floor(Math.min(...components.map((c) => c.owned / c.needed))) : 0;
-  return builtOwned ? Math.max(sets, 1) : sets;
+    const { missing, total } = setPlatinum(components);
+    return { ...card, setName: c.set_name, components, completeSets: c.complete_sets ?? 0, missingPlat: missing, totalPlat: total };
+  });
 }
 
 /** Platinum still missing and the whole set's value, from known part prices. */
@@ -273,7 +172,7 @@ export function stripBounds(
 
 // ── Preview ─────────────────────────────────────────────────────────────────
 
-/** What Settings → Overlays → Show draws: the current app's example cards. */
+/** What Settings → Overlays → Show draws: example cards. */
 export const PREVIEW_CARDS: readonly RewardCard[] = [
   {
     key: "preview-0",
@@ -319,26 +218,6 @@ export const PREVIEW_CARDS: readonly RewardCard[] = [
 
 // ── Everything together ─────────────────────────────────────────────────────
 
-export type RewardSources = {
-  catalog: readonly CatalogItem[];
-  stock: Stock;
-  /** Recipe per built set item uniqueName. */
-  recipes: ReadonlyMap<string, readonly RecipeComponent[]>;
-  /** Platinum by item name; missing while loading or unknown. */
-  prices: ReadonlyMap<string, number>;
-};
-
-/** Built set items whose recipes the cards need. */
-export function setEntryIds(paths: readonly string[], catalog: readonly CatalogItem[]): string[] {
-  const ids = new Set<string>();
-  for (const card of baseCards(paths, catalog)) {
-    const setName = card.unknown ? null : setNameOf(card.name);
-    const entry = setName ? setEntryOf(setName, catalog) : undefined;
-    if (entry) ids.add(entry.unique_name);
-  }
-  return [...ids];
-}
-
 /** Every item name whose price a card shows: the rewards and their set parts. */
 export function priceNames(cards: readonly RewardCard[]): string[] {
   const names = new Set<string>();
@@ -351,22 +230,18 @@ export function priceNames(cards: readonly RewardCard[]): string[] {
 }
 
 /** The cards with prices, set parts, ownership and set value, from what is loaded so far. */
-export function rewardCards(paths: readonly string[], src: RewardSources): RewardCard[] {
-  return baseCards(paths, src.catalog).map((card) => {
-    if (card.unknown) return card;
-    const plat = src.prices.get(card.name);
-    const withPrice = plat !== undefined ? { ...card, plat } : card;
-    const setName = setNameOf(card.name);
-    if (!setName) return withPrice;
-    const entry = setEntryOf(setName, src.catalog);
-    const parts = setComponents(setName, entry ? src.recipes.get(entry.unique_name) : undefined, src.catalog, src.stock);
-    if (!parts) return withPrice;
-    const priced = parts.map((p) => {
-      const price = src.prices.get(p.name);
-      return price !== undefined ? { ...p, plat: price } : p;
-    });
-    const builtOwned = entry ? (lookup(src.stock.quantities, catalogPath(entry.unique_name), entry.unique_name) ?? 0) > 0 : false;
-    const { missing, total } = setPlatinum(priced);
-    return { ...withPrice, setName, components: priced, completeSets: completeSets(priced, builtOwned), missingPlat: missing, totalPlat: total };
-  });
+
+/** One line per card for the backend log: what the overlay shows and why. */
+export function rewardSummary(cards: readonly RewardCard[]): string {
+  return cards
+    .map((c) => {
+      if (c.unknown) return `? ${c.name}`;
+      const plat = c.plat !== undefined ? ` ${String(c.plat)}p` : "";
+      if (!c.components) return `${c.name}${plat}`;
+      const prefix = c.setName ? `${c.setName} ` : "";
+      const parts = c.components.map((p) => `${p.name.replace(prefix, "")} ${String(p.owned)}/${String(p.needed)}`).join(", ");
+      const full = (c.completeSets ?? 0) >= 1 ? "full item owned" : "full item not owned";
+      return `${c.name}${plat}: ${full} (${parts})`;
+    })
+    .join(" | ");
 }

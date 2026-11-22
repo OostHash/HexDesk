@@ -16,7 +16,7 @@ export type TreeNode = {
   children?: TreeNode[];
 };
 
-/** Status is shown as icon + text, never colour alone (plan 6.11). */
+/** Status is shown as icon + text, never colour alone. */
 const STATUS: Record<TreeStatus, { icon: LucideIcon; label: string; className: string }> = {
   owned: { icon: CircleCheck, label: strings.treeStatus.owned, className: "text-success" },
   craftable: { icon: Hammer, label: strings.treeStatus.craftable, className: "text-info" },
@@ -40,7 +40,7 @@ const toItems = (nodes: readonly TreeNode[]): Item[] =>
   nodes.map(({ children, ...node }) => ({ ...node, id: node.key, ...(children ? { children: toItems(children) } : {}) }));
 
 /**
- * Presentational tree on React Aria (plan 7.9): role="treegrid", arrow keys
+ * Presentational tree on React Aria: role="treegrid", arrow keys
  * to move and expand/collapse, typeahead. The caller computes `status`
  * (e.g. recipe logic in screens/foundry); the tree only maps it to a role.
  */

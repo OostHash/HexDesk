@@ -1,6 +1,6 @@
 /**
  * Every built-in text of the primitives (labels, status words, accessible
- * names). The product UI is English, like the current app. Keeping them in
+ * names). The product UI is English. Keeping them in
  * one place makes a later i18n step a change to this file only.
  */
 export const strings = {

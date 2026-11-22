@@ -17,7 +17,7 @@ type Props = {
   busy?: boolean;
 };
 
-/** Yes/no confirmation; a thin composition on Modal (plan 7.8). */
+/** Yes/no confirmation; a thin composition on Modal. */
 export function ConfirmDialog({
   open,
   onClose,
