@@ -8,6 +8,8 @@ allowBuilds:
 # Keep axe-core, Playwright, and the browser runner on one Page type and one
 # Chromium revision. This matches the imported frontend-lab lockfile.
 overrides:
+  baseline-browser-mapping: 2.11.0
+  browserslist: 4.28.7
   playwright-core: 1.65.0
 
 # eslint-plugin-jsx-a11y has not declared ESLint 10 support yet. The frontend
