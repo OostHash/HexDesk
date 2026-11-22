@@ -18,10 +18,16 @@ export type Fixture<T, A = undefined> = {
   onboarding?: (args: A) => T;
   /** Commands that write (e.g. save_settings) keep working in every scenario. */
   alwaysDefault?: boolean;
+  /**
+   * Commands the main window waits for before it shows anything (load_settings). They answer with `default`
+   * in the loading and error scenarios, so those scenarios show the screens instead of an empty window.
+   */
+  essential?: boolean;
 };
 
 export function resolveFixture<T, A>(fixture: Fixture<T, A>, args: A, scenario: Scenario, command: string): Promise<T> {
-  const effective = fixture.alwaysDefault ? "default" : scenario;
+  const failing = scenario === "loading" || scenario === "error";
+  const effective = fixture.alwaysDefault || (fixture.essential && failing) ? "default" : scenario;
   switch (effective) {
     case "loading":
       return new Promise<T>(() => {});

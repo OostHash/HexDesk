@@ -172,6 +172,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Fixed
 
+- Report a bug and Settings stay reachable in a low window: when the screens
+  do not fit in the sidebar, only that list scrolls.
+- Small windows keep room for each screen: the header stays on one row, with
+  only the number of screens on the test report, and when a screen's filters
+  and list do not fit, the screen scrolls as a whole instead of hiding its
+  controls under the changelog.
 - Status lines and testing messages over the game that run over two lines
   are no longer cut off, also when several show one after another.
 - The inventory and the changelog update right after a mission instead of

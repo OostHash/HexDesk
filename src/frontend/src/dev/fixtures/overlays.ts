@@ -53,12 +53,67 @@ export const OVERLAY_PRICES: Record<string, number> = {
   "Glaive Prime Disc": 9,
 };
 
+type Part = NonNullable<BackendCard["parts"]>[number];
+const part = (path: string, name: string, owned: number, ducats: number | null = null, needed = 1): Part => ({
+  path,
+  name,
+  needed,
+  owned: { total: owned },
+  ducats,
+});
+
+const RHINO_PRIME_PARTS: Part[] = [
+  part("/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeBlueprint", "Rhino Prime Blueprint", 1, 15),
+  part("/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeChassisBlueprint", "Rhino Prime Chassis Blueprint", 0, 45),
+  part("/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeHelmetBlueprint", "Rhino Prime Neuroptics Blueprint", 1, 100),
+  part("/Lotus/Types/Recipes/WarframeRecipes/RhinoPrimeSystemsBlueprint", "Rhino Prime Systems Blueprint", 2, 45),
+];
+
+const GLAIVE_PRIME_PARTS: Part[] = [
+  part("/Lotus/Types/Recipes/Weapons/PrimeGlaiveBlueprint", "Glaive Prime Blueprint", 1, 15),
+  part("/Lotus/Weapons/Tenno/Melee/Glaive/PrimeGlaive/PrimeGlaiveBlade", "Glaive Prime Blade", 0, 45),
+  part("/Lotus/Weapons/Tenno/Melee/Glaive/PrimeGlaive/PrimeGlaiveDisc", "Glaive Prime Disc", 1, 45, 2),
+];
+
+/** Reward cards as the backend builds them, for the items the fixtures emit; anything else is unrecognized. */
+const REWARD_CARDS: Record<string, Omit<BackendCard, "path">> = {
+  "/Lotus/StoreItems/Types/Recipes/WarframeRecipes/RhinoPrimeChassisBlueprint": {
+    name: "Rhino Prime Chassis Blueprint",
+    unknown: false,
+    category: "Blueprints",
+    vaulted: true,
+    ducats: 45,
+    set_name: "Rhino Prime",
+    parts: RHINO_PRIME_PARTS,
+    built: { total: 0 },
+    complete_sets: 0,
+  },
+  "/Lotus/StoreItems/Weapons/Tenno/Melee/Glaive/PrimeGlaive/PrimeGlaiveDisc": {
+    name: "Glaive Prime Disc",
+    unknown: false,
+    category: "Parts",
+    vaulted: true,
+    ducats: 45,
+    set_name: "Glaive Prime",
+    parts: GLAIVE_PRIME_PARTS,
+    built: { total: 1 },
+    complete_sets: 1,
+  },
+};
+
+function rewardCard(path: string): BackendCard {
+  const known = REWARD_CARDS[path];
+  if (known) return { path, ...known };
+  const name = path.startsWith("?:") ? path.slice(2) : (path.split("/").pop() ?? path);
+  return { path, name, unknown: true, category: null, vaulted: null, ducats: null, set_name: null, parts: null, built: null, complete_sets: null };
+}
+
 export const overlayFixtures = {
   get_warframe_window_rect: { alwaysDefault: true, default: () => [0, 0, 1920, 1080] } satisfies Fixture<[number, number, number, number]>,
   show_overlay_window: noResult<{ x: number; y: number; w: number; h: number }>(),
   move_overlay_offscreen: noResult(),
   get_pending_relic_rewards: { alwaysDefault: true, default: () => null } satisfies Fixture<{ items: string[]; positions: number[] } | null>,
-  get_reward_cards: { default: () => [], empty: () => [] } satisfies Fixture<BackendCard[], { paths: string[] }>,
+  get_reward_cards: { default: ({ paths }) => paths.map(rewardCard), empty: () => [] } satisfies Fixture<BackendCard[], { paths: string[] }>,
   get_items_by_paths: { default: () => OVERLAY_CATALOG, empty: () => [] } satisfies Fixture<CatalogItem[], { paths: string[] }>,
   get_item_price: { default: ({ itemName }) => OVERLAY_PRICES[itemName] ?? null, empty: () => null } satisfies Fixture<
     number | null,

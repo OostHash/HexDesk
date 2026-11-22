@@ -90,8 +90,11 @@ function TestReport() {
       }}
       trigger={(props) => (
         <button type="button" title="Screens you marked wrong, ready to export" className="rounded-sm" {...props}>
+          {/* Narrow windows show only the icon and the count, so the header stays on one row. */}
           <Badge tone="warning" variant="outline" icon={FileArchive}>
-            Test report · {flowCount(flows)}
+            <span className="max-md:sr-only">Test report · </span>
+            {String(flows)}
+            <span className="max-md:sr-only"> {flows === 1 ? "screen" : "screens"}</span>
           </Badge>
         </button>
       )}

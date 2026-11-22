@@ -90,19 +90,22 @@ export function AppShell() {
           />
           <div className="flex min-h-0 flex-1">
             <div className="flex min-w-0 flex-1 flex-col">
-              <main className="flex min-h-0 flex-1 flex-col">
+              <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
                 <h1 className="sr-only">{onSettings ? "Settings" : current?.label}</h1>
-                {onSettings ? (
-                  <ScreenBoundary key="settings" label="Settings">
-                    <SettingsScreen tab={settingsTab} onTabChange={setSettingsTab} />
-                  </ScreenBoundary>
-                ) : (
-                  current && (
-                    <ScreenBoundary key={current.id} label={current.label}>
-                      <current.Screen />
+                {/* A screen keeps room for its toolbar and some of its list; in a lower window the panel scrolls as a whole. */}
+                <div className="flex min-h-112 flex-1 flex-col">
+                  {onSettings ? (
+                    <ScreenBoundary key="settings" label="Settings">
+                      <SettingsScreen tab={settingsTab} onTabChange={setSettingsTab} />
                     </ScreenBoundary>
-                  )
-                )}
+                  ) : (
+                    current && (
+                      <ScreenBoundary key={current.id} label={current.label}>
+                        <current.Screen />
+                      </ScreenBoundary>
+                    )
+                  )}
+                </div>
               </main>
               {/* Hidden, not unmounted, on Settings: the docks keep their state and their pop-out listeners. */}
               <div className={cn("contents", onSettings && "hidden")}>

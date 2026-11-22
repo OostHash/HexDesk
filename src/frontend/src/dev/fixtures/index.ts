@@ -91,6 +91,8 @@ const pluginHandlers: Record<string, (args: unknown) => unknown> = {
   "plugin:window|hide": () => null,
   "plugin:window|current_monitor": () => null,
   "plugin:window|available_monitors": () => [],
+  // Text scale zooms the desktop webview; a browser tab keeps its own zoom.
+  "plugin:webview|set_webview_zoom": () => null,
 };
 
 const isCommand = (cmd: string): cmd is CommandName => Object.hasOwn(fixtures, cmd);
