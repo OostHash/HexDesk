@@ -1,4 +1,17 @@
-import { Bug, ExternalLink, FileArchive, Gamepad2, Keyboard, Lightbulb, Megaphone, Monitor, Send, ShieldCheck, type LucideIcon } from "lucide-react";
+import {
+  Bug,
+  ExternalLink,
+  FileArchive,
+  Gamepad2,
+  Keyboard,
+  Lightbulb,
+  Megaphone,
+  Monitor,
+  Send,
+  ShieldAlert,
+  ShieldCheck,
+  type LucideIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import discordQr from "../../../assets/welcome/discord-qr.svg";
 import { openExternal } from "../../../api/links";
@@ -7,14 +20,24 @@ import { keyLabel } from "../../../domain/overlayKey";
 import { DiscordMark } from "../../../patterns/DiscordMark";
 import { Button } from "../../../primitives/actions";
 import { Icon } from "../../../primitives/display";
-import { DensityRow, ManualModeRow, OcrModelsRow, OverlayKeyRow, TestingRows, TextSizeRow, ThemeRow } from "../controls";
+import {
+  DensityRow,
+  ManualModeRow,
+  MemoryScannerBadge,
+  MemoryScannerRow,
+  OcrModelsRow,
+  OverlayKeyRow,
+  TestingRows,
+  TextSizeRow,
+  ThemeRow,
+} from "../controls";
 import { SettingsCard, SettingsGroup } from "../parts";
 
 /** The invite `src/frontend/src/assets/welcome/discord-qr.svg` encodes; regenerate the image when it changes. */
 const DISCORD_URL = "https://discord.gg/GTCrhPMPQY";
 
 /** The setup pages after the welcome page, in order. */
-export const SETUP_STEPS = [AppearanceStep, OverlaysStep, TestingStep, CommunityStep] as const;
+export const SETUP_STEPS = [AppearanceStep, MemoryScannerStep, OverlaysStep, TestingStep, CommunityStep] as const;
 
 function StepHeading({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -46,6 +69,29 @@ function AppearanceStep() {
           </p>
         </div>
         <OcrModelsRow description="About 12 MB, downloaded once. You can turn them off again at any time." />
+      </SettingsGroup>
+    </div>
+  );
+}
+
+function MemoryScannerStep() {
+  return (
+    <div className="flex flex-col gap-6">
+      <StepHeading title="Your inventory">
+        HexDesk can read your inventory straight from the running game: what you own, how many, mastery and mod ranks. It is off until you turn it on,
+        and can be changed later in Settings → General.
+      </StepHeading>
+      <p className="text-sm text-muted">
+        The memory scanner only reads; it never changes the game. Without it, Inventory, quantity tracking and mod ranks stay empty, while the
+        overlays, market tools and timers work as usual.
+      </p>
+      <p className="flex items-start gap-2 rounded-lg border border-warning/50 bg-surface-raised p-3 text-xs text-muted">
+        <Icon icon={ShieldAlert} size="sm" className="mt-0.5 shrink-0 text-warning" />
+        Reading another program&apos;s memory is a grey area in the Warframe EULA. DE has tolerated read-only tools so far, but has never given
+        explicit permission. Turn it on only if you accept that risk.
+      </p>
+      <SettingsGroup title="Memory scanner" badge={<MemoryScannerBadge />}>
+        <MemoryScannerRow />
       </SettingsGroup>
     </div>
   );

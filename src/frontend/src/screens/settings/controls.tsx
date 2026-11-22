@@ -4,6 +4,7 @@ import { useOcrModels } from "../../api/settings";
 import { keyFromCode, keyLabel, NO_KEY, testingKeysSet, type OverlayKey } from "../../domain/overlayKey";
 import { ocrModelsFrom } from "../../domain/settings";
 import { FEEDBACK_FREQUENCIES, feedbackFrequencyFrom, LOG_RETENTION_DAYS, logRetentionDaysFrom, retentionLabel } from "../../domain/testing";
+import { Badge } from "../../primitives/display";
 import { FormField, KeyInput, RadioGroup, Select, Slider } from "../../primitives/forms";
 import {
   availableChoices,
@@ -126,6 +127,35 @@ export function OcrModelsRow({
   );
 }
 
+/** Marks the memory scanner as allowed by neither the EULA nor DE explicitly. */
+export function MemoryScannerBadge() {
+  return (
+    <Badge tone="warning" variant="outline">
+      EULA grey area
+    </Badge>
+  );
+}
+
+/** The memory scanner opt-in; off until the player turns it on. */
+export function MemoryScannerRow() {
+  const { settings, set } = useSettingsFile();
+  return (
+    <SwitchRow
+      label="Enable memory scanner"
+      description={
+        <>
+          Required for live inventory, quantity tracking and mod ranks. Reads Warframe&apos;s process memory with <code>ReadProcessMemory</code>. DE
+          has historically tolerated read-only tools, but has not given explicit permission. Enable at your own risk.
+        </>
+      }
+      checked={settings.memoryScannerEnabled === true}
+      onCheckedChange={(on) => {
+        set({ memoryScannerEnabled: on });
+      }}
+    />
+  );
+}
+
 export function LogRetentionRow() {
   const { settings, set } = useSettingsFile();
   return (
@@ -157,14 +187,14 @@ export function TestingRows() {
   const keys = overlayPrefsFrom(settings).testingKeys;
   const keysSet = testingKeysSet(keys);
   const answer = keysSet
-    ? `${keyLabel(keys.correct)} discards the flow; ${keyLabel(keys.wrong)} keeps it for a local report.`
-    : "One key discards the flow; another keeps it for a local report.";
+    ? `${keyLabel(keys.correct)} forgets the screen; ${keyLabel(keys.wrong)} keeps it for a local report.`
+    : "One key forgets the screen; another keeps it for a local report.";
   return (
     <>
       <div className="flex flex-col gap-1.5">
         <SwitchRow
           label="Help test HexDesk"
-          description={`After a completed screen flow, HexDesk asks whether it was read correctly. ${answer} Nothing is uploaded automatically.`}
+          description={`After a relic reward, a refinement or a riven, HexDesk asks whether it read the screen correctly. ${answer} Nothing is uploaded automatically.`}
           checked={enabled}
           onCheckedChange={(testingEnabled) => {
             set({ testingEnabled });
@@ -238,8 +268,8 @@ function TestingKeyRows() {
   };
   return (
     <>
-      {row("correct", "Correct key", "Marks a screen flow as read correctly; HexDesk forgets it.")}
-      {row("wrong", "Wrong key", "Marks a screen flow as read wrong; HexDesk keeps it for your report.")}
+      {row("correct", "Correct key", "Marks the screen as read correctly; HexDesk forgets it.")}
+      {row("wrong", "Wrong key", "Marks the screen as read wrong; HexDesk keeps it for your report.")}
       <p className="text-xs text-muted">
         {sharesOverlayKey
           ? "One of these is also the overlay key. While the question is shown, it answers instead of opening or hiding an overlay."

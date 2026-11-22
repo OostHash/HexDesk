@@ -622,7 +622,7 @@ pub(crate) async fn capture_reward_items(
             crate::ocr::recognize(crate::ocr::Reader::Rewards, &bmp, frame.width, frame.height);
         let ocr_ms = started.elapsed().as_millis() as u64 - capture_ms;
         if let Ok(read) = &read {
-            crate::testing::save_read(visit, "relic-reward", &bmp, read);
+            crate::testing::save_read(visit, hexdesk_overlays::Overlay::RelicReward, &bmp, read);
         }
         let saved = match &read {
             Ok(read) if crate::captures::enabled() => {

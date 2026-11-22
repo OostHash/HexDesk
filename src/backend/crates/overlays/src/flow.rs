@@ -3,6 +3,12 @@
 //! Tracker visits describe one stay on one screen. A feedback flow is wider:
 //! relic selection and the reward screen belong together, while refinement
 //! and riven each complete when their screen is left.
+//!
+//! In an endless fissure the next relic selection opens shortly after the
+//! reward screen, and the tracker can see one selection as several visits,
+//! for example when the vote timer restarts. Selections that follow each
+//! other without a reward screen between them are one flow, so the pick
+//! after a reward is reviewed with the reward it leads to.
 
 use crate::{Screen, VisitId};
 
@@ -39,6 +45,8 @@ pub struct Flow {
 #[derive(Debug, Clone)]
 pub struct FlowTracker {
     active: Option<Flow>,
+    /// Whether the active flow has reached its reward screen.
+    rewarded: bool,
     next_id: FlowId,
 }
 
@@ -52,6 +60,7 @@ impl FlowTracker {
     pub const fn new() -> FlowTracker {
         FlowTracker {
             active: None,
+            rewarded: false,
             next_id: 1,
         }
     }
@@ -79,13 +88,24 @@ impl FlowTracker {
                     .filter(|flow| flow.kind == FlowKind::Reward)
                 {
                     flow.visits.push(visit);
+                    self.rewarded = true;
                     return Vec::new();
                 }
-                self.replace(visit, FlowKind::Reward)
+                let completed = self.replace(visit, FlowKind::Reward);
+                self.rewarded = true;
+                completed
             }
             Screen::RelicSelection => {
-                // A new selection starts a new reward sequence. Repeated
-                // signals for one visit were returned above.
+                if !self.rewarded {
+                    if let Some(flow) = self
+                        .active
+                        .as_mut()
+                        .filter(|flow| flow.kind == FlowKind::Reward)
+                    {
+                        flow.visits.push(visit);
+                        return Vec::new();
+                    }
+                }
                 self.replace(visit, FlowKind::Reward)
             }
             Screen::RelicRefinement => self.replace(visit, FlowKind::Refinement),
@@ -94,20 +114,27 @@ impl FlowTracker {
     }
 
     /// Corrects an ambiguous relic-list visit after OCR reads its title.
-    /// Reclassification never creates another visit or flow id.
-    pub fn reclassify(&mut self, visit: VisitId, screen: Screen) {
-        let Some(flow) = self
-            .active
-            .as_mut()
-            .filter(|flow| flow.visits.contains(&visit))
-        else {
-            return;
-        };
-        flow.kind = match screen {
+    /// A visit that joined a flow of another kind moves to a flow of its
+    /// own; the flow it leaves is returned as complete.
+    pub fn reclassify(&mut self, visit: VisitId, screen: Screen) -> Option<Flow> {
+        let kind = match screen {
             Screen::RelicSelection | Screen::RewardChoice => FlowKind::Reward,
             Screen::RelicRefinement => FlowKind::Refinement,
             Screen::Riven => FlowKind::Riven,
         };
+        let flow = self
+            .active
+            .as_mut()
+            .filter(|flow| flow.visits.contains(&visit))?;
+        if flow.kind == kind {
+            return None;
+        }
+        if flow.visits.len() == 1 {
+            flow.kind = kind;
+            return None;
+        }
+        flow.visits.retain(|other| *other != visit);
+        self.replace(visit, kind).into_iter().next()
     }
 
     /// Leaves one tracker visit. Selection waits for its reward screen;
@@ -127,10 +154,12 @@ impl FlowTracker {
 
     /// Ends a run whose selection never reached a reward screen.
     pub fn end_run(&mut self) -> Option<Flow> {
+        self.rewarded = false;
         self.active.take()
     }
 
     fn replace(&mut self, visit: VisitId, kind: FlowKind) -> Vec<Flow> {
+        self.rewarded = false;
         let completed = self.active.take().into_iter().collect();
         self.active = Some(Flow {
             id: self.next_id,
@@ -195,14 +224,52 @@ mod tests {
     }
 
     #[test]
-    fn a_new_selection_completes_the_unanswered_sequence() {
+    fn selections_before_one_reward_screen_are_one_flow() {
         let mut tracker = FlowTracker::new();
         tracker.enter(50, Screen::RelicSelection);
         tracker.leave(50, Screen::RelicSelection);
-        let completed = tracker.enter(51, Screen::RelicSelection);
+        assert!(tracker.enter(51, Screen::RelicSelection).is_empty());
+        tracker.leave(51, Screen::RelicSelection);
+        tracker.enter(52, Screen::RewardChoice);
+        let flow = tracker
+            .leave(52, Screen::RewardChoice)
+            .expect("reward flow completes");
+        assert_eq!(flow.visits, [50, 51, 52]);
+    }
+
+    /// Endless fissures: reward, then the next selection, then its reward.
+    #[test]
+    fn the_selection_after_a_reward_starts_the_next_flow() {
+        let mut tracker = FlowTracker::new();
+        tracker.enter(53, Screen::RewardChoice);
+        // The selection can open before the reward screen is seen to close.
+        let completed = tracker.enter(54, Screen::RelicSelection);
         assert_eq!(completed.len(), 1);
-        assert_eq!(completed[0].visits, [50]);
-        assert_eq!(tracker.active().unwrap().visits, [51]);
+        assert_eq!(completed[0].visits, [53]);
+        assert!(tracker.leave(53, Screen::RewardChoice).is_none());
+        tracker.leave(54, Screen::RelicSelection);
+        assert!(tracker.enter(55, Screen::RelicSelection).is_empty());
+        tracker.enter(56, Screen::RewardChoice);
+        let flow = tracker
+            .leave(56, Screen::RewardChoice)
+            .expect("second reward flow completes");
+        assert_eq!(flow.visits, [54, 55, 56]);
+    }
+
+    #[test]
+    fn a_refinement_that_joined_a_selection_gets_its_own_flow() {
+        let mut tracker = FlowTracker::new();
+        tracker.enter(57, Screen::RelicSelection);
+        tracker.leave(57, Screen::RelicSelection);
+        tracker.enter(58, Screen::RelicSelection);
+        let completed = tracker
+            .reclassify(58, Screen::RelicRefinement)
+            .expect("the selection completes");
+        assert_eq!(completed.kind, FlowKind::Reward);
+        assert_eq!(completed.visits, [57]);
+        let active = tracker.active().expect("the refinement flow is active");
+        assert_eq!(active.kind, FlowKind::Refinement);
+        assert_eq!(active.visits, [58]);
     }
 
     #[test]

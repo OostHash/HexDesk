@@ -118,7 +118,7 @@ it("shows no test report while nothing was marked wrong", async () => {
 it("exports the waiting test report only when asked", async () => {
   const ctx = setup({ reportFlows: 2 });
   await mount(ctx);
-  await page.getByRole("button", { name: /Test report · 2 flows/ }).click();
+  await page.getByRole("button", { name: /Test report · 2 screens/ }).click();
   const panel = page.getByRole("dialog", { name: "Test report" });
   expect(ctx.calls).not.toContain("export_test_report");
   await panel.getByRole("button", { name: "Export to Downloads" }).click();
@@ -131,10 +131,10 @@ it("exports the waiting test report only when asked", async () => {
 it("asks before discarding the waiting test report", async () => {
   const ctx = setup({ reportFlows: 1 });
   await mount(ctx);
-  await page.getByRole("button", { name: /Test report · 1 flow/ }).click();
+  await page.getByRole("button", { name: /Test report · 1 screen/ }).click();
   const panel = page.getByRole("dialog", { name: "Test report" });
   await panel.getByRole("button", { name: "Discard…" }).click();
-  await expect.element(panel.getByText("Discard 1 flow without saving a report?", { exact: false })).toBeVisible();
+  await expect.element(panel.getByText("Discard 1 screen without saving a report?", { exact: false })).toBeVisible();
   expect(ctx.calls).not.toContain("discard_test_report");
   await panel.getByRole("button", { name: "Discard", exact: true }).click();
   await vi.waitFor(() => {

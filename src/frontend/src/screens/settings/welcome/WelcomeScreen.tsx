@@ -9,7 +9,7 @@ import { SETUP_STEPS } from "./steps";
 
 const LAST_STEP = SETUP_STEPS.length - 1;
 
-/** Full-page first-run setup: a welcome page, then appearance, testing and the community. */
+/** Full-page first-run setup: a welcome page, then the steps in `SETUP_STEPS`. */
 export function WelcomeScreen() {
   // null is the welcome page; a number is an index into SETUP_STEPS.
   const [step, setStep] = useState<number | null>(null);

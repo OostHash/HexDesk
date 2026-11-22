@@ -64,19 +64,17 @@ export function OverlayStatus() {
   }
   if (notice) return <TestingNotice text={notice.text} tone={notice.tone} />;
   if (!settings.enabled || !text) return null;
-  return (
-    <main aria-label="Overlay status" className="flex h-full items-start justify-center pt-2 text-text">
-      <p role="status" className="max-w-full rounded-md border border-accent/40 bg-bg/95 px-3 py-1.5 text-center text-sm font-medium shadow-2">
-        {text}
-      </p>
-    </main>
-  );
+  return <StatusLine text={text} />;
 }
 
 /** How long a testing confirmation stays in the game. */
 const NOTICE_MS = 5000;
 
-/** Keeps the window as tall as `el`'s content: the backend does not know the text size. */
+/**
+ * Keeps the window as tall as `el`'s content: the backend does not know the text size.
+ * The backend sets its own height each time it shows the window, also while the same
+ * content stays up, so the height is fitted again after every resize of the window too.
+ */
 function useFitHeight(el: RefObject<HTMLElement | null>) {
   const { textScale } = usePreferences();
   useEffect(() => {
@@ -89,10 +87,29 @@ function useFitHeight(el: RefObject<HTMLElement | null>) {
     fit();
     const observer = new ResizeObserver(fit);
     observer.observe(box);
+    window.addEventListener("resize", fit);
     return () => {
       observer.disconnect();
+      window.removeEventListener("resize", fit);
     };
   }, [el, textScale]);
+}
+
+/** The ordinary status line; long text wraps and the window grows with it. */
+function StatusLine({ text }: { text: string }) {
+  const box = useRef<HTMLParagraphElement>(null);
+  useFitHeight(box);
+  return (
+    <main aria-label="Overlay status" className="flex h-full items-start justify-center pt-2 text-text">
+      <p
+        ref={box}
+        role="status"
+        className="max-w-full rounded-md border border-accent/40 bg-bg/95 px-3 py-1.5 text-center text-sm font-medium shadow-2"
+      >
+        {text}
+      </p>
+    </main>
+  );
 }
 
 /** What happened to an answer or a run's report, confirmed in the game. */
@@ -139,7 +156,7 @@ function TestingPrompt({ flow, until, timeoutMs, keys }: { flow: FlowKind; until
         role="status"
         className="flex max-w-full flex-col items-center gap-1.5 rounded-md border border-accent/50 bg-bg/95 px-4 py-2 text-center shadow-2"
       >
-        <p className="font-semibold">Was the {FLOW_LABEL[flow]} result correct?</p>
+        <p className="font-semibold">Did HexDesk read the {FLOW_LABEL[flow]} correctly?</p>
         <p className="text-xs text-muted">
           <kbd className="font-semibold text-text">{keyLabel(keys.correct)}</kbd> correct · discard &nbsp;{" "}
           <kbd className="font-semibold text-text">{keyLabel(keys.wrong)}</kbd> wrong · keep for report

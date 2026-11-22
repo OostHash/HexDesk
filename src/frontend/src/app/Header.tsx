@@ -66,7 +66,8 @@ function Account() {
   );
 }
 
-const flowCount = (flows: number) => `${String(flows)} ${flows === 1 ? "flow" : "flows"}`;
+/** Players see screens; one reported flow is one answer about one screen. */
+const flowCount = (flows: number) => `${String(flows)} ${flows === 1 ? "screen" : "screens"}`;
 
 /**
  * Flows marked wrong during opt-in testing, shown until the player exports or discards them. Only the player decides
@@ -155,7 +156,7 @@ function TestReport() {
                   onError: (error) => {
                     toast({
                       title: "Could not save the test report",
-                      description: `${String(error)} The reported flows were kept.`,
+                      description: `${String(error)} The screens you marked wrong were kept.`,
                       tone: "danger",
                     });
                   },

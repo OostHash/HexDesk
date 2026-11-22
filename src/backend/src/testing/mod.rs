@@ -95,7 +95,8 @@ impl Testing {
     }
 
     pub(crate) fn reclassify(&mut self, visit: VisitId, screen: Screen) {
-        self.feedback.reclassify(visit, screen);
+        let notices = self.feedback.reclassify(visit, screen);
+        self.show(notices);
     }
 
     pub(crate) fn leave(&mut self, visit: VisitId, screen: Screen) {
@@ -250,7 +251,7 @@ impl Testing {
             }
             Notice::ReportFailed { flow, error } => {
                 self.confirm(
-                    "This flow could not be kept. See Settings → Console.",
+                    "This screen could not be kept. See Settings → Console.",
                     false,
                 );
                 let _ = self

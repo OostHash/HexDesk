@@ -142,7 +142,12 @@ fn read_once(visit: VisitId, attempt: u32) -> Option<(&'static str, ScreenRead, 
         .collect::<Vec<_>>()
         .join(" ");
     let screen = relic_list_screen_from_title(&head);
-    crate::testing::save_read(visit, "relic-list", &list.image, &list.read);
+    crate::testing::save_read(
+        visit,
+        hexdesk_overlays::Overlay::RelicPick,
+        &list.image,
+        &list.read,
+    );
     let capture = if crate::captures::enabled() {
         crate::captures::save_read("relic-list", &list.image, &list.read)
     } else {

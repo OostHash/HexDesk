@@ -19,13 +19,13 @@ async function mount() {
 
 const shown = () => toastQueue.visibleToasts.map((item) => item.content);
 
-it("says when a reported flow could not be kept", async () => {
+it("says when a screen marked wrong could not be kept", async () => {
   await mount();
 
   await vi.waitFor(async () => {
     await emit("test-report", { error: "disk full." });
     expect(shown()).toContainEqual(
-      expect.objectContaining({ title: "Could not keep the reported flow", description: "disk full. Its samples were discarded." }),
+      expect.objectContaining({ title: "Could not keep this screen for your report", description: "disk full." }),
     );
   });
 });

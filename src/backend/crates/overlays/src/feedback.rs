@@ -208,8 +208,12 @@ impl<S: SampleStore> Feedback<S> {
     }
 
     /// OCR read the title of an ambiguous relic list.
-    pub fn reclassify(&mut self, visit: VisitId, screen: Screen) {
-        self.flows.reclassify(visit, screen);
+    pub fn reclassify(&mut self, visit: VisitId, screen: Screen) -> Vec<Notice> {
+        let mut notices = Vec::new();
+        if let Some(flow) = self.flows.reclassify(visit, screen) {
+            self.complete(flow, &mut notices);
+        }
+        notices
     }
 
     /// A tracker visit ended.
@@ -291,7 +295,7 @@ impl<S: SampleStore> Feedback<S> {
     /// there is nothing to report; a failed write keeps the reported flows.
     pub fn export(&mut self) -> Result<Export, String> {
         if self.kept == 0 {
-            return Err("There are no reported flows to export.".to_string());
+            return Err("Nothing is marked wrong yet, so there is nothing to export.".to_string());
         }
         let path = self.store.export()?;
         let flows = std::mem::take(&mut self.kept);

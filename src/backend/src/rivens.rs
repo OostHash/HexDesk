@@ -373,7 +373,7 @@ pub(crate) async fn read_riven_card(
             });
             crate::testing::save_json(
                 visit,
-                "riven",
+                hexdesk_overlays::Overlay::Riven,
                 &frame.to_bmp(),
                 &serde_json::to_vec_pretty(&testing_read).unwrap_or_default(),
             );

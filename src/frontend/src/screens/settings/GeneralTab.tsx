@@ -2,10 +2,9 @@ import { useAppVersion, useCheckForUpdate, useInstallUpdate, usePendingUpdate } 
 import { useClock } from "../../api/statistics";
 import { Button } from "../../primitives/actions";
 import { clockFormatFrom, type ClockFormat } from "../../domain/statistics";
-import { Badge } from "../../primitives/display";
 import { RadioGroup } from "../../primitives/forms";
 import { availableChoices, CONTRAST_LABEL, setPreferences, usePreferences } from "../../state/preferences";
-import { DensityRow, OcrModelsRow, TestingRows, TextSizeRow, ThemeRow } from "./controls";
+import { DensityRow, MemoryScannerBadge, MemoryScannerRow, OcrModelsRow, TestingRows, TextSizeRow, ThemeRow } from "./controls";
 import { NotificationsGroup } from "./NotificationsGroup";
 import { ResultText, SettingRow, SettingsGroup, SwitchRow, useSettingsFile } from "./parts";
 
@@ -14,30 +13,26 @@ const CLOCK_OPTIONS: ReadonlyArray<{ value: ClockFormat; label: string }> = [
   { value: "12h", label: "12h" },
   { value: "24h", label: "24h" },
 ];
-/** The testing opt-in and a way back into the welcome screen. */
-function TestingGroup() {
-  const { set } = useSettingsFile();
+function MemoryScannerGroup() {
   return (
-    <SettingsGroup title="Testing">
-      <TestingRows />
-      <SettingRow label="Welcome screen" description="Go through the welcome screen again: appearance, overlays, testing and the community.">
-        <Button
-          size="sm"
-          onClick={() => {
-            set({ onboardingCompleted: false });
-          }}
-        >
-          Show welcome screen again
-        </Button>
-      </SettingRow>
+    <SettingsGroup title="Memory scanner" badge={<MemoryScannerBadge />}>
+      <MemoryScannerRow />
     </SettingsGroup>
   );
 }
 
-function OcrGroup() {
+function ScreenReadingGroup() {
   return (
-    <SettingsGroup title="OCR">
+    <SettingsGroup title="Screen reading">
       <OcrModelsRow />
+    </SettingsGroup>
+  );
+}
+
+function TestingGroup() {
+  return (
+    <SettingsGroup title="Testing">
+      <TestingRows />
     </SettingsGroup>
   );
 }
@@ -97,8 +92,9 @@ function AppearanceGroup() {
   );
 }
 
-/** Check for a new release on demand, and install it from here when there is one. */
-function UpdatesGroup() {
+/** The installed version, a check for a new release that installs it from here, and a way back into the welcome screen. */
+function HexDeskGroup() {
+  const { set } = useSettingsFile();
   const version = useAppVersion();
   const check = useCheckForUpdate();
   const install = useInstallUpdate();
@@ -115,7 +111,7 @@ function UpdatesGroup() {
     <ResultText tone="success">HexDesk is up to date.</ResultText>
   ) : null;
   return (
-    <SettingsGroup title="Updates">
+    <SettingsGroup title="HexDesk">
       <SettingRow
         label="Check for updates"
         description={`You have version ${version ?? "unknown"}. HexDesk also checks when it starts.`}
@@ -144,39 +140,29 @@ function UpdatesGroup() {
           </Button>
         )}
       </SettingRow>
+      <SettingRow
+        label="Welcome screen"
+        description="Go through the welcome screen again: appearance, memory scanner, overlays, testing and the community."
+      >
+        <Button
+          size="sm"
+          onClick={() => {
+            set({ onboardingCompleted: false });
+          }}
+        >
+          Show welcome screen again
+        </Button>
+      </SettingRow>
     </SettingsGroup>
   );
 }
 
+/** Most-changed first: how HexDesk looks and behaves, then what it reads from the game, then HexDesk itself. */
 export function GeneralTab() {
   const { settings, set } = useSettingsFile();
   return (
     <>
-      <UpdatesGroup />
-      <TestingGroup />
-      <OcrGroup />
-      <SettingsGroup
-        title="Memory scanner"
-        badge={
-          <Badge tone="warning" variant="outline">
-            EULA grey area
-          </Badge>
-        }
-      >
-        <SwitchRow
-          label="Enable memory scanner"
-          description={
-            <>
-              Required for live inventory, quantity tracking and mod ranks. Reads Warframe&apos;s process memory with <code>ReadProcessMemory</code>.
-              DE has historically tolerated read-only tools, but has not given explicit permission. Enable at your own risk.
-            </>
-          }
-          checked={settings.memoryScannerEnabled === true}
-          onCheckedChange={(on) => {
-            set({ memoryScannerEnabled: on });
-          }}
-        />
-      </SettingsGroup>
+      <AppearanceGroup />
 
       <SettingsGroup title="Windows">
         <SwitchRow
@@ -199,7 +185,11 @@ export function GeneralTab() {
 
       <NotificationsGroup />
 
-      <AppearanceGroup />
+      <MemoryScannerGroup />
+      <ScreenReadingGroup />
+      <TestingGroup />
+
+      <HexDeskGroup />
     </>
   );
 }

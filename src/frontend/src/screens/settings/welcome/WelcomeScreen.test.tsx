@@ -52,6 +52,12 @@ it("opens on the welcome page, then walks through appearance, overlays, testing 
   expect(localStorage.getItem("ff-theme")).toBe("light");
 
   await page.getByRole("button", { name: "Continue" }).click();
+  await expect.element(page.getByRole("heading", { name: "Your inventory" })).toBeVisible();
+  const scanner = page.getByRole("switch", { name: "Enable memory scanner" });
+  await expect.element(scanner).not.toBeChecked();
+  await scanner.click();
+
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect.element(page.getByRole("heading", { name: "Overlays in the game" })).toBeVisible();
   await page.getByRole("button", { name: "Overlay key", exact: true }).click();
   await userEvent.keyboard("{F8}");
@@ -79,6 +85,7 @@ it("opens on the welcome page, then walks through appearance, overlays, testing 
   await vi.waitFor(() => {
     expect(saved()).toMatchObject({
       onboardingCompleted: true,
+      memoryScannerEnabled: true,
       overlayKey: "F8",
       overlayManual: true,
       testingEnabled: true,

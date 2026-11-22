@@ -799,7 +799,7 @@ fn screenshot(overlay: Overlay, visit: VisitId, op: Span) {
             Ok(frame) => {
                 let prefix = format!("screenshot-{}", overlay.name().replace('_', "-"));
                 let bmp = frame.to_bmp();
-                crate::testing::save_overlay(visit, &prefix, &bmp);
+                crate::testing::save_overlay(visit, overlay, &bmp);
                 if crate::captures::screenshots() {
                     if let Some(capture) = crate::captures::save(&prefix, &bmp) {
                         info_for!(overlay, after_ms, capture = %capture, "Screenshot saved");

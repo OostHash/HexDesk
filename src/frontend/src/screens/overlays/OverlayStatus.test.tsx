@@ -65,7 +65,7 @@ it("shows the scoped testing prompt even when ordinary status is off", async () 
     await emit("testing-feedback", { visible: true, flow: "reward", timeoutMs: 15_000 });
     expect(page.getByLabelText("Testing feedback").query()).not.toBeNull();
   });
-  await expect.element(page.getByText("Was the Relic flow result correct?")).toBeVisible();
+  await expect.element(page.getByText("Did HexDesk read the relic reward correctly?")).toBeVisible();
   await expect.element(page.getByRole("progressbar", { name: "Time left to answer" })).toBeVisible();
   await expect.element(page.getByText("Page Up", { exact: true })).toBeVisible();
   await expect.element(page.getByText("Page Down", { exact: true })).toBeVisible();

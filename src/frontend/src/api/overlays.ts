@@ -221,7 +221,10 @@ export async function fitWindowHeight(contentHeight: number, scale: number): Pro
   if (contentHeight <= 0) return;
   const win = getCurrentWindow();
   const [size, factor] = await Promise.all([win.innerSize(), win.scaleFactor()]);
-  await win.setSize(new LogicalSize(size.width / factor, Math.ceil(contentHeight * scale)));
+  const height = Math.ceil(contentHeight * scale);
+  // Callers also fit after every resize of the window, so a size that already fits must not resize it again.
+  if (Math.abs(size.height / factor - height) < 1) return;
+  await win.setSize(new LogicalSize(size.width / factor, height));
 }
 
 // ── Riven overlay ───────────────────────────────────────────────────────────
