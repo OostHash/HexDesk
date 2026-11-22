@@ -38,14 +38,6 @@ pub struct Capture {
     pub print_window_brightness: Option<u32>,
 }
 
-/// Captures the monitor the game window is on as it is shown, overlay
-/// windows included, through DXGI. Fails when the game window is not found
-/// or its monitor cannot be duplicated.
-pub fn capture_screen() -> Result<Frame, String> {
-    let at = game_window_center().ok_or("Warframe window not found")?;
-    dxgi(at).ok_or_else(|| "The game's monitor could not be duplicated".to_string())
-}
-
 /// The centre of the game window in desktop coordinates.
 fn game_window_center() -> Option<(i32, i32)> {
     use windows_sys::Win32::Foundation::RECT;
@@ -69,6 +61,15 @@ fn game_window_center() -> Option<(i32, i32)> {
     }
 }
 
+/// Captures one window's client area without anything behind or beside it.
+/// Used for a HexDesk overlay after its WebView has confirmed that it drew.
+pub fn capture_window(hwnd: isize) -> Result<Frame, String> {
+    if hwnd == 0 {
+        return Err("Window not found".to_string());
+    }
+    print_window(hwnd)
+}
+
 /// How long a DXGI capture waits for the GPU to finish copying the frame.
 const MAP_LIMIT: std::time::Duration = std::time::Duration::from_millis(1000);
 
@@ -78,7 +79,8 @@ static DXGI: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Captures the game window. Fails when the game window is not found.
 pub fn capture_game() -> Result<Capture, String> {
-    let frame = print_window()?;
+    let hwnd = game_window().ok_or("Warframe window not found")?;
+    let frame = print_window(hwnd)?;
     let brightness = frame.brightness();
     if brightness >= BLACK {
         return Ok(Capture {
@@ -109,9 +111,18 @@ pub fn capture_game() -> Result<Capture, String> {
     })
 }
 
-/// The game window's client area through GDI PrintWindow, which works for
-/// windowed and borderless windowed play.
-fn print_window() -> Result<Frame, String> {
+/// Finds the Warframe window by its title.
+fn game_window() -> Option<isize> {
+    use windows_sys::Win32::UI::WindowsAndMessaging::FindWindowW;
+
+    let title: Vec<u16> = "Warframe\0".encode_utf16().collect();
+    let hwnd = unsafe { FindWindowW(std::ptr::null(), title.as_ptr()) };
+    (hwnd != 0).then_some(hwnd)
+}
+
+/// Captures a window's client area through GDI PrintWindow, which works for
+/// windowed and borderless windowed content.
+fn print_window(hwnd: isize) -> Result<Frame, String> {
     use std::mem;
     use windows_sys::Win32::{
         Foundation::RECT,
@@ -119,7 +130,7 @@ fn print_window() -> Result<Frame, String> {
             CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits,
             ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, RGBQUAD,
         },
-        UI::WindowsAndMessaging::{FindWindowW, GetClientRect},
+        UI::WindowsAndMessaging::GetClientRect,
     };
     #[link(name = "user32")]
     extern "system" {
@@ -128,19 +139,15 @@ fn print_window() -> Result<Frame, String> {
     const PW_RENDERFULLCONTENT: u32 = 2;
 
     unsafe {
-        let title: Vec<u16> = "Warframe\0".encode_utf16().collect();
-        let hwnd = FindWindowW(std::ptr::null(), title.as_ptr());
-        if hwnd == 0 {
-            return Err("Warframe window not found".into());
-        }
-
         let mut rect = RECT {
             left: 0,
             top: 0,
             right: 0,
             bottom: 0,
         };
-        GetClientRect(hwnd, &mut rect);
+        if GetClientRect(hwnd, &mut rect) == 0 {
+            return Err(std::io::Error::last_os_error().to_string());
+        }
         let full_w = (rect.right - rect.left) as u32;
         let full_h = (rect.bottom - rect.top) as u32;
         if full_w < 100 || full_h < 100 {
@@ -151,7 +158,13 @@ fn print_window() -> Result<Frame, String> {
         let hdc_mem = CreateCompatibleDC(hdc_win);
         let hbm = CreateCompatibleBitmap(hdc_win, full_w as i32, full_h as i32);
         let hbm_old = SelectObject(hdc_mem, hbm);
-        PrintWindow(hwnd, hdc_mem, PW_RENDERFULLCONTENT);
+        if PrintWindow(hwnd, hdc_mem, PW_RENDERFULLCONTENT) == 0 {
+            SelectObject(hdc_mem, hbm_old);
+            DeleteObject(hbm);
+            DeleteDC(hdc_mem);
+            ReleaseDC(hwnd, hdc_win);
+            return Err(std::io::Error::last_os_error().to_string());
+        }
 
         let mut bmi = BITMAPINFO {
             bmiHeader: BITMAPINFOHEADER {

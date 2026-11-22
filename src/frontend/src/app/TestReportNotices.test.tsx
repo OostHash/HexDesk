@@ -24,8 +24,6 @@ it("says when a screen marked wrong could not be kept", async () => {
 
   await vi.waitFor(async () => {
     await emit("test-report", { error: "disk full." });
-    expect(shown()).toContainEqual(
-      expect.objectContaining({ title: "Could not keep this screen for your report", description: "disk full." }),
-    );
+    expect(shown()).toContainEqual(expect.objectContaining({ title: "Could not keep this screen for your report", description: "disk full." }));
   });
 });

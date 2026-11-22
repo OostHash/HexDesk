@@ -771,44 +771,54 @@ impl Runtime {
             }
         };
         if crate::captures::screenshots() || crate::testing::capturing(visit) {
-            screenshot(overlay, visit, self.op(visit));
+            screenshot(&self.app, overlay, visit, self.op(visit));
         }
     }
 }
 
-/// A screenshot taken this long after the overlay was drawn may show a later
-/// screen, so it is not kept.
-const SCREENSHOT_LATE: Duration = Duration::from_millis(1500);
-
-/// Saves the game's monitor, game and overlay together, in the background.
-fn screenshot(overlay: Overlay, visit: VisitId, op: Span) {
-    let drawn = std::time::Instant::now();
-    std::thread::spawn(move || {
-        let _guard = op.enter();
-        let shot = hexdesk_capture::capture_screen();
-        let after_ms = drawn.elapsed().as_millis() as u64;
-        if drawn.elapsed() > SCREENSHOT_LATE {
-            info_for!(
-                overlay,
-                after_ms,
-                "Screenshot not saved: taken too long after the overlay was drawn"
-            );
-            return;
-        }
-        match shot {
-            Ok(frame) => {
-                let prefix = format!("screenshot-{}", overlay.name().replace('_', "-"));
-                let bmp = frame.to_bmp();
-                crate::testing::save_overlay(visit, overlay, &bmp);
-                if crate::captures::screenshots() {
-                    if let Some(capture) = crate::captures::save(&prefix, &bmp) {
-                        info_for!(overlay, after_ms, capture = %capture, "Screenshot saved");
-                    }
+/// Saves only the overlay window after its WebView confirmed that it drew.
+/// This stays on the runtime thread so a closing flow cannot remove its visit
+/// before the image is written.
+fn screenshot(app: &tauri::AppHandle, overlay: Overlay, visit: VisitId, op: Span) {
+    let _guard = op.enter();
+    let started = std::time::Instant::now();
+    let shot = capture_overlay_window(app, overlay);
+    let capture_ms = started.elapsed().as_millis() as u64;
+    match shot {
+        Ok(frame) => {
+            let prefix = format!("screenshot-{}", overlay.name().replace('_', "-"));
+            let bmp = frame.to_bmp();
+            crate::testing::save_overlay_window(visit, overlay, &bmp);
+            if crate::captures::screenshots() {
+                if let Some(capture) = crate::captures::save(&prefix, &bmp) {
+                    info_for!(overlay, capture_ms, capture = %capture, "Overlay screenshot saved");
                 }
             }
-            Err(reason) => info_for!(overlay, reason = %reason, "Screenshot not saved"),
         }
-    });
+        Err(reason) => {
+            info_for!(overlay, capture_ms, reason = %reason, "Overlay screenshot not saved")
+        }
+    }
+}
+
+#[cfg(windows)]
+fn capture_overlay_window(
+    app: &tauri::AppHandle,
+    overlay: Overlay,
+) -> Result<hexdesk_capture::Frame, String> {
+    let window = app
+        .get_webview_window(window_label(overlay))
+        .ok_or_else(|| format!("{} window not found", overlay.name()))?;
+    let hwnd = window.hwnd().map_err(|error| error.to_string())?;
+    hexdesk_capture::capture_window(hwnd.0 as isize)
+}
+
+#[cfg(not(windows))]
+fn capture_overlay_window(
+    _app: &tauri::AppHandle,
+    _overlay: Overlay,
+) -> Result<hexdesk_capture::Frame, String> {
+    Err("Overlay window capture is only available on Windows".to_string())
 }
 
 /// The window an overlay draws in.

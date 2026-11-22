@@ -595,7 +595,9 @@ mod tests {
         let mut feedback = feedback(EVERY_FLOW);
         riven_flow(&mut feedback, 1);
         feedback.answer(false);
-        feedback.discard_reports().expect("memory store never fails");
+        feedback
+            .discard_reports()
+            .expect("memory store never fails");
         assert_eq!(feedback.kept(), 0);
         assert!(feedback.store().reports.is_empty());
         assert!(feedback.store().exported.is_empty());

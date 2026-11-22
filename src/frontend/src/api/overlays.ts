@@ -31,7 +31,7 @@ export type OverlayPrefs = {
   overlayKeyCapture: boolean;
   /** Save the game frame with the areas each read uses outlined (default off). */
   overlayAreas: boolean;
-  /** Save a screenshot of the screen each time an overlay is drawn (default off). */
+  /** Save the overlay window each time it is drawn (default off). */
   overlayScreenshot: boolean;
   /** The riven overlay (default on). */
   rivenEnabled: boolean;

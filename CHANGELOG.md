@@ -31,8 +31,9 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   black captures and repeated captures of a screen that did not change. The
   zip has no folders: every file starts with the overlay that read it
   (`pick-`, `reward-`, `riven-`), and `flows.json` lists which files were
-  answered together. In endless fissures the relic selection after a reward
-  is asked about together with the reward it leads to, also when the
+  answered together. The overlay is captured as its own window, never as the
+  whole desktop or monitor. In endless fissures the relic selection after a
+  reward is asked about together with the reward it leads to, also when the
   selection screen opens more than once.
 - **Remove logs** in the activity console clears existing diagnostic logs,
   saved OCR captures and test data not yet saved as a report, after
@@ -76,8 +77,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   closed. The Relic Reward read lists the relics it narrowed the rewards to
   by name, and where they came from.
 - "Save a screenshot when an overlay is shown" in the activity console saves
-  the whole screen, game and overlay together, each time an overlay is drawn,
-  and shows it with what the overlay says it drew.
+  only the HexDesk overlay window each time it is drawn. The game capture and
+  overlay image stay separate, so neither includes the rest of the desktop.
 - A short, click-through status line at the top centre of the game shows what
   the overlays are doing, such as reading the screen, retrying or showing an
   overlay. Turn it off, change how long it stays visible or move it in

@@ -26,6 +26,13 @@ pub(crate) async fn factory_reset(
     let data_dir = paths::data_dir();
     let cache_dir = paths::cache_dir();
 
+    // These folders can contain screenshots or diagnostic history. Remove
+    // them through their owners so no in-flight capture or open log file can
+    // recreate old data during the reset.
+    crate::captures::remove_all()?;
+    crate::overlays::remove_testing_data()?;
+    crate::logging::clear()?;
+
     // Delete user-editable config files.
     for name in &["settings.json", "corrections.json"] {
         let _ = std::fs::remove_file(config_dir.join(name));

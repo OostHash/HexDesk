@@ -180,7 +180,9 @@ type Listener = dyn Fn(&Changes, &Snapshot) + Send + Sync;
 /// in the store, so two stores for the same file would not serialize.
 pub struct Settings {
     path: PathBuf,
-    write_lock: Mutex<()>,
+    /// Serializes both the write and its notifications, so listeners always
+    /// observe changes in the order they reached the file.
+    merge_lock: Mutex<()>,
     listeners: Mutex<Vec<Arc<Listener>>>,
 }
 
@@ -188,7 +190,7 @@ impl Settings {
     pub fn new(path: impl Into<PathBuf>) -> Settings {
         Settings {
             path: path.into(),
-            write_lock: Mutex::new(()),
+            merge_lock: Mutex::new(()),
             listeners: Mutex::new(Vec::new()),
         }
     }
@@ -223,27 +225,26 @@ impl Settings {
     }
 
     /// Applies `apply` to the stored object and writes it back when anything
-    /// changed. Listeners run after the write, outside the lock.
+    /// changed. Listeners run after the write while later merges wait, so a
+    /// listener must not call `merge` on this same store.
     pub fn merge(&self, apply: impl FnOnce(&mut Map)) -> Result<Changes, String> {
-        let (changes, written) = {
-            // Poison recovery is safe: the lock guards the file, not the map,
-            // and a panicking closure bails before the write.
-            let _guard = self
-                .write_lock
-                .lock()
-                .unwrap_or_else(|error| error.into_inner());
-            let before = self.read()?.into_map();
-            let mut after = before.clone();
-            apply(&mut after);
-            let changes = Changes::between(&before, &after);
-            if changes.is_empty() {
-                return Ok(changes);
-            }
-            let json = serde_json::to_string(&after).map_err(|error| error.to_string())?;
-            atomic_write(&self.path, json.as_bytes())
-                .map_err(|error| format!("{}: {error}", self.path.display()))?;
-            (changes, Snapshot(after))
-        };
+        // Poison recovery is safe: a panicking apply closure bails before the
+        // write, and a panicking listener must not let later writes run stale.
+        let _guard = self
+            .merge_lock
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let before = self.read()?.into_map();
+        let mut after = before.clone();
+        apply(&mut after);
+        let changes = Changes::between(&before, &after);
+        if changes.is_empty() {
+            return Ok(changes);
+        }
+        let json = serde_json::to_string(&after).map_err(|error| error.to_string())?;
+        atomic_write(&self.path, json.as_bytes())
+            .map_err(|error| format!("{}: {error}", self.path.display()))?;
+        let written = Snapshot(after);
         let listeners = self
             .listeners
             .lock()
@@ -426,6 +427,64 @@ mod tests {
         assert!(set(3).is_empty(), "an unchanged value writes nothing");
         set(4);
         assert_eq!(heard.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn listeners_finish_in_the_same_order_as_the_writes() {
+        use std::sync::{Barrier, Mutex};
+
+        let settings = Arc::new(scratch("listener-order"));
+        let first_started = Arc::new(Barrier::new(2));
+        let release_first = Arc::new(Barrier::new(2));
+        let heard = Arc::new(Mutex::new(Vec::new()));
+        let calls = Arc::new(AtomicUsize::new(0));
+        settings.on_change({
+            let first_started = Arc::clone(&first_started);
+            let release_first = Arc::clone(&release_first);
+            let heard = Arc::clone(&heard);
+            let calls = Arc::clone(&calls);
+            move |_, written| {
+                heard
+                    .lock()
+                    .unwrap()
+                    .push(written.get("choice").and_then(Value::as_u64).unwrap());
+                if calls.fetch_add(1, Ordering::SeqCst) == 0 {
+                    first_started.wait();
+                    release_first.wait();
+                }
+            }
+        });
+
+        let first = {
+            let settings = Arc::clone(&settings);
+            std::thread::spawn(move || {
+                settings.merge(|map| {
+                    map.insert("choice".into(), 1.into());
+                })
+            })
+        };
+        first_started.wait();
+        let (done, finished) = std::sync::mpsc::channel();
+        let second = {
+            let settings = Arc::clone(&settings);
+            std::thread::spawn(move || {
+                let result = settings.merge(|map| {
+                    map.insert("choice".into(), 2.into());
+                });
+                let _ = done.send(());
+                result
+            })
+        };
+        assert!(
+            finished
+                .recv_timeout(std::time::Duration::from_millis(50))
+                .is_err(),
+            "the second merge must wait for the first listener"
+        );
+        release_first.wait();
+        first.join().unwrap().unwrap();
+        second.join().unwrap().unwrap();
+        assert_eq!(*heard.lock().unwrap(), [1, 2]);
     }
 
     #[test]

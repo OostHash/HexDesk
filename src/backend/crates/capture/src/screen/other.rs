@@ -26,7 +26,7 @@ pub fn capture_game() -> Result<Capture, String> {
     Err("Screen capture is not supported on this platform yet".into())
 }
 
-/// Always fails: screen capture is not supported on this platform yet.
-pub fn capture_screen() -> Result<Frame, String> {
-    Err("Screen capture is not supported on this platform yet".into())
+/// Always fails: window capture is not supported on this platform yet.
+pub fn capture_window(_handle: isize) -> Result<Frame, String> {
+    Err("Window capture is not supported on this platform yet".into())
 }

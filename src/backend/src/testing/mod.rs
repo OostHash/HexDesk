@@ -19,7 +19,7 @@ use tauri::Emitter;
 
 use crate::events;
 
-pub(crate) use store::{capturing, remove_all_files, save_json, save_overlay, save_read};
+pub(crate) use store::{capturing, remove_all_files, save_json, save_overlay_window, save_read};
 
 /// How long an unanswered prompt stays up.
 const PROMPT_TIMEOUT: Duration = Duration::from_secs(15);

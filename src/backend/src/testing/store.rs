@@ -99,8 +99,8 @@ pub(crate) fn save_json(visit: VisitId, overlay: Overlay, bmp: &[u8], json: &[u8
     save(visit, label(overlay), bmp, Some(json));
 }
 
-/// Saves the combined game-and-overlay image needed to review the flow.
-pub(crate) fn save_overlay(visit: VisitId, overlay: Overlay, bmp: &[u8]) {
+/// Saves the overlay window separately from the game capture.
+pub(crate) fn save_overlay_window(visit: VisitId, overlay: Overlay, bmp: &[u8]) {
     save(visit, &format!("{}-screenshot", label(overlay)), bmp, None);
 }
 
@@ -273,7 +273,7 @@ impl SampleStore for FsStore {
         let mut bundle = hexdesk_diag::Bundle::new();
         bundle.add_text(
             "README.txt",
-            "HexDesk opt-in screen-reading test report. This archive contains only screens marked wrong. Each file starts with the overlay that read it (pick, reward, riven); flows.json lists which files were answered together. It is not uploaded automatically.
+            "HexDesk opt-in screen-reading test report. This archive contains only screens marked wrong. Game captures and HexDesk overlay windows are separate files. Each file starts with the overlay that read it (pick, reward, riven); flows.json lists which files were answered together. It is not uploaded automatically.
 ",
         );
         let report = flat_report(&source)?;

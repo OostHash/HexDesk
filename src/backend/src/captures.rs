@@ -13,8 +13,8 @@ const KEEP: usize = 60;
 /// Whether screen reads save what OCR was given (activity console setting).
 static ENABLED: AtomicBool = AtomicBool::new(false);
 
-/// Whether a screenshot of the screen is saved each time an overlay is drawn
-/// (activity console setting).
+/// Whether the overlay window is saved each time it is drawn (activity
+/// console setting).
 static SCREENSHOTS: AtomicBool = AtomicBool::new(false);
 
 /// Whether each screen read also saves the game frame with the areas it

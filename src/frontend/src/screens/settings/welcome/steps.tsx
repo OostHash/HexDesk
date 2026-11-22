@@ -139,8 +139,9 @@ function TestingStep() {
       </ol>
       <p className="flex items-start gap-2 text-xs text-muted">
         <Icon icon={ShieldCheck} size="sm" className="mt-0.5 shrink-0 text-accent" />
-        Nothing is uploaded automatically. The zip holds only the screens you marked wrong and what HexDesk read on them: no logs, settings or account
-        data.
+        Nothing is uploaded automatically. The zip holds only the game captures you marked wrong, what HexDesk read on them and the separate HexDesk
+        overlay image: no logs, settings or credentials. A game capture can still show player names or other information visible in Warframe, so
+        review the zip before sharing it.
       </p>
       <SettingsCard>
         <TestingRows />
