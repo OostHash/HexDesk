@@ -24,9 +24,14 @@ export function SettingsGroup({ title, badge, children }: { title: ReactNode; ba
         {title}
         {badge}
       </h3>
-      <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface *:px-4 *:py-3">{children}</div>
+      <SettingsCard>{children}</SettingsCard>
     </section>
   );
+}
+
+/** The card of a `SettingsGroup` without its heading: every direct child is a row, with a divider between rows. */
+export function SettingsCard({ children }: { children: ReactNode }) {
+  return <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface *:px-4 *:py-3">{children}</div>;
 }
 
 type SettingRowProps = {

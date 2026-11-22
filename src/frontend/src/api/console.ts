@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MAX_ENTRIES, mergeEntries, type LogEntry } from "../domain/console";
 import { onEvent } from "./events";
 import { invoke } from "./invoke";
@@ -8,8 +8,12 @@ import { invoke } from "./invoke";
  * new entry live. Listens before it fetches, so nothing logged in between is
  * missed; `mergeEntries` drops the overlap.
  */
-export function useConsoleEntries(): LogEntry[] {
+export function useConsoleEntries(): { entries: LogEntry[]; reload: () => Promise<void> } {
   const [entries, setEntries] = useState<LogEntry[]>([]);
+  const reload = useCallback(async () => {
+    const recent = await invoke("get_recent_logs", { limit: MAX_ENTRIES });
+    setEntries(recent);
+  }, []);
   useEffect(() => {
     let active = true;
     const unlisten = onEvent("diag-entry", (entry) => {
@@ -28,5 +32,8 @@ export function useConsoleEntries(): LogEntry[] {
       });
     };
   }, []);
-  return entries;
+  return { entries, reload };
 }
+
+/** Removes the local diagnostic history while the active logger keeps running. */
+export const removeLogs = () => invoke("remove_logs");

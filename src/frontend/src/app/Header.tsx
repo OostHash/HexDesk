@@ -1,7 +1,9 @@
+import { FileArchive } from "lucide-react";
 import { useEffect, useState } from "react";
 import { pokeScan, refreshAllCaches, useBlobStatus, useCacheStatuses, useGameState, useMonitorStatus, usePlayer } from "../api/app";
 import { useOverlayStatus } from "../api/overlays";
 import { useSettings } from "../api/settings";
+import { useDiscardTestReport, useExportTestReport, useTestReportFlows } from "../api/testReport";
 import { useSession } from "../api/trading";
 import { useNow } from "../state/useNow";
 import { cacheAge, cacheHealth, cacheLabel, sourceTone } from "../domain/cache";
@@ -9,7 +11,7 @@ import { memoryStatus, POKE_MS, wfmStatus } from "../domain/status";
 import { StatusChip } from "../patterns/StatusChip";
 import { Button } from "../primitives/actions";
 import { Badge } from "../primitives/display";
-import { Popover } from "../primitives/overlay";
+import { Popover, toast } from "../primitives/overlay";
 
 /** Stays a little after "Refresh all data". */
 const REFRESH_FEEDBACK_MS = 2000;
@@ -21,7 +23,10 @@ type Props = {
   onOpenSettings: () => void;
 };
 
-/** Top bar of the main window: account and status chips. An available update shows on Settings instead. */
+/**
+ * Top bar of the main window: account, a waiting test report and status chips. An available update shows on Settings
+ * instead.
+ */
 export function Header({ onOpenScreen, onOpenSettings }: Props) {
   return (
     <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface px-4 py-2">
@@ -56,7 +61,114 @@ function Account() {
           Inventory loaded
         </Badge>
       )}
+      <TestReport />
     </div>
+  );
+}
+
+/** Players see screens; one reported flow is one answer about one screen. */
+const flowCount = (flows: number) => `${String(flows)} ${flows === 1 ? "screen" : "screens"}`;
+
+/**
+ * Flows marked wrong during opt-in testing, shown until the player exports or discards them. Only the player decides
+ * when the report is written.
+ */
+function TestReport() {
+  const flows = useTestReportFlows();
+  const exporting = useExportTestReport();
+  const discarding = useDiscardTestReport();
+  const [confirming, setConfirming] = useState(false);
+  if (flows === 0) return null;
+  const busy = exporting.isPending || discarding.isPending;
+  return (
+    <Popover
+      label="Test report"
+      placement="bottom"
+      className="w-72"
+      onOpenChange={() => {
+        setConfirming(false);
+      }}
+      trigger={(props) => (
+        <button type="button" title="Screens you marked wrong, ready to export" className="rounded-sm" {...props}>
+          <Badge tone="warning" variant="outline" icon={FileArchive}>
+            Test report · {flowCount(flows)}
+          </Badge>
+        </button>
+      )}
+    >
+      {confirming ? (
+        <>
+          <p>Discard {flowCount(flows)} without saving a report? This cannot be undone.</p>
+          <div className="mt-3 flex justify-end gap-2">
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setConfirming(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              loading={discarding.isPending}
+              disabled={busy}
+              onClick={() => {
+                discarding.mutate(undefined, {
+                  onError: (error) => {
+                    toast({ title: "Could not discard the test report", description: String(error), tone: "danger" });
+                  },
+                });
+              }}
+            >
+              Discard
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p>
+            {flowCount(flows)} marked wrong. Export them as one zip in Downloads to share in the HexDesk Discord or on GitHub. Nothing is uploaded
+            automatically.
+          </p>
+          <div className="mt-3 flex justify-end gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                setConfirming(true);
+              }}
+            >
+              Discard…
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              loading={exporting.isPending}
+              disabled={busy}
+              onClick={() => {
+                exporting.mutate(undefined, {
+                  onSuccess: (path) => {
+                    toast({ title: "Test report saved", description: path, tone: "success" }, { timeout: 10_000 });
+                  },
+                  onError: (error) => {
+                    toast({
+                      title: "Could not save the test report",
+                      description: `${String(error)} The screens you marked wrong were kept.`,
+                      tone: "danger",
+                    });
+                  },
+                });
+              }}
+            >
+              {exporting.isPending ? "Exporting…" : "Export to Downloads"}
+            </Button>
+          </div>
+        </>
+      )}
+    </Popover>
   );
 }
 

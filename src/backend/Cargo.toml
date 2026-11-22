@@ -35,11 +35,11 @@ native-tls = "0.2"
 lzma-rs = "0.3"
 hexdesk-capture = { path = "crates/capture" }
 hexdesk-diag = { path = "crates/diag" }
+hexdesk-logging = { path = "crates/logging" }
 hexdesk-overlays = { path = "crates/overlays" }
+hexdesk-persist = { path = "crates/persist" }
 hexdesk-player = { path = "crates/player" }
 tracing = "0.1"
-tracing-appender = "0.2"
-tracing-log = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2"

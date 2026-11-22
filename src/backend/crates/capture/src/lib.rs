@@ -2,7 +2,7 @@
 //! them.
 //!
 //! - [`capture_game`] captures the game window as a [`Frame`];
-//!   [`capture_screen`] the whole monitor, overlay windows included.
+//!   [`capture_window`] captures one window's client area.
 //! - [`recognize`] reads the text in a frame as a [`TextRead`]: lines of
 //!   words, each with its place in the picture. A read can be saved as json
 //!   with its picture, so readers can be tested on recorded screens.
@@ -20,7 +20,7 @@ pub use engine::{
     Provider,
 };
 pub use frame::{bgra_to_bmp, Frame, Rect};
-pub use screen::{capture_game, capture_screen, Capture, Method};
+pub use screen::{capture_game, capture_window, Capture, Method};
 pub use text::{Line, TextRead, Word};
 
 /// Reads the text in a frame.

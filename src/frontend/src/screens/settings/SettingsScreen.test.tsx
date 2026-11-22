@@ -119,6 +119,34 @@ it("downloads the OCR models when the player allows them", async () => {
   await expect.element(toggle).toBeChecked();
 });
 
+it("stores testing choices and can start the welcome flow again", async () => {
+  const { client, saved } = setup({ settings: { onboardingCompleted: true } });
+  await mount(client);
+
+  await page.getByRole("switch", { name: "Help test HexDesk" }).click();
+  await page.getByRole("combobox", { name: "Ask for feedback" }).selectOptions("every-3-flows");
+  await page.getByRole("button", { name: "Show welcome screen again" }).click();
+
+  await vi.waitFor(() => {
+    expect(saved()).toMatchObject({
+      onboardingCompleted: false,
+      testingEnabled: true,
+      feedbackFrequency: "every-3-flows",
+    });
+  });
+});
+
+it("warns that testing needs both keys once one is removed", async () => {
+  const { client, saved } = setup({ settings: { onboardingCompleted: true, testingEnabled: true } });
+  await mount(client);
+
+  await page.getByRole("button", { name: "Remove wrong key" }).click();
+  await vi.waitFor(() => {
+    expect(saved()).toMatchObject({ testingCorrectKey: "PageUp", testingWrongKey: "off" });
+  });
+  await expect.element(page.getByText("Testing needs both a correct and a wrong key.", { exact: false })).toBeVisible();
+});
+
 it("keeps the OCR models of an older settings file that chose ocrs", async () => {
   const { client } = setup({ settings: { ocrEngines: { title: "windows", relicList: "ocrs" } } });
   await mount(client);

@@ -33,10 +33,13 @@ export function RelicOverlayController() {
     rivenEnabled,
     overlayManual,
     overlayKey,
+    testingKeys,
     overlayKeyCapture,
     overlayScreenshot,
     overlayAreas,
   } = prefs;
+  const testingCorrectKey = testingKeys.correct;
+  const testingWrongKey = testingKeys.wrong;
   useEffect(() => {
     if (!isSuccess || !isTauri()) return;
     syncOverlaySwitches({
@@ -47,6 +50,7 @@ export function RelicOverlayController() {
       rivenEnabled,
       overlayManual,
       overlayKey,
+      testingKeys: { correct: testingCorrectKey, wrong: testingWrongKey },
       overlayKeyCapture,
       overlayScreenshot,
       overlayAreas,
@@ -61,6 +65,8 @@ export function RelicOverlayController() {
     rivenEnabled,
     overlayManual,
     overlayKey,
+    testingCorrectKey,
+    testingWrongKey,
     overlayKeyCapture,
     overlayScreenshot,
     overlayAreas,

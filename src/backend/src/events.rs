@@ -33,6 +33,15 @@ pub const BLOB_STATUS: &str = "blob-status";
 pub const DIAG_ENTRY: &str = "diag-entry";
 pub const CACHE_STATUS: &str = "cache-status";
 pub const STATUS_LINE: &str = "status-line";
+/// A Page Up/Page Down testing prompt shown over the game.
+pub const TESTING_FEEDBACK: &str = "testing-feedback";
+/// A reported testing flow could not be stored (`error`).
+pub const TEST_REPORT: &str = "test-report";
+/// How many reported testing flows wait for an export (a number).
+pub const TEST_REPORT_FLOWS: &str = "test-report-flows";
+/// A short in-game confirmation of an opt-in testing answer or report
+/// (`text`, `tone`: "success" or "danger"), shown in the status window.
+pub const TESTING_NOTICE: &str = "testing-notice";
 pub const PLAYER_NAME: &str = "player-name";
 
 pub const WFM_WHISPER: &str = "wfm-whisper";

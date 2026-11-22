@@ -80,15 +80,67 @@ it("saves the switches and choices of each overlay", async () => {
     .toBeDisabled();
 });
 
-it("shows and hides the overlays with Home unless another key is chosen", async () => {
+it("shows and hides the overlays with Home unless another key is pressed in its field", async () => {
   const { client, saved } = setup();
   await mount(client);
-  const key = group("All overlays").getByRole("combobox", { name: "Overlay key" });
-  await expect.element(key).toHaveValue("Home");
-  await key.selectOptions("F8");
+  const key = group("All overlays").getByRole("button", { name: "Overlay key", exact: true });
+  await expect.element(key).toHaveTextContent("Home");
+  await key.click();
+  await expect.element(key).toHaveTextContent("Press a key… (Backspace for none)");
+  await userEvent.keyboard("{F8}");
   await vi.waitFor(() => {
     expect(saved()).toMatchObject({ overlayKey: "F8" });
   });
+  await expect.element(key).toHaveTextContent("F8");
+});
+
+it("refuses a key that cannot be used and keeps the old one", async () => {
+  const { client, saved } = setup();
+  await mount(client);
+  const key = group("All overlays").getByRole("button", { name: "Overlay key", exact: true });
+  await key.click();
+  await userEvent.keyboard("{Enter}");
+  await expect.element(page.getByText("That key cannot be used.", { exact: false })).toBeVisible();
+  expect(saved().overlayKey).toBeUndefined();
+});
+
+it("removes the overlay key with its × or with Backspace", async () => {
+  const { client, saved } = setup({ overlayKey: "F8" });
+  await mount(client);
+  const key = group("All overlays").getByRole("button", { name: "Overlay key", exact: true });
+  await group("All overlays").getByRole("button", { name: "Remove overlay key" }).click();
+  await vi.waitFor(() => {
+    expect(saved()).toMatchObject({ overlayKey: "off" });
+  });
+  await expect.element(key).toHaveTextContent("None");
+  await expect.element(group("All overlays").getByRole("button", { name: "Remove overlay key" })).not.toBeInTheDocument();
+
+  await key.click();
+  await userEvent.keyboard("{F9}");
+  await vi.waitFor(() => {
+    expect(saved()).toMatchObject({ overlayKey: "F9" });
+  });
+  await key.click();
+  await userEvent.keyboard("{Backspace}");
+  await vi.waitFor(() => {
+    expect(saved()).toMatchObject({ overlayKey: "off" });
+  });
+});
+
+it("warns that manual mode needs an overlay key", async () => {
+  const { client } = setup({ overlayKey: "off", overlayManual: true });
+  await mount(client);
+  await expect.element(page.getByText("Manual mode needs an overlay key.", { exact: false })).toBeVisible();
+});
+
+it("cancels the capture with Escape", async () => {
+  const { client, saved } = setup();
+  await mount(client);
+  const key = group("All overlays").getByRole("button", { name: "Overlay key", exact: true });
+  await key.click();
+  await userEvent.keyboard("{Escape}");
+  await expect.element(key).toHaveTextContent("Home");
+  expect(saved().overlayKey).toBeUndefined();
 });
 
 it("disables an overlay's choices while it is off, and hides the reward strip", async () => {

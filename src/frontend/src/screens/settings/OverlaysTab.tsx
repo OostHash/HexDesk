@@ -13,13 +13,13 @@ import {
 } from "../../api/overlays";
 import { useSaveSettings } from "../../api/settings";
 import { OFFSET_LIMIT, OFFSET_STEP, offsetDraft, offsetOf, withOffset, type OffsetTarget, type OverlayOffsets } from "../../domain/overlayOffsets";
-import { OVERLAY_KEYS } from "../../domain/overlayKey";
 import { STATUS_DURATION_RANGE } from "../../domain/overlayStatus";
 import { PICK_LINES, PICK_LINES_LABEL, PICK_PRIORITIES, PICK_PRIORITY_LABEL } from "../../domain/relicPick";
 import { OVERLAY_PRIORITIES, OVERLAY_PRIORITY_LABEL } from "../../domain/relicReward";
 import { Button } from "../../primitives/actions";
 import { FormField, Input, Select, Slider } from "../../primitives/forms";
 import { getPreferences } from "../../state/preferences";
+import { ManualModeRow, OverlayKeyRow } from "./controls";
 import { SettingRow, SettingsGroup, SwitchRow, useSettingsFile } from "./parts";
 
 type Overlay = "reward" | "pick" | "riven";
@@ -188,36 +188,8 @@ export function OverlaysTab() {
             if (!on) previews.set(OVERLAYS, false);
           }}
         />
-        <FormField
-          layout="row"
-          label="Overlay key"
-          description="Hides the overlays on screen. With none on screen, opens the overlay for the screen you are on: relic selection or refinement, fissure rewards or mods. The game still receives the key."
-        >
-          <Select
-            className="w-48"
-            value={prefs.overlayKey}
-            disabled={!prefs.overlaysEnabled}
-            onChange={(event) => {
-              set({ overlayKey: event.target.value });
-            }}
-          >
-            {OVERLAY_KEYS.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.label}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-        <SwitchRow
-          label="Manual mode"
-          description="Open overlays only with the overlay key. The game's log still closes them, and the screen is read only when you press the key."
-          checked={prefs.overlayManual}
-          disabled={!prefs.overlaysEnabled}
-          onCheckedChange={(on) => {
-            // The main window tells the backend (RelicOverlayController).
-            set({ overlayManual: on });
-          }}
-        />
+        <OverlayKeyRow />
+        <ManualModeRow />
         <PreviewButton
           all
           shown={allShown}

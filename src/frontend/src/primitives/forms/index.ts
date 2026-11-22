@@ -9,3 +9,4 @@ export * from "./Slider";
 export * from "./Switch";
 export * from "./Textarea";
 export * from "./ComboBox";
+export * from "./KeyInput";

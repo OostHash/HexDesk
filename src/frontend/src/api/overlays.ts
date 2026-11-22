@@ -4,7 +4,7 @@ import { emitEvent } from "./events";
 import { invoke } from "./invoke";
 import { useSettings, type SettingsFile } from "./settings";
 import { overlayPriorityFrom, stripBounds, type BackendCard, type OverlayPriority } from "../domain/relicReward";
-import { overlayKeyCode, overlayKeyFrom, type OverlayKey } from "../domain/overlayKey";
+import { overlayKeyCode, overlayKeyFrom, testingKeysFrom, type OverlayKey, type TestingKeys } from "../domain/overlayKey";
 import { pickLinesFrom, pickPriorityFrom, type PickLines, type PickPriority } from "../domain/relicPick";
 import { offsetsFrom, type OverlayOffsets } from "../domain/overlayOffsets";
 import { overlayStatusFrom, type OverlayStatusSettings } from "../domain/overlayStatus";
@@ -25,11 +25,13 @@ export type OverlayPrefs = {
   overlayKey: OverlayKey;
   /** Only the overlay key opens an overlay; the game's log still closes one (default off). */
   overlayManual: boolean;
+  /** The keys that answer the testing prompt (default Page Up and Page Down). */
+  testingKeys: TestingKeys;
   /** Save what OCR reads on screen (default off). */
   overlayKeyCapture: boolean;
   /** Save the game frame with the areas each read uses outlined (default off). */
   overlayAreas: boolean;
-  /** Save a screenshot of the screen each time an overlay is drawn (default off). */
+  /** Save the overlay window each time it is drawn (default off). */
   overlayScreenshot: boolean;
   /** The riven overlay (default on). */
   rivenEnabled: boolean;
@@ -47,6 +49,7 @@ export function overlayPrefsFrom(s: SettingsFile | undefined): OverlayPrefs {
     pickLines: pickLinesFrom(s?.relicPickLines),
     overlayKey: overlayKeyFrom(s?.overlayKey),
     overlayManual: s?.overlayManual === true,
+    testingKeys: testingKeysFrom(s?.testingCorrectKey, s?.testingWrongKey),
     overlayKeyCapture: s?.overlayKeyCapture === true,
     overlayScreenshot: s?.overlayScreenshot === true,
     overlayAreas: s?.overlayAreas === true,
@@ -69,6 +72,7 @@ export async function syncOverlaySwitches(prefs: OverlayPrefs): Promise<void> {
     invoke("set_riven_enabled", { enabled: prefs.rivenEnabled }),
     invoke("set_overlay_manual", { enabled: prefs.overlayManual }),
     invoke("set_overlay_key", { vk: overlayKeyCode(prefs.overlayKey) }),
+    invoke("set_testing_keys", { correct: overlayKeyCode(prefs.testingKeys.correct), wrong: overlayKeyCode(prefs.testingKeys.wrong) }),
     invoke("set_overlay_key_capture", { enabled: prefs.overlayKeyCapture }),
     invoke("set_overlay_screenshot", { enabled: prefs.overlayScreenshot }),
     invoke("set_overlay_areas", { enabled: prefs.overlayAreas }),
@@ -206,6 +210,21 @@ export async function fitPickWindow(contentHeight: number, scale: number): Promi
     height = Math.min(height, monitor.size.height / f);
   }
   await win.setSize(new LogicalSize(Math.round(width), Math.round(height)));
+}
+
+/**
+ * Sets the window height to its content and keeps the width, for windows the
+ * backend places and centres. The backend does not know the text size, so its
+ * height alone can cut the content off.
+ */
+export async function fitWindowHeight(contentHeight: number, scale: number): Promise<void> {
+  if (contentHeight <= 0) return;
+  const win = getCurrentWindow();
+  const [size, factor] = await Promise.all([win.innerSize(), win.scaleFactor()]);
+  const height = Math.ceil(contentHeight * scale);
+  // Callers also fit after every resize of the window, so a size that already fits must not resize it again.
+  if (Math.abs(size.height / factor - height) < 1) return;
+  await win.setSize(new LogicalSize(size.width / factor, height));
 }
 
 // ── Riven overlay ───────────────────────────────────────────────────────────

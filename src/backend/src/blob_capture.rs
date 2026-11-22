@@ -7,7 +7,6 @@ use hexdesk_diag::{debug, info, DiagError, Kind, Level, Source};
 use tauri::{Emitter, Manager};
 
 use crate::app_state::AppState;
-use crate::cache::atomic_write;
 use crate::catalogue;
 use crate::db;
 use crate::events;
@@ -15,6 +14,7 @@ use crate::inventory_state::{build_inventory_from_blob, load_inventory_state_cac
 use crate::memory_scanner;
 use crate::monitor::{self, BlobStatusPayload, InventoryUpdate};
 use crate::BlobBuildParams;
+use hexdesk_persist::atomic_write;
 
 /// Shared state needed by the blob capture thread, extracted from AppState
 /// to keep the clone list at the spawn site manageable.
@@ -610,7 +610,6 @@ fn process_blob(
                 .and_then(|g| g.clone()),
         },
     );
-
     let detail = format!(
         "{} unique · {} resources · {} mods · {} flavour",
         blob.unique_items.len(),

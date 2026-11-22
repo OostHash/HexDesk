@@ -68,11 +68,18 @@ export const overlayFixtures = {
     Array<{ unique_name: string; item_name: string; completion_ms: number }>
   >,
   set_overlays_enabled: noResult<{ enabled: boolean }>(),
+  test_report_flows: { alwaysDefault: true, default: () => 3 } satisfies Fixture<number>,
+  export_test_report: {
+    alwaysDefault: true,
+    default: () => "C:/Users/Tenno/Downloads/hexdesk-test-report-2026-11-21-201544.zip",
+  } satisfies Fixture<string>,
+  discard_test_report: noResult(),
   set_relic_pick_enabled: noResult<{ enabled: boolean }>(),
   set_relic_reward_enabled: noResult<{ enabled: boolean }>(),
   set_riven_enabled: noResult<{ enabled: boolean }>(),
   set_overlay_manual: noResult<{ enabled: boolean }>(),
   set_overlay_key: noResult<{ vk: number }>(),
+  set_testing_keys: noResult<{ correct: number; wrong: number }>(),
   set_overlay_key_capture: noResult<{ enabled: boolean }>(),
   set_overlay_screenshot: noResult<{ enabled: boolean }>(),
   set_overlay_areas: noResult<{ enabled: boolean }>(),

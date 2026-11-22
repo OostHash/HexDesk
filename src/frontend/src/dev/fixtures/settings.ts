@@ -30,6 +30,14 @@ export function resetMockSettings() {
 export const loadSettings: Fixture<string> = {
   default: () => JSON.stringify(read()),
   empty: () => "",
+  onboarding: () =>
+    JSON.stringify({
+      ...read(),
+      onboardingCompleted: false,
+      testingEnabled: false,
+      logRetentionDays: 1,
+      feedbackFrequency: "every-flow",
+    }),
 };
 
 export const saveSettings: Fixture<null, { json: string }> = {

@@ -858,7 +858,9 @@ pub const MAX_MISSING_STREAK: u32 = 12;
 /// Top-level JSON sections that appear and disappear from memory depending on
 /// game state (e.g. after a vendor interaction or inventory sync). These should
 /// never trigger a truncated-capture rejection because their absence is normal.
-const VOLATILE_SECTIONS: &[&str] = &["RecentVendorPurchases", "MiscAccountData"];
+/// `FoundToday` is present before a mission and missing from the blob the
+/// game writes right after it.
+const VOLATILE_SECTIONS: &[&str] = &["RecentVendorPurchases", "MiscAccountData", "FoundToday"];
 
 /// Per-account memory of which top-level sections a complete blob contains.
 ///
@@ -1878,6 +1880,16 @@ mod section_baseline_tests {
             assert!(b.evaluate(&keys(&["B"])).is_err());
             assert_eq!(b.evaluate(&keys(&["A", "B"])), Ok(false));
         }
+    }
+
+    /// A saved baseline can still list a volatile section; a blob without it,
+    /// such as the one right after a mission, is accepted at once.
+    #[test]
+    fn a_missing_volatile_section_never_rejects_a_blob() {
+        let mut b = SectionBaseline::from_keys(keys(&["A", "FoundToday"]));
+        assert_eq!(b.evaluate(&keys(&["A"])), Ok(true));
+        assert_eq!(b.keys(), vec!["A"]);
+        assert_eq!(b.evaluate(&keys(&["A", "FoundToday"])), Ok(false));
     }
 
     #[test]

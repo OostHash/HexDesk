@@ -310,7 +310,9 @@ fn parse_riven_csv(csv: &str) -> HashMap<String, RivenEntry> {
 
 /// Reads the riven card on screen: the weapon, the rolled stats and, on the
 /// comparison screen, the stats of the card before the reroll.
-pub(crate) async fn read_riven_card() -> Result<serde_json::Value, DiagError> {
+pub(crate) async fn read_riven_card(
+    visit: hexdesk_overlays::VisitId,
+) -> Result<serde_json::Value, DiagError> {
     let started = std::time::Instant::now();
     info!(riven, "Riven OCR started");
 
@@ -346,10 +348,11 @@ pub(crate) async fn read_riven_card() -> Result<serde_json::Value, DiagError> {
                 .log()
             })?;
             let (pixels, w, h) = px;
+            let frame = hexdesk_capture::Frame::new(pixels.clone(), w, h);
             if crate::captures::areas() {
                 crate::captures::save_areas(
                     "riven",
-                    &hexdesk_capture::Frame::new(pixels.clone(), w, h),
+                    &frame,
                     &[
                         hexdesk_capture::Rect::new(0.0, 1.0, 0.0, 0.82),
                         hexdesk_capture::Rect::new(0.20, 0.65, 0.28, 0.82),
@@ -363,6 +366,17 @@ pub(crate) async fn read_riven_card() -> Result<serde_json::Value, DiagError> {
                 ocr::ocr_pixels_rect(&pixels, w, h, 0.20, 0.65, 0.28, 0.82).unwrap_or_default();
             let panel_text =
                 ocr::ocr_pixels_rect_raw(&pixels, w, h, 0.73, 1.0, 0.30, 0.95).unwrap_or_default();
+            let testing_read = serde_json::json!({
+                "full": &full_text,
+                "card": &card_text,
+                "weaponPanel": &panel_text,
+            });
+            crate::testing::save_json(
+                visit,
+                hexdesk_overlays::Overlay::Riven,
+                &frame.to_bmp(),
+                &serde_json::to_vec_pretty(&testing_read).unwrap_or_default(),
+            );
             Ok::<_, DiagError>((full_text, panel_text, card_text))
         })
         .await

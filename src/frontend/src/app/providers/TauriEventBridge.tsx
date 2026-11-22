@@ -16,6 +16,7 @@ export const EVENT_INVALIDATIONS: Partial<Record<EventName, readonly QueryKey[]>
   "trades-updated": [["trades"]],
   "settings-updated": [["settings"]],
   "riven-roll-saved": [["rivens", "saved"]],
+  "test-report-flows": [["testing", "flows"]],
 };
 
 /** Subscribes once per window and invalidates the mapped queries. Renders nothing. */

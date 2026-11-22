@@ -10,7 +10,8 @@ use hexdesk_overlays::read::era_of_list;
 use hexdesk_overlays::read::relic_list::{
     read_relic_list_with, Names, ReadLines, ReadText, RelicList,
 };
-use hexdesk_overlays::VisitId;
+use hexdesk_overlays::title::relic_list_screen_from_title;
+use hexdesk_overlays::{Screen, VisitId};
 use tracing::Span;
 
 use super::{is_current, send, status, Input};
@@ -28,6 +29,8 @@ const RENDER_WAIT: Duration = Duration::from_millis(400);
 /// What the Relic Pick overlay is sent for one visit.
 pub(crate) struct PickView {
     pub era: &'static str,
+    /// Explicit selection/refinement classification from the OCR title.
+    pub screen: Option<Screen>,
     /// How many relics of that era the payload lists.
     pub relics: usize,
     /// The `relic-pick-open` payload.
@@ -44,7 +47,7 @@ pub(super) fn read(app: tauri::AppHandle, visit: VisitId, wait_for_render: bool,
         }
         let started = Instant::now();
         // The latest read that named an era, and its tiles.
-        let mut latest: Option<(&'static str, RelicList)> = None;
+        let mut latest: Option<(&'static str, RelicList, Option<Screen>)> = None;
         let mut stable = false;
         for attempt in 1..=READ_ATTEMPTS {
             if attempt > 1 {
@@ -59,14 +62,17 @@ pub(super) fn read(app: tauri::AppHandle, visit: VisitId, wait_for_render: bool,
                 );
                 return;
             }
-            let Some((era, list)) = read_once(visit, attempt) else {
+            let Some((era, list, screen)) = read_once(visit, attempt) else {
                 continue;
             };
             let tiles = read_tiles(visit, era, &list, &app);
             let same = latest
                 .as_ref()
-                .is_some_and(|(e, t)| *e == era && t.reads_the_same(&tiles));
-            latest = Some((era, tiles));
+                .is_some_and(|(e, t, _)| *e == era && t.reads_the_same(&tiles));
+            // Keep an explicit title classification from an earlier retry if
+            // a later otherwise-stable OCR read misses the title.
+            let screen = screen.or_else(|| latest.as_ref().and_then(|(_, _, screen)| *screen));
+            latest = Some((era, tiles, screen));
             if same {
                 stable = true;
                 break;
@@ -80,7 +86,7 @@ pub(super) fn read(app: tauri::AppHandle, visit: VisitId, wait_for_render: bool,
                 "Relic list not the same in two reads in a row; the last read is used"
             );
         }
-        let pick = latest.map(|(era, tiles)| {
+        let pick = latest.map(|(era, tiles, screen)| {
             let (payload, changes) =
                 crate::relic_pick::build_relic_pick_payload(era, &app, Some(&tiles));
             for change in &changes {
@@ -95,6 +101,7 @@ pub(super) fn read(app: tauri::AppHandle, visit: VisitId, wait_for_render: bool,
             let relics = payload["relics"].as_array().map_or(0, Vec::len);
             PickView {
                 era,
+                screen,
                 relics,
                 payload,
             }
@@ -111,7 +118,7 @@ pub(super) fn read(app: tauri::AppHandle, visit: VisitId, wait_for_render: bool,
 
 /// One read of the relic list, logged with the era line OCR returned and,
 /// when captures are on, the picture and the OCR result.
-fn read_once(visit: VisitId, attempt: u32) -> Option<(&'static str, ScreenRead)> {
+fn read_once(visit: VisitId, attempt: u32) -> Option<(&'static str, ScreenRead, Option<Screen>)> {
     let list = match crate::ocr::read_relic_list() {
         Ok(list) => list,
         Err(reason) => {
@@ -134,6 +141,13 @@ fn read_once(visit: VisitId, attempt: u32) -> Option<(&'static str, ScreenRead)>
         .map(|l| l.text.as_str())
         .collect::<Vec<_>>()
         .join(" ");
+    let screen = relic_list_screen_from_title(&head);
+    crate::testing::save_read(
+        visit,
+        hexdesk_overlays::Overlay::RelicPick,
+        &list.image,
+        &list.read,
+    );
     let capture = if crate::captures::enabled() {
         crate::captures::save_read("relic-list", &list.image, &list.read)
     } else {
@@ -145,6 +159,7 @@ fn read_once(visit: VisitId, attempt: u32) -> Option<(&'static str, ScreenRead)>
             visit,
             attempt,
             era = era.unwrap_or("none"),
+            screen = screen.map_or("not explicit", Screen::name),
             capture = %capture,
             "Relic list head read: \"{head}\""
         ),
@@ -153,10 +168,11 @@ fn read_once(visit: VisitId, attempt: u32) -> Option<(&'static str, ScreenRead)>
             visit,
             attempt,
             era = era.unwrap_or("none"),
+            screen = screen.map_or("not explicit", Screen::name),
             "Relic list head read: \"{head}\""
         ),
     }
-    era.map(|era| (era, list))
+    era.map(|era| (era, list, screen))
 }
 
 /// The relic tiles on the list, logged one line for the whole list.

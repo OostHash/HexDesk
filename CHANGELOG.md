@@ -9,6 +9,36 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- A welcome screen for new installations: a welcome page, then appearance and
+  optional small-text OCR, the memory scanner with what it does and its risk,
+  the overlay key and manual mode, the opt-in for testing with an
+  explanation of how a test report works, and a way to join the HexDesk
+  Discord, with a QR code for your phone. Existing installations continue
+  normally, and Settings → General can show it again.
+- Diagnostic logs can be kept for one to five days, with one day as the
+  default, in Settings → Console. HexDesk removes older daily log files
+  automatically.
+- Optional testing: after a relic reward, a refinement or a riven, a short
+  prompt over the game asks whether HexDesk read the screen correctly. One
+  key forgets the screen and another keeps it for a report. Both keys can be
+  chosen by pressing them and default to Page Up and Page Down; without both,
+  HexDesk asks nothing and says so. A bar shows how long the question stays
+  up, and a short line over the game confirms each answer. Screens marked
+  wrong wait in the header, next to your Mastery Rank and account name, also
+  after HexDesk restarts. From there you export them, from every mission
+  since the last export, as one local zip in Downloads, or discard them.
+  HexDesk never writes or uploads a report on its own. A report leaves out
+  black captures and repeated captures of a screen that did not change. The
+  zip has no folders: every file starts with the overlay that read it
+  (`pick-`, `reward-`, `riven-`), and `flows.json` lists which files were
+  answered together. The overlay is captured as its own window, never as the
+  whole desktop or monitor. In endless fissures the relic selection after a
+  reward is asked about together with the reward it leads to, also when the
+  selection screen opens more than once.
+- **Remove logs** in the activity console clears existing diagnostic logs,
+  saved OCR captures and test data not yet saved as a report, after
+  confirmation. Logging then continues in a fresh active-session log without
+  changing log retention.
 - An activity console in Settings → Console shows what HexDesk does in the
   background as it happens. Filter by level and by one or more sources, with
   each overlay (overlay key, Relic Pick, Relic Reward, riven check) as its
@@ -47,8 +77,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   closed. The Relic Reward read lists the relics it narrowed the rewards to
   by name, and where they came from.
 - "Save a screenshot when an overlay is shown" in the activity console saves
-  the whole screen, game and overlay together, each time an overlay is drawn,
-  and shows it with what the overlay says it drew.
+  only the HexDesk overlay window each time it is drawn. The game capture and
+  overlay image stay separate, so neither includes the rest of the desktop.
 - A short, click-through status line at the top centre of the game shows what
   the overlays are doing, such as reading the screen, retrying or showing an
   overlay. Turn it off, change how long it stays visible or move it in
@@ -61,6 +91,13 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Changed
 
+- Settings → General starts with appearance, windows and notifications, then
+  what HexDesk reads from the game (memory scanner, screen reading, testing),
+  and ends with your version, updates and the welcome screen.
+- The overlay key is set by clicking its field and pressing the key, instead
+  of picking from a list. Letters, digits, arrows, the numpad and F13 to F24
+  can now be used too. The × in the field or Backspace removes the key, and
+  manual mode warns when there is none.
 - Settings is a full screen instead of a pop-up. Its categories are listed in
   a column next to the navigation, Settings reopens on the category you used
   last, and the changelog and modular window are hidden while it is open.
@@ -135,6 +172,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Fixed
 
+- Status lines and testing messages over the game that run over two lines
+  are no longer cut off, also when several show one after another.
+- The inventory and the changelog update right after a mission instead of
+  about two minutes later. The account data read then was rejected as
+  incomplete because the game leaves one section out at that moment.
 - "Changed recently" in Inventory no longer shows everything that ever
   changed. By default it shows what changed since HexDesk started.
 - The main window is called HexDesk again in Alt+Tab, the taskbar and Task

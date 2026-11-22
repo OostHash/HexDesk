@@ -1,4 +1,5 @@
 import { useCallback, useState, type ComponentType } from "react";
+import { useSettings } from "../api/settings";
 import { cn } from "../primitives/cn";
 import { FoundryScreen } from "../screens/foundry/FoundryScreen";
 import { ItemWindowHost } from "../screens/market/ItemWindow";
@@ -8,6 +9,7 @@ import { SettingsScreen, type SettingsTab } from "../screens/settings/SettingsSc
 import { InventoryScreen } from "../screens/inventory/InventoryScreen";
 import { RelicsScreen } from "../screens/relics/RelicsScreen";
 import { TimersScreen } from "../screens/timers/TimersScreen";
+import { WelcomeScreen } from "../screens/settings/welcome/WelcomeScreen";
 import { AppLifecycle } from "./AppLifecycle";
 import { ChangeLogDock } from "./ChangeLogDock";
 import { FissureAlerts } from "./FissureAlerts";
@@ -16,6 +18,7 @@ import { MainNav, type NavScreen } from "./MainNav";
 import { ModularDock } from "./ModularDock";
 import { NAV_ICONS } from "./navIcons";
 import { RelicOverlayController } from "./RelicOverlayController";
+import { TestReportNotices } from "./TestReportNotices";
 import { ScreenBoundary } from "./ScreenBoundary";
 import { TradeWatcher } from "./TradeWatcher";
 import { WindowTitleBar } from "./WindowTitleBar";
@@ -34,6 +37,7 @@ const SCREENS: readonly ScreenDef[] = [
 
 /** Main window: navigation on the left, the active screen on the right. */
 export function AppShell() {
+  const { data: settings, isPending: settingsPending } = useSettings();
   const [screen, setScreen] = useState("inventory");
   // Kept while the app runs, so Settings reopens on the category used last.
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
@@ -47,8 +51,20 @@ export function AppShell() {
     if (tab) setSettingsTab(tab);
     setScreen("settings");
   };
+  // Until settings load it is unknown whether this is a fresh install; showing
+  // the app first would flash it before the welcome screen.
+  if (settingsPending || settings?.onboardingCompleted === false) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <TestReportNotices />
+        <WindowTitleBar />
+        {!settingsPending && <WelcomeScreen />}
+      </div>
+    );
+  }
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <TestReportNotices />
       <AppLifecycle />
       <FissureAlerts />
       <TradeWatcher />

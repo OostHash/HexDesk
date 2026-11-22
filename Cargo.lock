@@ -1642,7 +1642,9 @@ dependencies = [
  "dirs 5.0.1",
  "hexdesk-capture",
  "hexdesk-diag",
+ "hexdesk-logging",
  "hexdesk-overlays",
+ "hexdesk-persist",
  "hexdesk-player",
  "lzma-rs",
  "memchr",
@@ -1659,8 +1661,6 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "tracing",
- "tracing-appender",
- "tracing-log",
  "tracing-subscriber",
  "tungstenite",
  "ureq",
@@ -1696,6 +1696,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "hexdesk-logging"
+version = "1.0.1"
+dependencies = [
+ "dirs 5.0.1",
+ "hexdesk-diag",
+ "tracing",
+ "tracing-appender",
+ "tracing-log",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "hexdesk-ocr-bench"
 version = "1.0.1"
 dependencies = [
@@ -1710,6 +1722,14 @@ name = "hexdesk-overlays"
 version = "1.0.1"
 dependencies = [
  "hexdesk-capture",
+]
+
+[[package]]
+name = "hexdesk-persist"
+version = "1.0.1"
+dependencies = [
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

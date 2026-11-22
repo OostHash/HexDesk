@@ -13,8 +13,8 @@ const KEEP: usize = 60;
 /// Whether screen reads save what OCR was given (activity console setting).
 static ENABLED: AtomicBool = AtomicBool::new(false);
 
-/// Whether a screenshot of the screen is saved each time an overlay is drawn
-/// (activity console setting).
+/// Whether the overlay window is saved each time it is drawn (activity
+/// console setting).
 static SCREENSHOTS: AtomicBool = AtomicBool::new(false);
 
 /// Whether each screen read also saves the game frame with the areas it
@@ -93,6 +93,16 @@ pub(crate) fn set_enabled(on: bool) {
 
 fn dir() -> PathBuf {
     crate::paths::state_dir().join("captures")
+}
+
+/// Removes every OCR capture and its saved read. The folder is recreated by
+/// the next capture that is enabled.
+pub(crate) fn remove_all() -> Result<(), String> {
+    let path = dir();
+    if path.exists() {
+        std::fs::remove_dir_all(path).map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
 /// Whether `name` is a plain capture file name, so it cannot reach outside

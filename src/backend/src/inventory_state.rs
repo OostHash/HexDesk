@@ -398,7 +398,7 @@ pub(crate) fn persist_inventory_state_cache(
     serde_json::to_string(&cache)
         .map_err(|e| e.to_string())
         .and_then(|json| {
-            crate::cache::atomic_write(path, json.as_bytes()).map_err(|e| e.to_string())
+            hexdesk_persist::atomic_write(path, json.as_bytes()).map_err(|e| e.to_string())
         })
 }
 

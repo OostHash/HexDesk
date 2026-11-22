@@ -20,6 +20,7 @@ use std::sync::mpsc::{self, Sender};
 use std::sync::OnceLock;
 use std::time::Duration;
 
+use hexdesk_overlays::ee_log::LogEvent;
 use hexdesk_overlays::tracker::CloseReason;
 use hexdesk_overlays::{
     Action, Decision, HideBy, Millis, Overlay, Screen, Signal, SignalKind, Tracker, Visit, VisitId,
@@ -94,6 +95,21 @@ pub(crate) enum Input {
     },
     /// Time is up for a window to confirm a view.
     RenderCheck { overlay: Overlay, view: u64 },
+    /// Page Up (correct) or Page Down (wrong) while the test prompt is shown.
+    TestingFeedback { correct: bool },
+    /// An overlay close button also ignores a visible test prompt.
+    DismissTestingFeedback,
+    /// Remove logs: drop all pending and reported test data, then answer.
+    RemoveTestingData(Sender<Result<(), String>>),
+    /// The player changed the testing choices in settings.
+    TestingConfig(hexdesk_overlays::feedback::Config),
+    /// An unanswered prompt expires; the flow id prevents an old timer from
+    /// dismissing a newer prompt.
+    TestingPromptTimeout(u64),
+    /// Write every reported flow into one zip, then answer with its path.
+    ExportTestReport(Sender<Result<String, String>>),
+    /// Remove every reported flow without a report, then answer.
+    DiscardTestReport(Sender<Result<(), String>>),
 }
 
 static INPUT: OnceLock<Sender<Input>> = OnceLock::new();
@@ -153,6 +169,14 @@ pub(crate) fn start(app: tauri::AppHandle) {
         return;
     }
     sync_switches(&app.state::<AppState>());
+    app.state::<AppState>()
+        .settings
+        .on_change(|changes, written| {
+            if crate::testing::config_changed(changes) {
+                send(Input::TestingConfig(crate::testing::config(written)));
+            }
+        });
+    crate::overlay_key::ensure_hook(app.clone());
     std::thread::spawn(move || {
         let mut runtime = Runtime::new(app);
         for input in inputs {
@@ -173,6 +197,7 @@ struct Shown {
 struct Runtime {
     app: tauri::AppHandle,
     tracker: Tracker,
+    testing: crate::testing::Testing,
     /// The log operation of each visit that has not ended.
     ops: HashMap<VisitId, Span>,
     shown: HashMap<Overlay, Shown>,
@@ -185,7 +210,9 @@ struct Runtime {
 
 impl Runtime {
     fn new(app: tauri::AppHandle) -> Runtime {
+        let testing_config = crate::testing::config(&app.state::<AppState>().settings.snapshot());
         Runtime {
+            testing: crate::testing::Testing::new(app.clone(), testing_config),
             app,
             tracker: Tracker::new(),
             ops: HashMap::new(),
@@ -202,6 +229,12 @@ impl Runtime {
                 let step = self.tracker.handle(&signals);
                 for (signal, decision) in &step.decisions {
                     self.log_decision(signal, decision);
+                }
+                if signals
+                    .iter()
+                    .any(|signal| matches!(signal.kind, SignalKind::Log(LogEvent::MissionEnding)))
+                {
+                    self.testing.run_ended();
                 }
                 CURRENT_VISIT.store(self.tracker.current().map_or(0, |v| v.id), Ordering::SeqCst);
                 for action in step.actions {
@@ -253,6 +286,19 @@ impl Runtime {
                     }
                 }
             }
+            Input::TestingFeedback { correct } => self.testing.answer(correct),
+            Input::DismissTestingFeedback => self.testing.dismiss(),
+            Input::RemoveTestingData(reply) => {
+                let _ = reply.send(self.testing.remove_all());
+            }
+            Input::TestingConfig(config) => self.testing.set_config(config),
+            Input::TestingPromptTimeout(flow) => self.testing.prompt_timeout(flow),
+            Input::ExportTestReport(reply) => {
+                let _ = reply.send(self.testing.export());
+            }
+            Input::DiscardTestReport(reply) => {
+                let _ = reply.send(self.testing.discard_reports());
+            }
         }
     }
 
@@ -266,10 +312,11 @@ impl Runtime {
             self.ops.insert(visit.id, op.clone());
             return op;
         }
-        let span = match visit.screen.overlay() {
-            Overlay::RelicPick => hexdesk_diag::op!(relic_pick, "Relic selection"),
-            Overlay::RelicReward => hexdesk_diag::op!(relic_reward, "Fissure rewards"),
-            Overlay::Riven => hexdesk_diag::op!(riven, "Riven screen"),
+        let span = match visit.screen {
+            Screen::RelicSelection => hexdesk_diag::op!(relic_pick, "Relic selection"),
+            Screen::RelicRefinement => hexdesk_diag::op!(relic_pick, "Relic refinement"),
+            Screen::RewardChoice => hexdesk_diag::op!(relic_reward, "Fissure rewards"),
+            Screen::Riven => hexdesk_diag::op!(riven, "Riven screen"),
         };
         self.ops.insert(visit.id, span.clone());
         span
@@ -286,6 +333,7 @@ impl Runtime {
         match decision {
             Decision::Entered { visit, overlay_on } => {
                 self.log_entered(visit, *overlay_on, &by, late_ms);
+                self.testing.enter(visit.id, visit.screen);
             }
             Decision::Left {
                 visit,
@@ -305,8 +353,10 @@ impl Runtime {
                         "Screen left"
                     )
                 });
+                self.testing.leave(visit.id, visit.screen);
                 if let Some(next) = next {
                     self.log_entered(next, *next_overlay_on, &by, late_ms);
+                    self.testing.enter(next.id, next.screen);
                 }
             }
             Decision::Hidden { visit } | Decision::ShownAgain { visit } => {
@@ -434,6 +484,15 @@ impl Runtime {
     }
 
     fn pick_ready(&mut self, visit: VisitId, pick: Option<pick::PickView>) {
+        if let Some(screen) = pick.as_ref().and_then(|pick| pick.screen) {
+            self.testing.reclassify(visit, screen);
+            hexdesk_diag::debug!(
+                overlay,
+                visit,
+                screen = screen.name(),
+                "Relic-list flow classified from OCR title"
+            );
+        }
         let span = self.op(visit);
         let _guard = span.enter();
         let current = self.tracker.current().copied();
@@ -470,16 +529,21 @@ impl Runtime {
             status(&self.app, "Could not show the Relic Pick overlay");
             return;
         }
+        let pick::PickView {
+            era,
+            screen: _,
+            relics,
+            mut payload,
+        } = pick;
         let view = self.track_view(Overlay::RelicPick, visit);
-        let mut payload = pick.payload;
         payload["view"] = serde_json::json!(view);
         let _ = self.app.emit(events::RELIC_PICK_OPEN, payload);
         hexdesk_diag::info!(
             relic_pick,
             visit,
             view,
-            era = pick.era,
-            relics = pick.relics,
+            era,
+            relics,
             "Relic Pick overlay ready"
         );
         status(&self.app, "Relic Pick overlay ready");
@@ -706,41 +770,55 @@ impl Runtime {
                 visit
             }
         };
-        if crate::captures::screenshots() {
-            screenshot(overlay, self.op(visit));
+        if crate::captures::screenshots() || crate::testing::capturing(visit) {
+            screenshot(&self.app, overlay, visit, self.op(visit));
         }
     }
 }
 
-/// A screenshot taken this long after the overlay was drawn may show a later
-/// screen, so it is not kept.
-const SCREENSHOT_LATE: Duration = Duration::from_millis(1500);
-
-/// Saves the game's monitor, game and overlay together, in the background.
-fn screenshot(overlay: Overlay, op: Span) {
-    let drawn = std::time::Instant::now();
-    std::thread::spawn(move || {
-        let _guard = op.enter();
-        let shot = hexdesk_capture::capture_screen();
-        let after_ms = drawn.elapsed().as_millis() as u64;
-        if drawn.elapsed() > SCREENSHOT_LATE {
-            info_for!(
-                overlay,
-                after_ms,
-                "Screenshot not saved: taken too long after the overlay was drawn"
-            );
-            return;
-        }
-        match shot {
-            Ok(frame) => {
-                let prefix = format!("screenshot-{}", overlay.name().replace('_', "-"));
-                if let Some(capture) = crate::captures::save(&prefix, &frame.to_bmp()) {
-                    info_for!(overlay, after_ms, capture = %capture, "Screenshot saved");
+/// Saves only the overlay window after its WebView confirmed that it drew.
+/// This stays on the runtime thread so a closing flow cannot remove its visit
+/// before the image is written.
+fn screenshot(app: &tauri::AppHandle, overlay: Overlay, visit: VisitId, op: Span) {
+    let _guard = op.enter();
+    let started = std::time::Instant::now();
+    let shot = capture_overlay_window(app, overlay);
+    let capture_ms = started.elapsed().as_millis() as u64;
+    match shot {
+        Ok(frame) => {
+            let prefix = format!("screenshot-{}", overlay.name().replace('_', "-"));
+            let bmp = frame.to_bmp();
+            crate::testing::save_overlay_window(visit, overlay, &bmp);
+            if crate::captures::screenshots() {
+                if let Some(capture) = crate::captures::save(&prefix, &bmp) {
+                    info_for!(overlay, capture_ms, capture = %capture, "Overlay screenshot saved");
                 }
             }
-            Err(reason) => info_for!(overlay, reason = %reason, "Screenshot not saved"),
         }
-    });
+        Err(reason) => {
+            info_for!(overlay, capture_ms, reason = %reason, "Overlay screenshot not saved")
+        }
+    }
+}
+
+#[cfg(windows)]
+fn capture_overlay_window(
+    app: &tauri::AppHandle,
+    overlay: Overlay,
+) -> Result<hexdesk_capture::Frame, String> {
+    let window = app
+        .get_webview_window(window_label(overlay))
+        .ok_or_else(|| format!("{} window not found", overlay.name()))?;
+    let hwnd = window.hwnd().map_err(|error| error.to_string())?;
+    hexdesk_capture::capture_window(hwnd.0 as isize)
+}
+
+#[cfg(not(windows))]
+fn capture_overlay_window(
+    _app: &tauri::AppHandle,
+    _overlay: Overlay,
+) -> Result<hexdesk_capture::Frame, String> {
+    Err("Overlay window capture is only available on Windows".to_string())
 }
 
 /// The window an overlay draws in.
@@ -771,10 +849,57 @@ fn overlay_source(overlay: Overlay) -> hexdesk_diag::Source {
 /// Reports that the player closed an overlay with its close button.
 #[tauri::command]
 pub(crate) fn overlay_closed() {
+    send(Input::DismissTestingFeedback);
     send(Input::Signals(vec![Signal::hide(
         now(),
         HideBy::CloseButton,
     )]));
+}
+
+/// Removes all test data on the runtime thread, so no prompt, report or
+/// flow move is in progress while the folders go.
+pub(crate) fn remove_testing_data() -> Result<(), String> {
+    if INPUT.get().is_none() {
+        return crate::testing::remove_all_files();
+    }
+    ask(Input::RemoveTestingData)
+}
+
+/// Sends `input` to the runtime thread and waits for its answer.
+fn ask<T>(input: impl FnOnce(Sender<Result<T, String>>) -> Input) -> Result<T, String> {
+    let sender = INPUT
+        .get()
+        .ok_or_else(|| "the overlay runtime has not started".to_string())?;
+    let (reply, answer) = mpsc::channel();
+    sender
+        .send(input(reply))
+        .map_err(|_| "the overlay runtime has stopped".to_string())?;
+    answer
+        .recv_timeout(Duration::from_secs(10))
+        .map_err(|_| "the overlay runtime did not answer".to_string())?
+}
+
+/// How many reported testing flows wait for an export.
+#[tauri::command]
+pub(crate) fn test_report_flows() -> usize {
+    crate::testing::kept()
+}
+
+/// Writes every reported testing flow into one zip in Downloads and returns
+/// its path. Runs off the main thread, since writing the zip takes a moment.
+#[tauri::command]
+pub(crate) async fn export_test_report() -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(|| ask(Input::ExportTestReport))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+/// Removes every reported testing flow without writing a report.
+#[tauri::command]
+pub(crate) async fn discard_test_report() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| ask(Input::DiscardTestReport))
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 /// Runs a riven check: "Check Riven" in the app and "New roll" in the

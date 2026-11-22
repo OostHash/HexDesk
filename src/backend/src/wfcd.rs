@@ -389,7 +389,7 @@ impl DiskStore {
     }
 
     fn write_etags(etags: &str) {
-        if let Err(e) = cache::atomic_write(&Self::etags_path(), etags.as_bytes()) {
+        if let Err(e) = hexdesk_persist::atomic_write(&Self::etags_path(), etags.as_bytes()) {
             warn!("cannot store catalogue ETags: {e}");
         }
     }
@@ -406,7 +406,7 @@ impl BodyStore for DiskStore {
 
     fn write(&self, name: &str, body: &str) {
         let path = Self::dir().join(format!("{name}.json"));
-        if let Err(e) = cache::atomic_write(&path, body.as_bytes()) {
+        if let Err(e) = hexdesk_persist::atomic_write(&path, body.as_bytes()) {
             warn!("cannot store {name}: {e}");
         }
     }
