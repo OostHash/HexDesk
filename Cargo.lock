@@ -1690,7 +1690,7 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hexdesk-backend"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -1722,7 +1722,7 @@ dependencies = [
 
 [[package]]
 name = "hexdesk-capture"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "ocrs",
  "rten",
@@ -1737,7 +1737,7 @@ dependencies = [
 
 [[package]]
 name = "hexdesk-diag"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "chrono",
  "flate2",
@@ -1750,7 +1750,7 @@ dependencies = [
 
 [[package]]
 name = "hexdesk-logging"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "dirs 5.0.1",
  "hexdesk-diag",
@@ -1762,7 +1762,7 @@ dependencies = [
 
 [[package]]
 name = "hexdesk-ocr-bench"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "hexdesk-capture",
  "hexdesk-overlays",
@@ -1772,14 +1772,14 @@ dependencies = [
 
 [[package]]
 name = "hexdesk-overlays"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "hexdesk-capture",
 ]
 
 [[package]]
 name = "hexdesk-persist"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "serde_json",
  "tracing",
@@ -1787,7 +1787,7 @@ dependencies = [
 
 [[package]]
 name = "hexdesk-player"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "serde",
 ]

@@ -7,6 +7,13 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-22
+
+### Fixed
+
+- Updated third-party libraries and build tooling to address reported security
+  vulnerabilities.
+
 ## [1.1.0] - 2026-11-22
 
 ### Added
