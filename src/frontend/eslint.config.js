@@ -21,6 +21,10 @@ const ELEMENTS = [
   { type: "dev", pattern: "src/dev" },
 ];
 
+/**
+ * @param {string} from
+ * @param {...string} to
+ */
 const allow = (from, ...to) => ({
   from: { element: { type: from } },
   allow: { to: { element: { type: to } } },

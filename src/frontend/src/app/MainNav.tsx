@@ -82,7 +82,7 @@ export function MainNav({ screens, current, onSelect, settingsOpen, onOpenSettin
         <span className={cn("hidden", !collapsed && "md:inline")}>HexDesk</span>
       </div>
       {/* Only the screens scroll in a short window, so Report a bug and Settings stay reachable. */}
-      <ul className="flex min-h-0 flex-col gap-0.5 overflow-y-auto [scrollbar-width:thin]">
+      <ul className="scrollbar-thin flex min-h-0 flex-col gap-0.5 overflow-y-auto">
         {screens.map((s) => (
           <li key={s.id}>
             <NavItem
