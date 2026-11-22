@@ -40,7 +40,11 @@ jobs:
       - name: Verify release tag
         shell: pwsh
         run: |
-          $version = (Get-Content src/backend/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $metadata = cargo metadata --no-deps --format-version 1 | ConvertFrom-Json
+          $version = ($metadata.packages | Where-Object name -eq "hexdesk-backend").version
+          if (-not $version) {
+            throw "Could not read the hexdesk-backend version from Cargo metadata."
+          }
           $expectedTag = "v$version"
           if ($env:GITHUB_REF_NAME -ne $expectedTag) {
             throw "Release tag '$env:GITHUB_REF_NAME' does not match app version '$expectedTag'."
