@@ -151,9 +151,9 @@ Releases are made by the maintainer.
 
 1. Make sure the planned work for the `Target Version` is complete and the
    release branch is green.
-2. Set the new version in all three places:
-   `src/backend/tauri.conf.json`, `src/backend/Cargo.toml` and
-   `src/frontend/package.json`.
+2. Set the new version once in `[workspace.package]` in the root `Cargo.toml`.
+   The backend crates inherit it, Tauri uses it for the app package and the
+   frontend reads it from the running app.
 3. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [x.y.z] - YYYY-MM-DD`
    and add a fresh empty `## [Unreleased]` above it.
 4. Open the release (or hotfix) pull request to `master`, include `Closes #…`
