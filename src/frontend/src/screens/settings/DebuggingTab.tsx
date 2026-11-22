@@ -12,7 +12,7 @@ function ExportRow() {
   return (
     <SettingRow
       label="Diagnostics export"
-      description="One zip with logs, system facts and settings to attach to a bug report. Passwords, tokens, e-mail addresses and player names are removed. What HexDesk does is visible live in Settings → Console."
+      description="One zip with logs, system facts and settings to attach to a bug report. HexDesk tries to redact known sensitive values; review the zip before sharing it. What HexDesk does is visible live in Settings → Console."
       result={exporting.result && <ResultText tone={exporting.result.tone}>{exporting.result.text}</ResultText>}
     >
       <ExportDiagnosticsButtons state={exporting} />

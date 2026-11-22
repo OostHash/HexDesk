@@ -1,6 +1,6 @@
 //! Diagnostics at the Tauri boundary: the one-click export and the feed for
-//! the activity console. Everything comes from `hexdesk-diag` and is
-//! already redacted.
+//! the activity console. Everything comes from `hexdesk-diag` and has passed
+//! through its redaction filters.
 
 use std::cell::Cell;
 use std::path::{Path, PathBuf};
@@ -22,8 +22,10 @@ What is in this zip:
 - recent.jsonl   The most recent log entries of this session, one per line.
 - logs/          The HexDesk log files of the last days.
 
-Passwords, tokens, e-mail addresses and player names are replaced with
-[redacted]. Your Windows user folder is shown as %USERPROFILE%.
+HexDesk attempts to replace known passwords, tokens, e-mail addresses and
+player names with [redacted]. Automatic redaction can miss sensitive
+information, so review these files before sharing them. Your Windows user
+folder is shown as %USERPROFILE%.
 ";
 
 /// The most recent log entries, oldest first: what the console shows when it

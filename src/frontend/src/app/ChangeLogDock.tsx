@@ -321,7 +321,12 @@ export function ChangeLogDock({ onOpenInventory }: Props) {
           className="absolute inset-x-0 top-0 z-(--ff-z-sticky) h-1.5"
         />
       )}
-      <div className="group relative flex h-11 shrink-0 items-center gap-2.5 border-b border-border px-3 text-sm font-semibold tracking-wide text-muted uppercase hover:text-text">
+      <div
+        className={cn(
+          "group relative flex h-11 shrink-0 items-center gap-2.5 px-3 text-sm font-semibold tracking-wide text-muted uppercase hover:text-text",
+          expanded && "border-b border-border",
+        )}
+      >
         {/* The whole bar opens and closes the list; the controls on it sit above this button. */}
         <button
           type="button"

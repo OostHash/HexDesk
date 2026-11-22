@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "HexDesk",
-  "version": "1.0.1",
   "identifier": "com.oosthash.hexdesk",
   "build": {
     "beforeDevCommand": {

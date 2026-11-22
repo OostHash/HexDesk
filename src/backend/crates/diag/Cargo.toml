@@ -1,6 +1,6 @@
 [package]
 name = "hexdesk-diag"
-version = "1.0.1"
+version.workspace = true
 description = "HexDesk diagnostics: typed errors, structured log entries and redaction"
 authors = ["HexDesk contributors"]
 edition = "2021"
