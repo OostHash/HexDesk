@@ -16,46 +16,46 @@
 
 /*
  * Semantic roles as Tailwind colours. `inline` makes utilities reference
- * var(--ff-*) directly, so data-theme / data-density switch them at runtime.
+ * var(--hex-*) directly, so data-theme / data-density switch them at runtime.
  * Domain colours are deliberately not exposed here.
  */
 @theme inline {
-  --color-bg: var(--ff-bg);
-  --color-surface: var(--ff-surface);
-  --color-surface-raised: var(--ff-surface-raised);
-  --color-surface-sunken: var(--ff-surface-sunken);
-  --color-border: var(--ff-border);
-  --color-border-strong: var(--ff-border-strong);
-  --color-text: var(--ff-text);
-  --color-muted: var(--ff-text-muted);
-  --color-faint: var(--ff-text-faint);
-  --color-accent: var(--ff-accent);
-  --color-accent-soft: var(--ff-accent-soft);
-  --color-on-accent: var(--ff-on-accent);
-  --color-on-danger: var(--ff-on-danger);
-  --color-success: var(--ff-success);
-  --color-danger: var(--ff-danger);
-  --color-warning: var(--ff-warning);
-  --color-info: var(--ff-info);
-  --color-hover: var(--ff-hover);
-  --color-active: var(--ff-active);
-  --color-selected: var(--ff-selected);
-  --color-backdrop: var(--ff-backdrop);
-  --color-focus: var(--ff-focus-ring);
-  /* Domain colours are tuned for dark pages; as text they mix towards the text colour per theme (--ff-tone-ink). */
-  --color-tone: color-mix(in oklab, var(--ff-tone, var(--ff-text)) var(--ff-tone-ink), var(--ff-text));
+  --color-bg: var(--hex-bg);
+  --color-surface: var(--hex-surface);
+  --color-surface-raised: var(--hex-surface-raised);
+  --color-surface-sunken: var(--hex-surface-sunken);
+  --color-border: var(--hex-border);
+  --color-border-strong: var(--hex-border-strong);
+  --color-text: var(--hex-text);
+  --color-muted: var(--hex-text-muted);
+  --color-faint: var(--hex-text-faint);
+  --color-accent: var(--hex-accent);
+  --color-accent-soft: var(--hex-accent-soft);
+  --color-on-accent: var(--hex-on-accent);
+  --color-on-danger: var(--hex-on-danger);
+  --color-success: var(--hex-success);
+  --color-danger: var(--hex-danger);
+  --color-warning: var(--hex-warning);
+  --color-info: var(--hex-info);
+  --color-hover: var(--hex-hover);
+  --color-active: var(--hex-active);
+  --color-selected: var(--hex-selected);
+  --color-backdrop: var(--hex-backdrop);
+  --color-focus: var(--hex-focus-ring);
+  /* Domain colours are tuned for dark pages; as text they mix towards the text colour per theme (--hex-tone-ink). */
+  --color-tone: color-mix(in oklab, var(--hex-tone, var(--hex-text)) var(--hex-tone-ink), var(--hex-text));
 
-  --shadow-1: var(--ff-shadow-1);
-  --shadow-2: var(--ff-shadow-2);
-  --shadow-3: var(--ff-shadow-3);
+  --shadow-1: var(--hex-shadow-1);
+  --shadow-2: var(--hex-shadow-2);
+  --shadow-3: var(--hex-shadow-3);
 
   /* Density-sensitive exceptions: h-control-md, px-cell-x, text-list. */
-  --spacing-control-sm: var(--ff-control-sm);
-  --spacing-control-md: var(--ff-control-md);
-  --spacing-control-lg: var(--ff-control-lg);
-  --spacing-cell-x: var(--ff-cell-x);
-  --spacing-cell-y: var(--ff-cell-y);
-  --text-list: var(--ff-font-size-list);
+  --spacing-control-sm: var(--hex-control-sm);
+  --spacing-control-md: var(--hex-control-md);
+  --spacing-control-lg: var(--hex-control-lg);
+  --spacing-cell-x: var(--hex-cell-x);
+  --spacing-cell-y: var(--hex-cell-y);
+  --text-list: var(--hex-font-size-list);
 }
 
 /*
@@ -101,8 +101,8 @@
 
 @layer base {
   html {
-    background: var(--ff-bg);
-    color: var(--ff-text);
+    background: var(--hex-bg);
+    color: var(--hex-text);
   }
 
   body {
@@ -129,7 +129,7 @@
     overflow: hidden;
   }
 
-  /* Overlay windows stay transparent; only the main window paints --ff-bg. */
+  /* Overlay windows stay transparent; only the main window paints --hex-bg. */
   html[data-window="overlay"],
   html[data-window="riven-overlay"],
   html[data-window="relic-pick-overlay"],
@@ -138,7 +138,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--ff-focus-ring);
+    outline: 2px solid var(--hex-focus-ring);
     outline-offset: 2px;
   }
 

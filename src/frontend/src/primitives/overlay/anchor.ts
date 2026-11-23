@@ -14,9 +14,9 @@ export const PLACEMENT = {
 
 export type Placement = keyof typeof PLACEMENT;
 
-/** A unique anchor name per trigger, e.g. --ff-anchor-r1. */
+/** A unique anchor name per trigger, e.g. --hex-anchor-r1. */
 export function useAnchorName(): string {
-  return `--ff-anchor-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  return `--hex-anchor-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 }
 
 export function anchorStyle(name: string): CSSProperties {

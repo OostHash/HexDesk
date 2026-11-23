@@ -106,7 +106,7 @@ export function ModularDock() {
             if (widthCommit.current === commit) setDragWidth(null);
           });
         }}
-        className="absolute inset-y-0 start-0 z-(--ff-z-sticky) w-1.5"
+        className="absolute inset-y-0 start-0 z-(--hex-z-sticky) w-1.5"
       />
       <ModularWindow
         className="flex-1"

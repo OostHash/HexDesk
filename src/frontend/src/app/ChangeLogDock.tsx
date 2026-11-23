@@ -318,7 +318,7 @@ export function ChangeLogDock({ onOpenInventory }: Props) {
           min={LOG_HEIGHT.min}
           max={maxHeight}
           onValueChange={setHeight}
-          className="absolute inset-x-0 top-0 z-(--ff-z-sticky) h-1.5"
+          className="absolute inset-x-0 top-0 z-(--hex-z-sticky) h-1.5"
         />
       )}
       <div
