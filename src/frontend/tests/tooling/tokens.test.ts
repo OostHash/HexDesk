@@ -13,13 +13,13 @@ import {
   type ThemeTokens,
 } from "../../src/theme/tokens.ts";
 
-/** Resolves a token to a hex colour, following var(--ff-x) references within the theme. */
+/** Resolves a token to a hex colour, following var(--hex-x) references within the theme. */
 function resolveHex(theme: ThemeTokens, token: string, seen = new Set<string>()): string {
   if (seen.has(token)) throw new Error(`token cycle at ${token}`);
   seen.add(token);
   const value = (theme as Record<string, string | undefined>)[token];
   if (value === undefined) throw new Error(`unknown token ${token}`);
-  const ref = /^var\(--ff-([a-z0-9-]+)\)$/.exec(value);
+  const ref = /^var\(--hex-([a-z0-9-]+)\)$/.exec(value);
   if (ref?.[1] !== undefined) return resolveHex(theme, ref[1], seen);
   if (!/^#[0-9a-f]{6}$/i.test(value)) throw new Error(`${token} is not a plain hex colour: ${value}`);
   return value;

@@ -180,7 +180,7 @@ function DisplaySection() {
           ))}
         </Row>
       ))}
-      <Row label="Badge — domain color via --ff-tone">
+      <Row label="Badge — domain color via --hex-tone">
         <Badge tone="domain" style={domainTone("rarity-gold")}>
           Gold
         </Badge>

@@ -82,22 +82,22 @@ export function LineChart({ points, label, describe, empty, className }: Props) 
         className="rounded-md bg-surface-sunken outline-none focus-visible:outline-2 focus-visible:outline-focus"
       >
         <svg viewBox={`0 0 ${String(W)} ${String(H)}`} preserveAspectRatio="none" aria-hidden="true" className="block h-16 w-full">
-          {points.length > 1 && <polygon points={area} fill="var(--ff-accent)" fillOpacity={0.1} />}
+          {points.length > 1 && <polygon points={area} fill="var(--hex-accent)" fillOpacity={0.1} />}
           {points.length > 1 ? (
             <polyline
               points={line}
               fill="none"
-              stroke="var(--ff-accent)"
+              stroke="var(--hex-accent)"
               strokeWidth={2}
               strokeLinejoin="round"
               strokeLinecap="round"
               vectorEffect="non-scaling-stroke"
             />
           ) : (
-            <line x1={PAD} x2={W - PAD} y1={H / 2} y2={H / 2} stroke="var(--ff-border)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+            <line x1={PAD} x2={W - PAD} y1={H / 2} y2={H / 2} stroke="var(--hex-border)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
           )}
           {active !== null && (
-            <line x1={x(active)} x2={x(active)} y1={0} y2={H} stroke="var(--ff-border-strong)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+            <line x1={x(active)} x2={x(active)} y1={0} y2={H} stroke="var(--hex-border-strong)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
           )}
         </svg>
         {/* Dots as HTML so they stay round with preserveAspectRatio="none". */}
