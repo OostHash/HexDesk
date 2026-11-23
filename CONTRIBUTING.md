@@ -111,6 +111,17 @@ Before opening a pull request:
 Pull requests are merged by the maintainer once CI is green and the review is
 done.
 
+## Security
+
+- Report vulnerabilities privately as described in `SECURITY.md`; never open a
+  public issue for one.
+- Dependency review checks every pull request for newly introduced advisories,
+  and a daily audit scans the locked dependencies. Keep a pull request that
+  changes dependencies focused on that change so the reports stay readable.
+- Accept a known advisory only through a time-boxed entry in
+  `.github/security/dependency-exceptions.txt`, and validate it with
+  `bash .github/scripts/dependency-exceptions.sh check`.
+
 ## Code style
 
 - Formatting is automatic: run `pnpm format` (Prettier and `cargo fmt`).

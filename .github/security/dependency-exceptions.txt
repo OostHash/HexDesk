@@ -1,0 +1,15 @@
+# Time-boxed dependency advisory exceptions.
+#
+# Format: <cargo|ghsa> <advisory-id> <owner> <review-by> <reason>
+#
+# - cargo: a RustSec advisory (RUSTSEC-YYYY-NNNN) ignored by `cargo audit`.
+# - ghsa: a GitHub advisory (GHSA-xxxx-xxxx-xxxx) ignored by dependency review.
+# - owner: the GitHub user or team accountable for the follow-up.
+# - review-by: YYYY-MM-DD; the exception is valid through this date and fails
+#   the checks the day after.
+# - reason: why the dependency cannot be fixed before the review date.
+#
+# An exception is not a fix. Remove it as soon as a patched version is in use.
+# See SECURITY.md for the triage and exception policy.
+#
+# No exceptions are currently approved.
