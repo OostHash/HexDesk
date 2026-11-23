@@ -8,20 +8,20 @@ import type { Tone } from "./tone";
 // Soft and outline badges sit on a tint of their own colour, which costs
 // contrast; their ink is mixed towards the text colour (lighter on dark,
 // darker on light) so every tone stays at WCAG AA. How far is per theme
-// (--ff-tone-ink): domain colours are tuned for dark pages.
+// (--hex-tone-ink): domain colours are tuned for dark pages.
 const badgeVariants = cva(
   "inline-flex shrink-0 items-center gap-1 rounded-sm font-medium whitespace-nowrap " +
-    "[--badge-ink:color-mix(in_oklab,var(--badge)_var(--ff-tone-ink),var(--ff-text))]",
+    "[--badge-ink:color-mix(in_oklab,var(--badge)_var(--hex-tone-ink),var(--hex-text))]",
   {
     variants: {
       tone: {
-        neutral: "[--badge:var(--ff-text-muted)]",
-        accent: "[--badge:var(--ff-accent)]",
-        info: "[--badge:var(--ff-info)]",
-        success: "[--badge:var(--ff-success)]",
-        warning: "[--badge:var(--ff-warning)]",
-        danger: "[--badge:var(--ff-danger)]",
-        domain: "[--badge:var(--ff-tone,var(--ff-text-muted))]",
+        neutral: "[--badge:var(--hex-text-muted)]",
+        accent: "[--badge:var(--hex-accent)]",
+        info: "[--badge:var(--hex-info)]",
+        success: "[--badge:var(--hex-success)]",
+        warning: "[--badge:var(--hex-warning)]",
+        danger: "[--badge:var(--hex-danger)]",
+        domain: "[--badge:var(--hex-tone,var(--hex-text-muted))]",
       },
       variant: {
         soft: "bg-(--badge)/15 text-(--badge-ink)",

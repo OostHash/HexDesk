@@ -42,13 +42,13 @@ export type ThemeTokens = Readonly<Record<SemanticToken, string>>;
  * those from contrast); never for readable content.
  */
 const derived = {
-  "border-strong": "color-mix(in oklab, var(--ff-text) 28%, transparent)",
-  "text-faint": "color-mix(in oklab, var(--ff-text-muted) 70%, transparent)",
-  "accent-soft": "color-mix(in oklab, var(--ff-accent) 14%, transparent)",
-  "focus-ring": "var(--ff-accent)",
-  hover: "color-mix(in oklab, var(--ff-text) 6%, transparent)",
-  active: "color-mix(in oklab, var(--ff-text) 10%, transparent)",
-  selected: "color-mix(in oklab, var(--ff-accent) 14%, transparent)",
+  "border-strong": "color-mix(in oklab, var(--hex-text) 28%, transparent)",
+  "text-faint": "color-mix(in oklab, var(--hex-text-muted) 70%, transparent)",
+  "accent-soft": "color-mix(in oklab, var(--hex-accent) 14%, transparent)",
+  "focus-ring": "var(--hex-accent)",
+  hover: "color-mix(in oklab, var(--hex-text) 6%, transparent)",
+  active: "color-mix(in oklab, var(--hex-text) 10%, transparent)",
+  selected: "color-mix(in oklab, var(--hex-accent) 14%, transparent)",
 } as const satisfies Partial<ThemeTokens>;
 
 const n = palette.neutral;

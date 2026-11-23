@@ -23,7 +23,7 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 /**
  * Splitter between two panes: role="separator" with value semantics, pointer
  * drag (rAF-throttled, pointer capture) and arrow keys / Home / End. With
- * native webview zoom, pointer deltas need no --ff-scale correction.
+ * native webview zoom, pointer deltas need no --hex-scale correction.
  */
 export function ResizeHandle({ label, value, min, max, axis, direction = 1, step = 8, onValueChange, onValueCommit, className }: Props) {
   const drag = useRef<{ start: number; startValue: number; latest: number } | null>(null);

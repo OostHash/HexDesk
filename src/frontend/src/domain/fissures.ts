@@ -80,7 +80,7 @@ export function sortByTier<T extends { tierNum: number }>(list: readonly T[]): T
   return [...list].sort((a, b) => a.tierNum - b.tierNum);
 }
 
-/** Domain colour name per relic tier, for --ff-tone. */
+/** Domain colour name per relic tier, for --hex-tone. */
 export function tierTone(tier: string): "tier-lith" | "tier-meso" | "tier-neo" | "tier-axi" | "tier-requiem" | "tier-omnia" | null {
   switch (tier) {
     case "Lith":

@@ -48,7 +48,7 @@ export function ToastRegion() {
     <AriaToastRegion
       queue={toastQueue}
       aria-label={strings.notifications}
-      className="fixed end-4 bottom-4 z-(--ff-z-toast) flex w-80 flex-col-reverse gap-2 outline-none"
+      className="fixed end-4 bottom-4 z-(--hex-z-toast) flex w-80 flex-col-reverse gap-2 outline-none"
     >
       {({ toast: item }) => {
         const tone = TONE[item.content.tone ?? "info"];
