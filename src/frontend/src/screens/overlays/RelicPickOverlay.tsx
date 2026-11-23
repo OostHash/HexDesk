@@ -35,7 +35,7 @@ function RewardRow({ reward }: { reward: PickReward }) {
     <li className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-1.5 border-b border-border/25 px-2 py-0.5 text-xs last:border-b-0">
       <span className={cn("w-12 text-center", reward.owned ? "text-success" : "text-muted")}>{reward.owned ? "Owned" : "New"}</span>
       <span className="truncate">
-        <span className={cn("font-medium", tone && "text-(--ff-tone)")} style={tone ? domainTone(tone) : undefined}>
+        <span className={cn("font-medium", tone && "text-(--hex-tone)")} style={tone ? domainTone(tone) : undefined}>
           {reward.name}
         </span>
         <span className="sr-only">

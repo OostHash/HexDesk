@@ -1,7 +1,7 @@
 /**
  * Layer 3: domain colours (rarity, relics, syndicates, transactions, ...).
  * Not UI roles: never used for chrome, only passed to a primitive as
- * --ff-tone. Not exposed as Tailwind colours. The values are the same in
+ * --hex-tone. Not exposed as Tailwind colours. The values are the same in
  * dark and light; the colour-blind palette below replaces some of them.
  */
 export const domainColors = {

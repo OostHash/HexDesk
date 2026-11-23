@@ -7,10 +7,10 @@ import { strings } from "../strings";
 type AlertTone = "info" | "success" | "warning" | "danger";
 
 const TONE: Record<AlertTone, { icon: LucideIcon; className: string }> = {
-  info: { icon: Info, className: "border-info/40 bg-info/10 [--alert:var(--ff-info)]" },
-  success: { icon: CircleCheck, className: "border-success/40 bg-success/10 [--alert:var(--ff-success)]" },
-  warning: { icon: TriangleAlert, className: "border-warning/40 bg-warning/10 [--alert:var(--ff-warning)]" },
-  danger: { icon: CircleAlert, className: "border-danger/40 bg-danger/10 [--alert:var(--ff-danger)]" },
+  info: { icon: Info, className: "border-info/40 bg-info/10 [--alert:var(--hex-info)]" },
+  success: { icon: CircleCheck, className: "border-success/40 bg-success/10 [--alert:var(--hex-success)]" },
+  warning: { icon: TriangleAlert, className: "border-warning/40 bg-warning/10 [--alert:var(--hex-warning)]" },
+  danger: { icon: CircleAlert, className: "border-danger/40 bg-danger/10 [--alert:var(--hex-danger)]" },
 };
 
 type Props = {

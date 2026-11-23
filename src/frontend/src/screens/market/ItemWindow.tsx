@@ -31,15 +31,15 @@ function PriceChart({ slug }: { slug: string }) {
       >
         <defs>
           <linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--ff-accent)" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="var(--ff-accent)" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--hex-accent)" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="var(--hex-accent)" stopOpacity="0" />
           </linearGradient>
         </defs>
         <polygon points={line.area} fill={`url(#${gradient})`} />
         <polyline
           points={line.points}
           fill="none"
-          stroke="var(--ff-accent)"
+          stroke="var(--hex-accent)"
           strokeWidth="1.8"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
