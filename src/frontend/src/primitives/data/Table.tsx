@@ -133,7 +133,7 @@ export function Table<T>({
     >
       <table aria-rowcount={rows.length + 1} className="w-full border-collapse text-list text-text">
         <caption className="sr-only">{label}</caption>
-        <thead className="sticky top-0 z-(--ff-z-sticky) bg-surface">
+        <thead className="sticky top-0 z-(--hex-z-sticky) bg-surface">
           {table.getHeaderGroups().map((group) => (
             <tr key={group.id} aria-rowindex={1}>
               {group.headers.map((header) => {

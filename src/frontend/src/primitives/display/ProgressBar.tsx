@@ -3,12 +3,12 @@ import { cn } from "../cn";
 import type { Tone } from "./tone";
 
 const FILL: Record<Exclude<Tone, "domain">, string> = {
-  neutral: "[--progress:var(--ff-text-muted)]",
-  accent: "[--progress:var(--ff-accent)]",
-  info: "[--progress:var(--ff-info)]",
-  success: "[--progress:var(--ff-success)]",
-  warning: "[--progress:var(--ff-warning)]",
-  danger: "[--progress:var(--ff-danger)]",
+  neutral: "[--progress:var(--hex-text-muted)]",
+  accent: "[--progress:var(--hex-accent)]",
+  info: "[--progress:var(--hex-info)]",
+  success: "[--progress:var(--hex-success)]",
+  warning: "[--progress:var(--hex-warning)]",
+  danger: "[--progress:var(--hex-danger)]",
 };
 
 type Props = {
@@ -38,7 +38,7 @@ export function ProgressBar({ value, max, label, name, tone = "accent", style, c
           "h-1.5 w-full max-w-48 min-w-16 overflow-hidden rounded-full appearance-none",
           "[&::-webkit-progress-bar]:bg-hover [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-(--progress)",
           "[&::-webkit-progress-value]:transition-[width] motion-reduce:[&::-webkit-progress-value]:transition-none",
-          tone === "domain" ? "[--progress:var(--ff-tone,var(--ff-accent))]" : FILL[tone],
+          tone === "domain" ? "[--progress:var(--hex-tone,var(--hex-accent))]" : FILL[tone],
         )}
       />
       <span id={id} className="shrink-0 text-xs whitespace-nowrap text-muted tabular-nums">

@@ -39,10 +39,10 @@ export function useCardScale(screen: PageSizeScreen) {
 }
 
 /** Grid of cards whose minimum width is `baseRem` at 100%; use with `cardGridStyle`. */
-export const CARD_GRID = "grid grid-cols-[repeat(auto-fill,minmax(var(--ff-card-min),1fr))] gap-3";
+export const CARD_GRID = "grid grid-cols-[repeat(auto-fill,minmax(var(--hex-card-min),1fr))] gap-3";
 
 export const cardGridStyle = (baseRem: number, scale: number): CSSProperties =>
-  ({ "--ff-card-min": `min(${String((baseRem * scale) / 100)}rem,100%)` }) as CSSProperties;
+  ({ "--hex-card-min": `min(${String((baseRem * scale) / 100)}rem,100%)` }) as CSSProperties;
 
 const stepButton =
   "inline-flex h-full w-7 items-center justify-center text-muted transition-colors motion-reduce:transition-none hover:bg-hover hover:text-text " +

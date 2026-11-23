@@ -32,18 +32,18 @@ describe("preference store", () => {
   it("renders the light theme and high contrast", () => {
     setPreferences({ theme: "light", contrast: "normal" });
     expect(root.getAttribute("data-resolved-theme")).toBe("light");
-    expect(getComputedStyle(root).getPropertyValue("--ff-bg").trim()).toBe(themes.light.bg);
+    expect(getComputedStyle(root).getPropertyValue("--hex-bg").trim()).toBe(themes.light.bg);
     setPreferences({ contrast: "high" });
     expect(root.getAttribute("data-resolved-contrast")).toBe("high");
-    expect(getComputedStyle(root).getPropertyValue("--ff-text").trim()).toBe(highContrastThemes.light.text);
+    expect(getComputedStyle(root).getPropertyValue("--hex-text").trim()).toBe(highContrastThemes.light.text);
     setPreferences({ cvd: true });
-    expect(getComputedStyle(root).getPropertyValue("--ff-success").trim()).toBe(cvdHighContrastThemes.light.success);
+    expect(getComputedStyle(root).getPropertyValue("--hex-success").trim()).toBe(cvdHighContrastThemes.light.success);
     setPreferences({ theme: "dark", contrast: "normal", cvd: false });
   });
 
   it("applies semantic tokens through the resolved theme", () => {
     setPreferences({ theme: "dark" });
-    const bg = getComputedStyle(root).getPropertyValue("--ff-bg").trim();
+    const bg = getComputedStyle(root).getPropertyValue("--hex-bg").trim();
     expect(bg).toBe(themes.dark.bg);
   });
 });
