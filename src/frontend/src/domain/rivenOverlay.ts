@@ -31,7 +31,7 @@ export function rivenSummary(view: RivenView): string {
 
 export type StatClass = "wanted" | "neutral" | "safe" | "harmful";
 /** What a stat means for this weapon, in words: a negative that does no harm is harmless. */
-export const STAT_LABEL: Readonly<Record<StatClass, string>> = { wanted: "wanted", neutral: "not needed", safe: "harmless", harmful: "harmful" };
+export const STAT_LABEL: Readonly<Record<StatClass, string>> = { wanted: "good", neutral: "not needed", safe: "harmless", harmful: "harmful" };
 
 /** "GOOD — usable" → "Good — usable": the verdict as a sentence, not a shout. */
 export function verdictText(verdict: string): string {
@@ -42,7 +42,19 @@ export function verdictText(verdict: string): string {
   return tail ? `${nice} — ${tail}` : nice;
 }
 
-/** New against original roll in a comparison: how many wanted stats each has. */
+/**
+ * A weapon's good stat combinations, best fit first. The riven database can
+ * list several ("or" paths); a roll only needs to fit one of them. Ties keep
+ * the database order.
+ */
+export function rankCombos<T extends { score: number }>(alternatives: readonly T[]): T[] {
+  return [...alternatives].sort((a, b) => b.score - a.score);
+}
+
+/** A stat combination in words: "Multishot + Base Damage / Status Chance". */
+export const comboName = (alt: { matched: readonly string[]; missing: readonly string[] }) => [...alt.matched, ...alt.missing].join(" + ");
+
+/** New against original roll in a comparison: how many good stats each has. */
 export function compareRolls(newWanted: number, originalWanted: number): "better" | "same" | "worse" {
   if (newWanted > originalWanted) return "better";
   if (newWanted < originalWanted) return "worse";

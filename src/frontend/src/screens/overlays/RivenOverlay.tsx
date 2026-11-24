@@ -8,8 +8,10 @@ import { useRollActions } from "../../api/rivens";
 import {
   classifyOriginal,
   classifyStat,
+  comboName,
   compareRolls,
   PREVIEW_VIEW,
+  rankCombos,
   RIVEN_WIDTH,
   rivenSummary,
   savedRollLabel,
@@ -63,7 +65,7 @@ const COMPARISON: Readonly<Record<"better" | "same" | "worse", { icon: LucideIco
   worse: { icon: ArrowDown, className: "border-danger text-danger", text: "Original roll is better" },
 };
 
-/** New against original roll, counted in wanted stats. */
+/** New against original roll, counted in good stats. */
 function RollComparison({ newWanted, originalWanted }: { newWanted: number; originalWanted: number }) {
   const look = COMPARISON[compareRolls(newWanted, originalWanted)];
   return (
@@ -73,23 +75,23 @@ function RollComparison({ newWanted, originalWanted }: { newWanted: number; orig
         {look.text}
       </p>
       <p className="text-xs text-muted">
-        Wanted stats: new {newWanted}, original {originalWanted}
+        Good stats: new {newWanted}, original {originalWanted}
       </p>
     </div>
   );
 }
 
 /**
- * Every stat this build wants, so the player need not look it up: a check
- * when the roll has it, grey when it is still missing. A missing entry can
- * be a choice ("Multishot / Toxin").
+ * The stats that make a good roll for this weapon, so the player need not
+ * look them up: a check when the roll has one, grey when it is missing. A
+ * missing entry can be a choice ("Multishot / Toxin").
  */
-function WantedStats({ matched, missing }: { matched: readonly string[]; missing: readonly string[] }) {
+function GoodStats({ title, matched, missing }: { title: string; matched: readonly string[]; missing: readonly string[] }) {
   if (matched.length + missing.length === 0) return null;
   return (
     <div className="flex flex-col gap-1">
-      <h2 className={OVERLAY_HEADING}>Wanted stats</h2>
-      <ul aria-label="Wanted stats" className="flex flex-wrap gap-1">
+      <h2 className={OVERLAY_HEADING}>{title}</h2>
+      <ul aria-label="Good stats" className="flex flex-wrap gap-1">
         {matched.map((name) => (
           <li key={name}>
             <Badge tone="success" icon={Check}>
@@ -111,30 +113,47 @@ function WantedStats({ matched, missing }: { matched: readonly string[]; missing
   );
 }
 
-function Analysis({ analysis }: { analysis: OverlayAnalysis }) {
-  const several = analysis.alternatives.length > 1;
+/**
+ * How good the roll is. When the weapon has several good stat combinations,
+ * the one the roll fits best leads with its score and stats; the others
+ * follow as one line each under "Or instead", since
+ * the roll only needs to fit one of them.
+ */
+function Analysis({ analysis, weapon }: { analysis: OverlayAnalysis; weapon: string }) {
+  const [best, ...others] = rankCombos(analysis.alternatives);
+  if (!best) return null;
+  const pct = Math.round(best.score * 100);
+  const wantedCount = best.matched.length + best.missing.length;
   return (
-    <>
-      {analysis.alternatives.map((alt, i) => {
-        const pct = Math.round(alt.score * 100);
-        const tone = VERDICT_TONE[verdictLevel(alt.verdict)];
-        return (
-          <section
-            key={alt.label}
-            aria-label={several ? alt.label : "Analysis"}
-            className={cn("flex flex-col gap-1", i > 0 && "border-t border-border pt-1.5")}
-          >
-            {several && <span className={OVERLAY_HEADING}>{alt.label}</span>}
-            <p className="flex items-baseline gap-2">
-              <span className="text-xl leading-tight font-semibold tabular-nums">{pct}%</span>
-              <span className="text-muted">roll score</span>
-            </p>
-            <ProgressBar value={pct} max={100} label={verdictText(alt.verdict)} name={several ? `${alt.label} score` : "Score"} tone={tone} />
-            <WantedStats matched={alt.matched} missing={alt.missing} />
-          </section>
-        );
-      })}
-    </>
+    <section aria-label="Analysis" className="flex flex-col gap-1">
+      <p className="flex items-baseline gap-2">
+        <span className="text-xl leading-tight font-semibold tabular-nums">{pct}%</span>
+        <span className="text-muted">{verdictText(best.verdict)}</span>
+      </p>
+      <ProgressBar
+        value={pct}
+        max={100}
+        label={`${String(best.matched.length)} of ${String(wantedCount)} good stats`}
+        name="Score"
+        tone={VERDICT_TONE[verdictLevel(best.verdict)]}
+      />
+      <GoodStats title={`Good roll for ${weapon}`} matched={best.matched} missing={best.missing} />
+      {others.length > 0 && (
+        <div className="flex flex-col gap-0.5 border-t border-border pt-1.5">
+          <h2 className={OVERLAY_HEADING}>Or instead</h2>
+          <ul aria-label="Other good combinations" className="flex flex-col gap-0.5 text-xs">
+            {others.map((alt) => (
+              <li key={alt.label} className="grid grid-cols-[1fr_auto] items-baseline gap-2">
+                <span className="text-muted">{comboName(alt)}</span>
+                <span className="tabular-nums">
+                  {alt.matched.length} of {alt.matched.length + alt.missing.length}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -278,7 +297,7 @@ export function RivenOverlay() {
 
         {result && (stats.length > 0 || analysis) && (
           <>
-            {analysis && <Analysis analysis={analysis} />}
+            {analysis && <Analysis analysis={analysis} weapon={title} />}
             {analysis && result.isComparison && result.originalStats.length > 0 && (
               <RollComparison
                 newWanted={stats.filter((s) => classifyStat(s, analysis) === "wanted").length}

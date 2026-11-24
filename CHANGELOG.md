@@ -43,10 +43,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   lock for vaulted items and a "New" label for items you do not own yet. The
   window is wider and the rows have more room.
 - The riven overlay is clearer: the roll score is the headline with the
-  verdict next to its bar, each stat is listed once with what it means
-  (wanted, not needed, harmless or harmful), and a "Wanted stats" list shows
-  every stat the weapon wants, checked when the roll has it. When you compare rolls, it says whether the new
-  or the original roll has more wanted stats.
+  verdict, and "Good roll for" a weapon lists the stats that make a good
+  roll, checked when the roll has them. When a weapon has several good stat
+  combinations, the one the roll fits best leads and the others follow under
+  "Or instead", since a roll only needs one. Each rolled stat is listed once
+  with what it means (good, not needed, harmless or harmful), and a
+  comparison says whether the new or the original roll has more good stats.
 
 ### Fixed
 

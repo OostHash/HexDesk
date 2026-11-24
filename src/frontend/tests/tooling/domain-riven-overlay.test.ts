@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   classifyOriginal,
   classifyStat,
+  comboName,
   compareRolls,
   PREVIEW_VIEW,
+  rankCombos,
   rivenSummary,
   savedRollLabel,
   verdictText,
@@ -47,7 +49,15 @@ it("writes the verdict as a sentence", () => {
   expect(verdictText("GREAT")).toBe("Great");
 });
 
-it("compares a new roll with the original by wanted stats", () => {
+it("puts the best fitting combination first and names it by its stats", () => {
+  const a = { label: "Option 1", matched: ["Multishot"], missing: ["Base Damage / Status Chance"], score: 0.5, verdict: "MEDIOCRE" };
+  const b = { label: "Option 2", matched: ["Multishot", "Toxicity"], missing: [], score: 1, verdict: "GREAT" };
+  const c = { ...a, label: "Option 3" };
+  expect(rankCombos([a, b, c]).map((x) => x.label)).toEqual(["Option 2", "Option 1", "Option 3"]);
+  expect(comboName(a)).toBe("Multishot + Base Damage / Status Chance");
+});
+
+it("compares a new roll with the original by good stats", () => {
   expect(compareRolls(2, 1)).toBe("better");
   expect(compareRolls(1, 1)).toBe("same");
   expect(compareRolls(0, 1)).toBe("worse");
