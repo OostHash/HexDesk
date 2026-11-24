@@ -17,6 +17,14 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - The Sale, Purchase and Trade labels in the trade report use the same status
   colours as the rest of the app, so they follow the light theme, high
   contrast and the colour-blind palette.
+- The light theme uses warm stone tones throughout, including input fields,
+  the navigation and borders.
+- Disabled input fields have a dashed border and no fill, so they no longer
+  look like empty fields. A button that is saving keeps its colour while the
+  spinner turns.
+- Selected tabs, chips, options and toggle buttons share one selected look:
+  an amber edge with a light amber fill.
+- The open changelog casts a shadow that fits the light and dark theme.
 
 ### Fixed
 

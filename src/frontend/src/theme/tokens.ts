@@ -33,6 +33,7 @@ export const semanticTokens = [
   "shadow-1",
   "shadow-2",
   "shadow-3",
+  "shadow-dock",
   "tone-ink",
 ] as const;
 
@@ -85,6 +86,8 @@ export const dark = {
   "shadow-1": "0 1px 2px rgb(0 0 0 / 0.3)",
   "shadow-2": "0 8px 24px rgb(0 0 0 / 0.45)",
   "shadow-3": "0 20px 60px rgb(0 0 0 / 0.6)",
+  /** The open changelog dock lifts above the screen it covers. */
+  "shadow-dock": "0 -8px 24px rgb(0 0 0 / 0.4)",
   /** How much of its own colour a tinted badge keeps; the rest is text colour (contrast). */
   "tone-ink": "65%",
 } as const satisfies ThemeTokens;
@@ -114,6 +117,7 @@ export const light = {
   "shadow-1": "0 1px 2px rgb(31 35 40 / 0.12)",
   "shadow-2": "0 8px 24px rgb(31 35 40 / 0.16)",
   "shadow-3": "0 20px 60px rgb(31 35 40 / 0.24)",
+  "shadow-dock": "0 -8px 24px rgb(31 35 40 / 0.14)",
   // Domain colours are tuned for dark pages: on light they need more ink.
   "tone-ink": "35%",
 } as const satisfies ThemeTokens;
@@ -154,6 +158,7 @@ export const highContrastThemes = {
     "shadow-1": "none",
     "shadow-2": "0 0 0 1px #ffffff",
     "shadow-3": "0 0 0 2px #ffffff",
+    "shadow-dock": "none",
     "tone-ink": "40%",
   },
   light: {
@@ -180,6 +185,7 @@ export const highContrastThemes = {
     "shadow-1": "none",
     "shadow-2": "0 0 0 1px #0e1116",
     "shadow-3": "0 0 0 2px #0e1116",
+    "shadow-dock": "none",
     "tone-ink": "20%",
   },
 } as const satisfies Record<ThemeName, ThemeTokens>;

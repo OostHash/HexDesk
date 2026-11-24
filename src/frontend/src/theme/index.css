@@ -51,6 +51,7 @@
   --shadow-1: var(--hex-shadow-1);
   --shadow-2: var(--hex-shadow-2);
   --shadow-3: var(--hex-shadow-3);
+  --shadow-dock-up: var(--hex-shadow-dock);
 
   /* Density-sensitive exceptions: h-control-md, px-cell-x, text-list. */
   --spacing-control-sm: var(--hex-control-sm);
@@ -62,13 +63,11 @@
 }
 
 /*
- * Changelog shadow and motion. feed-step lasts one feed step (FEED_STEP_MS in
+ * Changelog motion. feed-step lasts one feed step (FEED_STEP_MS in
  * src/frontend/src/domain/changelog.ts): the row fades in, stays, fades out.
  * Use with motion-safe: so reduced motion shows the rows without movement.
  */
 @theme {
-  /* The open changelog lifts above the screen it covers. */
-  --shadow-dock-up: 0 -8px 24px rgb(0 0 0 / 0.18);
   --animate-feed-step: feed-step 4.5s ease both;
   --animate-row-arrive: row-arrive 160ms ease-out both;
   --animate-fade-in: fade-in 180ms ease-out both;

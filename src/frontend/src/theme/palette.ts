@@ -20,9 +20,9 @@ export const palette = {
     0: "#ffffff",
     50: "#f5f4f0",
     75: "#f0efeb",
-    100: "#eeefef",
-    150: "#e6e8e7",
-    200: "#d8dad9",
+    100: "#efeee9",
+    150: "#e9e7e1",
+    200: "#dad7d0",
     600: "#5c636a",
     900: "#252a2f",
   },
@@ -34,7 +34,7 @@ export const palette = {
   amber: { 400: "#c1874a", 700: "#8f5c27" },
   /** Warning sits towards yellow so it never reads as the amber accent. */
   ochre: { 400: "#d2b04c", 700: "#736a00" },
-  sage: { 400: "#7a9a92", 700: "#397569" },
+  sage: { 400: "#7fae86", 700: "#357544" },
   brick: { 400: "#d0807a", 700: "#ae4c4b" },
   steel: { 400: "#7fa6cc", 700: "#3d6a94" },
 

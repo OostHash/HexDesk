@@ -99,7 +99,7 @@ export function ViewControls({
               title={label}
               className={cn(
                 segment,
-                "has-checked:border-accent has-checked:bg-accent-soft has-checked:text-text has-focus-visible:outline-2 has-focus-visible:outline-focus",
+                "has-checked:border-accent has-checked:bg-selected has-checked:text-text has-focus-visible:outline-2 has-focus-visible:outline-focus",
               )}
             >
               <input

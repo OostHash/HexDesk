@@ -52,7 +52,7 @@ const APPEARANCE = {
     list: "flex gap-1",
     tab:
       "flex h-control-sm cursor-default items-center gap-1 rounded-md border border-border px-2 text-xs text-muted outline-none " +
-      "data-hovered:bg-hover data-hovered:text-text data-selected:border-accent data-selected:bg-accent-soft data-selected:text-text " +
+      "data-hovered:bg-hover data-hovered:text-text data-selected:border-accent data-selected:bg-selected data-selected:text-text " +
       "data-focus-visible:outline-2 data-focus-visible:outline-focus data-disabled:opacity-50",
   },
 } as const;

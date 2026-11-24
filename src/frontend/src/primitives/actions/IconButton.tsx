@@ -11,7 +11,7 @@ const iconButtonVariants = cva(
     variants: {
       variant: {
         ghost: "text-muted hover:bg-hover hover:text-text aria-pressed:text-accent",
-        solid: "border border-border bg-surface text-text hover:bg-hover aria-pressed:bg-selected",
+        solid: "border border-border bg-surface text-text hover:bg-hover aria-pressed:border-accent aria-pressed:bg-selected",
         danger: "text-muted hover:bg-danger/10 hover:text-danger",
       },
       // sm stays at 24px: the WCAG 2.2 minimum target size (2.5.8).

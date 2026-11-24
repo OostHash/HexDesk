@@ -11,9 +11,12 @@ const twMerge = extendTailwindMerge({
     theme: {
       color: [
         "bg",
+        "panel",
+        "nav",
         "surface",
         "surface-raised",
         "surface-sunken",
+        "field",
         "border",
         "border-strong",
         "text",

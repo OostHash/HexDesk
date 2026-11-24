@@ -31,7 +31,7 @@ export function SidebarItem({ active, label, icon, iconSize = "sm", count, badge
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex h-control-md w-full items-center gap-2 rounded-md border-s-2 px-3 text-start text-sm transition-colors motion-reduce:transition-none",
-        active ? "border-accent bg-accent-soft text-text" : "border-transparent text-muted hover:bg-hover hover:text-text",
+        active ? "border-accent bg-selected text-text" : "border-transparent text-muted hover:bg-hover hover:text-text",
         className,
       )}
       {...rest}

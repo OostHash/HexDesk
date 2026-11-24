@@ -23,7 +23,7 @@
   --hex-accent: #c1874a;
   --hex-accent-soft: color-mix(in oklab, var(--hex-accent) 14%, transparent);
   --hex-on-accent: #17191c;
-  --hex-success: #7a9a92;
+  --hex-success: #7fae86;
   --hex-danger: #d0807a;
   --hex-on-danger: #17191c;
   --hex-warning: #d2b04c;
@@ -36,18 +36,19 @@
   --hex-shadow-1: 0 1px 2px rgb(0 0 0 / 0.3);
   --hex-shadow-2: 0 8px 24px rgb(0 0 0 / 0.45);
   --hex-shadow-3: 0 20px 60px rgb(0 0 0 / 0.6);
+  --hex-shadow-dock: 0 -8px 24px rgb(0 0 0 / 0.4);
   --hex-tone-ink: 65%;
 }
 
 [data-resolved-theme="light"] {
   --hex-bg: #f5f4f0;
   --hex-panel: #ffffff;
-  --hex-nav: #e6e8e7;
+  --hex-nav: #e9e7e1;
   --hex-surface: #ffffff;
   --hex-surface-raised: #f0efeb;
-  --hex-surface-sunken: #eeefef;
-  --hex-field: #eeefef;
-  --hex-border: #d8dad9;
+  --hex-surface-sunken: #efeee9;
+  --hex-field: #efeee9;
+  --hex-border: #dad7d0;
   --hex-border-strong: color-mix(in oklab, var(--hex-text) 28%, transparent);
   --hex-text: #252a2f;
   --hex-text-muted: #5c636a;
@@ -55,7 +56,7 @@
   --hex-accent: #8f5c27;
   --hex-accent-soft: color-mix(in oklab, var(--hex-accent) 14%, transparent);
   --hex-on-accent: #ffffff;
-  --hex-success: #397569;
+  --hex-success: #357544;
   --hex-danger: #ae4c4b;
   --hex-on-danger: #ffffff;
   --hex-warning: #736a00;
@@ -68,6 +69,7 @@
   --hex-shadow-1: 0 1px 2px rgb(31 35 40 / 0.12);
   --hex-shadow-2: 0 8px 24px rgb(31 35 40 / 0.16);
   --hex-shadow-3: 0 20px 60px rgb(31 35 40 / 0.24);
+  --hex-shadow-dock: 0 -8px 24px rgb(31 35 40 / 0.14);
   --hex-tone-ink: 35%;
 }
 
@@ -100,6 +102,7 @@
   --hex-shadow-1: none;
   --hex-shadow-2: 0 0 0 1px #ffffff;
   --hex-shadow-3: 0 0 0 2px #ffffff;
+  --hex-shadow-dock: none;
   --hex-tone-ink: 40%;
 }
 
@@ -132,6 +135,7 @@
   --hex-shadow-1: none;
   --hex-shadow-2: 0 0 0 1px #0e1116;
   --hex-shadow-3: 0 0 0 2px #0e1116;
+  --hex-shadow-dock: none;
   --hex-tone-ink: 20%;
 }
 
