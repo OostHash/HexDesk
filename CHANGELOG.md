@@ -7,6 +7,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Fixed
+
+- Updated third-party libraries to address reported security vulnerabilities in
+  the database and XML parsing dependencies.
+
 ## [1.1.1] - 2026-11-22
 
 ### Fixed
