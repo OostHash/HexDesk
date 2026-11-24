@@ -80,7 +80,7 @@ pub struct ArchonShard {
 
 /// Parsed representation of an Actual_inventory_FULL_ACCOUNT blob.
 /// Single authoritative source for all inventory data.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BlobInventory {
     pub credits: i64,
     pub endo: i64,

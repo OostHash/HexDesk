@@ -86,7 +86,11 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
         };
         let _ = conn.execute_batch("PRAGMA journal_mode=WAL;");
 
-        let mut scan_state = hexdesk_player::ScanState::default();
+        for name in STALE_CACHE_FILES {
+            let _ = std::fs::remove_file(inventory_state_cache_path.with_file_name(name));
+        }
+        let scan_state_path = scan_state_path(&inventory_state_cache_path);
+        let mut scan_state = load_scan_state(&scan_state_path);
         let mut last_unread_keys: Vec<String> = Vec::new();
 
         let startup = monitor::init_monitor_startup_state(
@@ -224,6 +228,7 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                     &mut last_snapshot_date,
                     now,
                 );
+                save_scan_state(&scan_state_path, &scan_state);
             }
 
             // Re-enumerate processes at most every 5 s (CreateToolhelp32Snapshot overhead).
@@ -605,6 +610,73 @@ fn process_blob(
     }
 }
 
+/// Cache files this version does not read. They are removed at start so they
+/// do not linger in the cache folder.
+const STALE_CACHE_FILES: &[&str] = &["section_baseline.json"];
+
+/// Where the inventory per section is saved, next to the inventory cache.
+pub(crate) fn scan_state_path(inventory_state_cache_path: &std::path::Path) -> std::path::PathBuf {
+    inventory_state_cache_path.with_file_name("scan_sections.json")
+}
+
+/// The inventory per section as it was saved, or an empty one when nothing
+/// was saved or the file could not be read.
+fn load_scan_state(path: &std::path::Path) -> hexdesk_player::ScanState {
+    let bytes = match std::fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return hexdesk_player::ScanState::default();
+        }
+        Err(e) => {
+            let _ = DiagError::new(
+                Source::Scanner,
+                Kind::Io,
+                "Saved inventory sections could not be read: the next scan starts from nothing",
+            )
+            .caused_by(&e)
+            .log();
+            return hexdesk_player::ScanState::default();
+        }
+    };
+    let saved = match serde_json::from_slice::<hexdesk_player::SavedScan>(&bytes) {
+        Ok(saved) => saved,
+        Err(e) => {
+            let _ = DiagError::new(
+                Source::Scanner,
+                Kind::Parse,
+                "Saved inventory sections could not be read: the next scan starts from nothing",
+            )
+            .caused_by(&e)
+            .log();
+            return hexdesk_player::ScanState::default();
+        }
+    };
+    let (state, dropped) = hexdesk_player::ScanState::from_saved(saved);
+    if !dropped.is_empty() {
+        info!(
+            scanner,
+            sections = %dropped.join(","),
+            "Saved inventory sections left out: not read by this version"
+        );
+    }
+    state
+}
+
+fn save_scan_state(path: &std::path::Path, state: &hexdesk_player::ScanState) {
+    let result = serde_json::to_vec(&state.to_saved())
+        .map_err(|e| e.to_string())
+        .and_then(|json| atomic_write(path, &json).map_err(|e| e.to_string()));
+    if let Err(e) = result {
+        let _ = DiagError::new(
+            Source::Scanner,
+            Kind::Io,
+            "Inventory sections could not be saved: a restart starts from the last saved scan",
+        )
+        .with("cause", e)
+        .log();
+    }
+}
+
 /// Logs what a blob did per section: which were kept from an earlier scan and
 /// why, which were taken as empty, and which top-level keys are not read.
 fn log_scan_outcome(
@@ -654,5 +726,68 @@ fn log_scan_outcome(
             "Account blob sections that are not read"
         );
         *last_unread_keys = unread;
+    }
+}
+
+#[cfg(test)]
+mod scan_state_file_tests {
+    use super::{load_scan_state, save_scan_state, scan_state_path};
+    use hexdesk_blob::{
+        BlobRead, BlobStackableEntry, SectionContent, SectionRead, SectionState, SECTIONS,
+    };
+    use hexdesk_player::ScanState;
+
+    fn dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("hexdesk-scan-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn state_with_alloy() -> ScanState {
+        let read = BlobRead {
+            sections: SECTIONS
+                .iter()
+                .map(|section| SectionRead {
+                    section: *section,
+                    state: if section.name == "MiscItems" {
+                        SectionState::Read(SectionContent::Stackable(vec![BlobStackableEntry {
+                            item_type: "/Lotus/Types/Items/MiscItems/Alloy".to_string(),
+                            item_count: 100,
+                            sockets: None,
+                        }]))
+                    } else {
+                        SectionState::Missing
+                    },
+                })
+                .collect(),
+            keys: Vec::new(),
+            front_intact: true,
+        };
+        let mut state = ScanState::default();
+        state.apply(&read, 1);
+        state
+    }
+
+    #[test]
+    fn saved_sections_are_loaded_after_a_restart() {
+        let dir = dir("roundtrip");
+        let path = scan_state_path(&dir.join("inventory_state.json"));
+        let state = state_with_alloy();
+        save_scan_state(&path, &state);
+        let loaded = load_scan_state(&path);
+        assert_eq!(loaded.to_inventory(), state.to_inventory());
+        assert_eq!(loaded.read_at("MiscItems"), Some(1));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_missing_or_unreadable_file_starts_from_nothing() {
+        let dir = dir("unreadable");
+        let path = scan_state_path(&dir.join("inventory_state.json"));
+        assert_eq!(load_scan_state(&path).to_saved().sections.len(), 0);
+        std::fs::write(&path, b"{not json").unwrap();
+        assert_eq!(load_scan_state(&path).to_saved().sections.len(), 0);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

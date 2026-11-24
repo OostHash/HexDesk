@@ -185,6 +185,73 @@ impl ScanState {
     }
 }
 
+/// [`ScanState`] in a form that can be saved, so a restart continues from
+/// what the scans have shown instead of from nothing.
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SavedScan {
+    /// Per section name.
+    pub sections: BTreeMap<String, SavedSection>,
+}
+
+/// One section of a [`SavedScan`].
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SavedSection {
+    pub content: SectionContent,
+    pub read_at: Millis,
+    #[serde(default)]
+    pub missing_streak: u32,
+}
+
+impl ScanState {
+    /// The state in a form that can be saved.
+    pub fn to_saved(&self) -> SavedScan {
+        SavedScan {
+            sections: self
+                .known
+                .iter()
+                .map(|(name, known)| {
+                    (
+                        (*name).to_string(),
+                        SavedSection {
+                            content: known.content.clone(),
+                            read_at: known.read_at,
+                            missing_streak: known.missing_streak,
+                        },
+                    )
+                })
+                .collect(),
+        }
+    }
+
+    /// The state a [`SavedScan`] describes, and the names of the saved
+    /// sections it leaves out: sections that are no longer in [`SECTIONS`],
+    /// or whose content does not fit their kind.
+    pub fn from_saved(saved: SavedScan) -> (Self, Vec<String>) {
+        let mut state = ScanState::default();
+        let mut dropped = Vec::new();
+        for (name, saved) in saved.sections {
+            let Some(section) = SECTIONS.iter().find(|s| s.name == name) else {
+                dropped.push(name);
+                continue;
+            };
+            if !saved.content.fits(section.kind) {
+                dropped.push(name);
+                continue;
+            }
+            state.known.insert(
+                section.name,
+                Known {
+                    section: *section,
+                    content: saved.content,
+                    read_at: saved.read_at,
+                    missing_streak: saved.missing_streak,
+                },
+            );
+        }
+        (state, dropped)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -445,5 +512,42 @@ mod tests {
         assert_eq!(outcome(&out, "Recipes"), &SectionOutcome::NotSeen);
         assert_eq!(state.read_at("Recipes"), None);
         assert_eq!(state.to_inventory().stackable_items.len(), 1);
+    }
+
+    #[test]
+    fn a_saved_state_continues_where_it_stopped() {
+        let mut state = start();
+        state.apply(&without_recipes(true), 2);
+        let (restored, dropped) = ScanState::from_saved(state.to_saved());
+        assert!(dropped.is_empty());
+        assert_eq!(restored.to_inventory(), state.to_inventory());
+        assert_eq!(restored.read_at("Recipes"), Some(1));
+
+        // The streak continues too: two more blobs without Recipes empty it.
+        let mut restored = restored;
+        restored.apply(&without_recipes(true), 3);
+        let out = restored.apply(&without_recipes(true), 4);
+        assert_eq!(outcome(&out, "Recipes"), &SectionOutcome::Emptied);
+    }
+
+    #[test]
+    fn a_saved_section_that_is_unknown_or_does_not_fit_is_left_out() {
+        let mut saved = start().to_saved();
+        let misc = saved.sections["MiscItems"].clone();
+        saved
+            .sections
+            .insert("NoSuchSection".to_string(), misc.clone());
+        saved.sections.insert(
+            "RegularCredits".to_string(),
+            SavedSection {
+                content: misc.content.clone(),
+                ..misc
+            },
+        );
+        let (state, mut dropped) = ScanState::from_saved(saved);
+        dropped.sort();
+        assert_eq!(dropped, ["NoSuchSection", "RegularCredits"]);
+        assert_eq!(count(&state, ALLOY), Some(100));
+        assert_eq!(state.read_at("RegularCredits"), None);
     }
 }

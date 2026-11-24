@@ -39,7 +39,7 @@ pub enum SectionState {
 /// What a section that was read holds. Each section keeps its own share, so
 /// two sections that count the same item (`RawUpgrades` and `Upgrades` for
 /// mods) can be told apart.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SectionContent {
     Scalar(i64),
     Unique(Vec<BlobUniqueEntry>),
@@ -76,6 +76,11 @@ impl SectionContent {
             SectionKind::PendingRecipes => SectionContent::PendingRecipes(Vec::new()),
             SectionKind::Helminth => SectionContent::ConsumedSuits(Vec::new()),
         }
+    }
+
+    /// Whether this is content a section of `kind` can hold.
+    pub fn fits(&self, kind: SectionKind) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(&Self::empty(kind))
     }
 }
 

@@ -17,7 +17,7 @@ pub mod sets;
 
 pub use catalogue::{Catalogue, Item, RecipeLine};
 pub use inventory::{Count, Evidence, Inventory, Source};
-pub use scan::{ScanOutcome, ScanState, SectionOutcome, EMPTY_AFTER};
+pub use scan::{SavedScan, SavedSection, ScanOutcome, ScanState, SectionOutcome, EMPTY_AFTER};
 pub use sets::{RewardCard, SetPart};
 
 /// Milliseconds since the Unix epoch.
