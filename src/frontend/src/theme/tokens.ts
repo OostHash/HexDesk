@@ -244,6 +244,7 @@ export const contrastPairs: ReadonlyArray<{
   { fg: "accent", bg: "panel", min: 4.5, why: "accent text in the window chrome" },
   { fg: "accent", bg: "nav", min: 4.5, why: "the active navigation item" },
   { fg: "danger", bg: "surface", min: 4.5, why: "error text" },
+  { fg: "danger", bg: "surface-raised", min: 4.5, why: "error text in dialogs" },
   { fg: "success", bg: "surface", min: 4.5, why: "success text" },
   { fg: "warning", bg: "surface", min: 4.5, why: "warning text" },
   { fg: "info", bg: "surface", min: 4.5, why: "info text" },

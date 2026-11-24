@@ -12,7 +12,7 @@ export const palette = {
     800: "#25282c",
     750: "#292d32",
     700: "#373b41",
-    400: "#8e949b",
+    400: "#a0a5ab",
     100: "#e8e5df",
   },
   /** Light neutrals: warm stone, not an inverted dark theme. */
@@ -23,7 +23,7 @@ export const palette = {
     100: "#eeefef",
     150: "#e6e8e7",
     200: "#d8dad9",
-    600: "#626971",
+    600: "#5c636a",
     900: "#252a2f",
   },
 
@@ -35,7 +35,7 @@ export const palette = {
   /** Warning sits towards yellow so it never reads as the amber accent. */
   ochre: { 400: "#d2b04c", 700: "#736a00" },
   sage: { 400: "#7a9a92", 700: "#397569" },
-  brick: { 400: "#cc7670", 700: "#b44f4e" },
+  brick: { 400: "#d0807a", 700: "#ae4c4b" },
   steel: { 400: "#7fa6cc", 700: "#3d6a94" },
 
   /** Domain hues, shared by aliases in domain.ts that mean the same kind of thing. */
@@ -47,7 +47,7 @@ export const palette = {
 
   /** Okabe-Ito: stays apart under deuteranopia and protanopia (colour-blind palette). */
   cvd: { blue: "#56b4e9", orange: "#e69f00", yellow: "#f0e442", purple: "#cc79a7" },
-  cvdLight: { blue: "#0072b2", orange: "#b35000", yellow: "#7a6200", purple: "#a3417e" },
+  cvdLight: { blue: "#0072b2", orange: "#b04f00", yellow: "#7a6200", purple: "#a3417e" },
 
   /** High contrast (7:1 for text): near-black or white pages, strong borders. */
   highDark: {

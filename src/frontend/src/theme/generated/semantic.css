@@ -18,13 +18,13 @@
   --hex-border: #373b41;
   --hex-border-strong: color-mix(in oklab, var(--hex-text) 28%, transparent);
   --hex-text: #e8e5df;
-  --hex-text-muted: #8e949b;
+  --hex-text-muted: #a0a5ab;
   --hex-text-faint: color-mix(in oklab, var(--hex-text-muted) 70%, transparent);
   --hex-accent: #c1874a;
   --hex-accent-soft: color-mix(in oklab, var(--hex-accent) 14%, transparent);
   --hex-on-accent: #17191c;
   --hex-success: #7a9a92;
-  --hex-danger: #cc7670;
+  --hex-danger: #d0807a;
   --hex-on-danger: #17191c;
   --hex-warning: #d2b04c;
   --hex-info: #7fa6cc;
@@ -50,13 +50,13 @@
   --hex-border: #d8dad9;
   --hex-border-strong: color-mix(in oklab, var(--hex-text) 28%, transparent);
   --hex-text: #252a2f;
-  --hex-text-muted: #626971;
+  --hex-text-muted: #5c636a;
   --hex-text-faint: color-mix(in oklab, var(--hex-text-muted) 70%, transparent);
   --hex-accent: #8f5c27;
   --hex-accent-soft: color-mix(in oklab, var(--hex-accent) 14%, transparent);
   --hex-on-accent: #ffffff;
   --hex-success: #397569;
-  --hex-danger: #b44f4e;
+  --hex-danger: #ae4c4b;
   --hex-on-danger: #ffffff;
   --hex-warning: #736a00;
   --hex-info: #3d6a94;
@@ -144,7 +144,7 @@
 
 [data-resolved-theme="light"][data-cvd="on"] {
   --hex-success: #0072b2;
-  --hex-danger: #b35000;
+  --hex-danger: #b04f00;
   --hex-warning: #7a6200;
   --hex-info: #a3417e;
 }
