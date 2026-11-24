@@ -1,5 +1,5 @@
 use crate::read::read_section;
-use crate::{extract_blob_json, find_blob_end, BlobInventory, SECTIONS};
+use crate::{extract_blob_json, find_blob_end, BlobInventory, BlobRead, SectionRead, SECTIONS};
 
 /// `raw` must span from the JSON opening `{` (or from `"SubscribedToEmails"`) through
 /// the closing brace after one of [`END_MARKERS`](crate::END_MARKERS). Returns `None` when
@@ -38,6 +38,24 @@ impl std::fmt::Display for BlobReject {
 /// Like [`parse_full_account_blob`], but says why a blob was rejected.
 #[tracing::instrument(target = "hexdesk::scanner", level = "debug", skip_all)]
 pub fn parse_full_account_blob_checked(raw: &[u8]) -> Result<BlobInventory, BlobReject> {
+    let mut inv = read_blob(raw)?.to_inventory();
+
+    // Every valid FULL_ACCOUNT blob at the orbiter has at least one Warframe in Suits.
+    // An empty unique_items means we captured an incomplete blob (game is mid-write,
+    // returning from mission, or the blob sections were partially stitched out of order).
+    if inv.unique_items.is_empty() {
+        return Err(BlobReject::NoItems);
+    }
+
+    inv.content_hash = inv.compute_content_hash();
+    Ok(inv)
+}
+
+/// Reads every section in [`SECTIONS`] from a blob. `raw` is the same as for
+/// [`parse_full_account_blob`]. A section that is missing or unreadable is
+/// reported as such; only a blob that is not an account blob at all, or that
+/// lacks a core section, is rejected.
+pub fn read_blob(raw: &[u8]) -> Result<BlobRead, BlobReject> {
     let end_pos = find_blob_end(raw).ok_or(BlobReject::NoEnd)?;
 
     // Real FULL_ACCOUNT blobs are several hundred KB — anything smaller is a
@@ -74,29 +92,24 @@ pub fn parse_full_account_blob_checked(raw: &[u8]) -> Result<BlobInventory, Blob
     let json: serde_json::Value =
         serde_json::from_slice(&json_bytes).map_err(|e| BlobReject::Json(e.to_string()))?;
 
-    let mut inv = BlobInventory::default();
-    for section in SECTIONS {
-        read_section(section, &json[section.name], &mut inv);
-    }
-
-    // Every valid FULL_ACCOUNT blob at the orbiter has at least one Warframe in Suits.
-    // An empty unique_items means we captured an incomplete blob (game is mid-write,
-    // returning from mission, or the blob sections were partially stitched out of order).
-    if inv.unique_items.is_empty() {
-        return Err(BlobReject::NoItems);
-    }
-
-    inv.sections = json
+    let sections = SECTIONS
+        .iter()
+        .map(|section| SectionRead {
+            section: *section,
+            state: read_section(section, json.get(section.name)),
+        })
+        .collect();
+    let keys = json
         .as_object()
         .map(|o| o.keys().cloned().collect())
         .unwrap_or_default();
-    inv.content_hash = inv.compute_content_hash();
-    Ok(inv)
+    Ok(BlobRead { sections, keys })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_full_account_blob, parse_full_account_blob_checked, BlobReject};
+    use super::{parse_full_account_blob, parse_full_account_blob_checked, read_blob, BlobReject};
+    use crate::{SectionContent, SectionState};
 
     /// Account with only the core sections: no Sentinels, KubrowPets,
     /// MechSuits and so on. `extra` goes in before the padding.
@@ -183,10 +196,9 @@ mod tests {
         assert!(!reason.contains("abc"), "{reason}");
     }
 
-    /// A blob with every section the parser reads, built as JSON so the
-    /// end marker can be put last.
-    fn full_account_blob() -> Vec<u8> {
-        let body = serde_json::json!({
+    /// The body of a blob with every section the parser reads.
+    fn full_account_json() -> serde_json::Value {
+        serde_json::json!({
             "SubscribedToEmails": 0,
             "RegularCredits": 1234,
             "FusionPoints": 500,
@@ -256,7 +268,11 @@ mod tests {
                 {"ItemType": "/Lotus/Types/Recipes/Weapons/BratonBlueprint", "CompletionDate": {"$date": {"$numberLong": 1_700_000_000_001_i64}}}
             ],
             "InfestedFoundry": {"ConsumedSuits": [{"s": "/Lotus/Powersuits/Mag/Mag"}]}
-        });
+        })
+    }
+
+    /// A blob from `body`, with padding and the end marker put last.
+    fn blob_from(body: &serde_json::Value) -> Vec<u8> {
         let mut s = body.to_string();
         s.pop();
         s.push_str(&format!(
@@ -268,7 +284,8 @@ mod tests {
 
     #[test]
     fn every_section_is_read_into_the_inventory() {
-        let inv = parse_full_account_blob(&full_account_blob()).expect("full account must parse");
+        let inv = parse_full_account_blob(&blob_from(&full_account_json()))
+            .expect("full account must parse");
         let mut got = serde_json::to_value(&inv).unwrap();
         let obj = got.as_object_mut().unwrap();
         obj.remove("sections");
@@ -398,5 +415,134 @@ mod tests {
             ]
         });
         assert_eq!(got, expected);
+    }
+
+    fn state<'a>(read: &'a crate::BlobRead, name: &str) -> &'a SectionState {
+        &read
+            .sections
+            .iter()
+            .find(|s| s.section.name == name)
+            .expect("section is in the table")
+            .state
+    }
+
+    #[test]
+    fn every_section_in_a_full_blob_is_read() {
+        let read = read_blob(&blob_from(&full_account_json())).unwrap();
+        assert_eq!(read.sections.len(), crate::SECTIONS.len());
+        let not_read: Vec<&str> = read
+            .sections
+            .iter()
+            .filter(|s| !matches!(s.state, SectionState::Read(_)))
+            .map(|s| s.section.name)
+            .collect();
+        // The blob leaves out the unique sections it has no items for and
+        // CrewShipRawSalvage.
+        assert_eq!(
+            not_read,
+            [
+                "Pistols",
+                "Melee",
+                "SpaceSuits",
+                "SpaceMelee",
+                "SpaceGuns",
+                "Sentinels",
+                "SentinelWeapons",
+                "MechSuits",
+                "CrewShipRawSalvage"
+            ]
+        );
+        assert!(not_read
+            .iter()
+            .all(|name| matches!(state(&read, name), SectionState::Missing)));
+    }
+
+    #[test]
+    fn a_missing_section_is_reported_and_the_others_are_read() {
+        let mut body = full_account_json();
+        body.as_object_mut().unwrap().remove("Recipes");
+        let read = read_blob(&blob_from(&body)).unwrap();
+        assert!(matches!(state(&read, "Recipes"), SectionState::Missing));
+        assert!(matches!(
+            state(&read, "MiscItems"),
+            SectionState::Read(SectionContent::Stackable(items)) if items.len() == 1
+        ));
+        assert!(!read.keys.iter().any(|k| k == "Recipes"));
+    }
+
+    #[test]
+    fn a_section_with_another_shape_is_unreadable_and_the_others_are_read() {
+        let mut body = full_account_json();
+        body["Recipes"] = serde_json::json!({"ItemType": "/Lotus/Types/Recipes/X"});
+        body["FusionPoints"] = serde_json::json!("many");
+        body["InfestedFoundry"] = serde_json::json!({"ConsumedSuits": 3});
+        let read = read_blob(&blob_from(&body)).unwrap();
+        assert!(matches!(
+            state(&read, "Recipes"),
+            SectionState::Unreadable {
+                expected: "an array"
+            }
+        ));
+        assert!(matches!(
+            state(&read, "FusionPoints"),
+            SectionState::Unreadable {
+                expected: "a number"
+            }
+        ));
+        assert!(matches!(
+            state(&read, "InfestedFoundry"),
+            SectionState::Unreadable { .. }
+        ));
+        assert!(matches!(
+            state(&read, "RegularCredits"),
+            SectionState::Read(SectionContent::Scalar(1234))
+        ));
+
+        // The inventory gets nothing from them, as for a missing section.
+        let inv = read.to_inventory();
+        assert_eq!(inv.endo, 0);
+        assert!(inv.consumed_suits.is_empty());
+        assert!(!inv
+            .stackable_items
+            .iter()
+            .any(|e| e.item_type.contains("/Recipes/")));
+    }
+
+    #[test]
+    fn a_helminth_without_consumed_suits_is_read_as_empty() {
+        let mut body = full_account_json();
+        body["InfestedFoundry"] = serde_json::json!({});
+        let read = read_blob(&blob_from(&body)).unwrap();
+        assert!(matches!(
+            state(&read, "InfestedFoundry"),
+            SectionState::Read(SectionContent::ConsumedSuits(suits)) if suits.is_empty()
+        ));
+    }
+
+    #[test]
+    fn each_upgrade_section_keeps_its_own_share_of_a_mod() {
+        const SERRATION: &str = "/Lotus/Upgrades/Mods/Rifle/WeaponDamageAmountMod";
+        let read = read_blob(&blob_from(&full_account_json())).unwrap();
+        let share = |name: &str| match state(&read, name) {
+            SectionState::Read(SectionContent::Upgrades { mods, .. }) => mods[SERRATION].total,
+            other => panic!("{name} was not read: {other:?}"),
+        };
+        assert_eq!(share("RawUpgrades"), 3);
+        assert_eq!(share("Upgrades"), 2);
+        assert_eq!(read.to_inventory().mods[SERRATION].total, 5);
+    }
+
+    #[test]
+    fn a_blob_without_items_is_read_but_not_turned_into_an_inventory() {
+        let mut body = full_account_json();
+        for name in ["Suits", "LongGuns", "KubrowPets", "OperatorAmps"] {
+            body[name] = serde_json::json!([]);
+        }
+        let raw = blob_from(&body);
+        assert!(read_blob(&raw).is_ok());
+        assert_eq!(
+            parse_full_account_blob_checked(&raw).unwrap_err(),
+            BlobReject::NoItems
+        );
     }
 }

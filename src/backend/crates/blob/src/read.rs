@@ -1,75 +1,108 @@
 //! One reader per [`SectionKind`]. Each reader takes the section's value from
-//! the blob and adds what it holds to the inventory.
+//! the blob and returns what it holds.
 
+use crate::section_read::{SectionContent, SectionState};
 use crate::sections::{Scalar, Section, SectionKind};
 use crate::{
-    compute_riven_mod_name, xp_to_rank, ArchonShard, BlobInventory, BlobPendingRecipe,
-    BlobRivenEntry, BlobRivenStat, BlobStackableEntry, BlobUniqueEntry, ModCount, RivenState,
+    compute_riven_mod_name, xp_to_rank, ArchonShard, BlobPendingRecipe, BlobRivenEntry,
+    BlobRivenStat, BlobStackableEntry, BlobUniqueEntry, ModCount, RivenState,
 };
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// Reads one section into `inv`. A section that is missing or has another
-/// shape than its kind expects adds nothing.
-pub(crate) fn read_section(section: &Section, value: &Value, inv: &mut BlobInventory) {
-    match section.kind {
-        SectionKind::Scalar(scalar) => read_scalar(scalar, value, inv),
-        SectionKind::Unique => {
-            if let Some(arr) = value.as_array() {
-                read_unique(arr, section.name, &mut inv.unique_items);
+const ARRAY: &str = "an array";
+
+/// Reads one section. `value` is `None` when the blob does not have it.
+pub(crate) fn read_section(section: &Section, value: Option<&Value>) -> SectionState {
+    let Some(value) = value else {
+        return SectionState::Missing;
+    };
+    let content = match section.kind {
+        SectionKind::Scalar(scalar) => {
+            let number = match scalar {
+                // Mastery rank is never negative; a negative value is not a rank.
+                Scalar::MasteryRank => value.as_u64().map(|v| v as i64),
+                _ => value.as_i64(),
+            };
+            match number {
+                Some(v) => SectionContent::Scalar(v),
+                None => return unreadable("a number"),
             }
+        }
+        SectionKind::Unique => {
+            let Some(arr) = value.as_array() else {
+                return unreadable(ARRAY);
+            };
+            let mut items = Vec::new();
+            read_unique(arr, section.name, &mut items);
+            SectionContent::Unique(items)
         }
         SectionKind::Stackable { sockets } => {
-            if let Some(arr) = value.as_array() {
-                read_stackable(arr, sockets, &mut inv.stackable_items);
-            }
+            let Some(arr) = value.as_array() else {
+                return unreadable(ARRAY);
+            };
+            let mut items = Vec::new();
+            read_stackable(arr, sockets, &mut items);
+            SectionContent::Stackable(items)
         }
-        SectionKind::RawUpgrades => {
-            if let Some(arr) = value.as_array() {
-                read_raw_upgrades(arr, &mut inv.mods, &mut inv.rivens);
+        SectionKind::RawUpgrades | SectionKind::Upgrades => {
+            let Some(arr) = value.as_array() else {
+                return unreadable(ARRAY);
+            };
+            let mut mods = HashMap::new();
+            let mut rivens = Vec::new();
+            if section.kind == SectionKind::RawUpgrades {
+                read_raw_upgrades(arr, &mut mods, &mut rivens);
+            } else {
+                read_upgrades(arr, &mut mods, &mut rivens);
             }
+            SectionContent::Upgrades { mods, rivens }
         }
-        SectionKind::Upgrades => {
-            if let Some(arr) = value.as_array() {
-                read_upgrades(arr, &mut inv.mods, &mut inv.rivens);
-            }
-        }
-        SectionKind::FlavourItems => {
-            if let Some(arr) = value.as_array() {
-                read_occurrences(arr, &mut inv.flavour_items);
-            }
-        }
-        SectionKind::WeaponSkins => {
-            if let Some(arr) = value.as_array() {
-                read_occurrences(arr, &mut inv.weapon_skins);
-            }
+        SectionKind::FlavourItems | SectionKind::WeaponSkins => {
+            let Some(arr) = value.as_array() else {
+                return unreadable(ARRAY);
+            };
+            let mut counts = HashMap::new();
+            read_occurrences(arr, &mut counts);
+            SectionContent::Occurrences(counts)
         }
         SectionKind::Mastery => {
-            if let Some(arr) = value.as_array() {
-                read_mastery(arr, &mut inv.mastery_data);
-            }
+            let Some(arr) = value.as_array() else {
+                return unreadable(ARRAY);
+            };
+            let mut ranks = HashMap::new();
+            read_mastery(arr, &mut ranks);
+            SectionContent::Mastery(ranks)
         }
         SectionKind::PendingRecipes => {
-            if let Some(arr) = value.as_array() {
-                read_pending_recipes(arr, &mut inv.pending_recipes);
-            }
+            let Some(arr) = value.as_array() else {
+                return unreadable(ARRAY);
+            };
+            let mut recipes = Vec::new();
+            read_pending_recipes(arr, &mut recipes);
+            SectionContent::PendingRecipes(recipes)
         }
         SectionKind::Helminth => {
-            if let Some(arr) = value["ConsumedSuits"].as_array() {
-                read_consumed_suits(arr, &mut inv.consumed_suits);
+            let Some(obj) = value.as_object() else {
+                return unreadable("an object");
+            };
+            let mut suits = Vec::new();
+            // A Helminth that has not consumed anything has no list.
+            match obj.get("ConsumedSuits") {
+                None => {}
+                Some(list) => match list.as_array() {
+                    Some(arr) => read_consumed_suits(arr, &mut suits),
+                    None => return unreadable("an object with an array ConsumedSuits"),
+                },
             }
+            SectionContent::ConsumedSuits(suits)
         }
-    }
+    };
+    SectionState::Read(content)
 }
 
-fn read_scalar(scalar: Scalar, value: &Value, inv: &mut BlobInventory) {
-    match scalar {
-        Scalar::Credits => inv.credits = value.as_i64().unwrap_or(0),
-        Scalar::Endo => inv.endo = value.as_i64().unwrap_or(0),
-        Scalar::Platinum => inv.platinum = value.as_i64().unwrap_or(0),
-        Scalar::FreePlatinum => inv.free_platinum = value.as_i64().unwrap_or(0),
-        Scalar::MasteryRank => inv.mastery_level = value.as_u64().unwrap_or(0) as u32,
-    }
+fn unreadable(expected: &'static str) -> SectionState {
+    SectionState::Unreadable { expected }
 }
 
 /// The item path of an entry, when it is a game path.
