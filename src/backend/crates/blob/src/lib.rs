@@ -8,11 +8,14 @@
 //!   locate the blob in a stitched buffer.
 //! - [`parse_full_account_blob_checked`] reads a blob into a
 //!   [`BlobInventory`], or says why it was not accepted ([`BlobReject`]).
+//! - [`SECTIONS`] lists the sections that are read and what each one holds.
 
 mod bounds;
 mod inventory;
 mod parse;
+mod read;
 mod riven;
+mod sections;
 
 pub use bounds::{
     blob_seed_offsets, extract_blob_json, extract_blob_json_ref, find_blob_end, ALT_STARTS,
@@ -24,3 +27,4 @@ pub use inventory::{
 };
 pub use parse::{parse_full_account_blob, parse_full_account_blob_checked, BlobReject};
 pub use riven::compute_riven_mod_name;
+pub use sections::{Scalar, Section, SectionKind, SECTIONS};
