@@ -86,6 +86,9 @@ pub fn read_blob(raw: &[u8]) -> Result<BlobRead, BlobReject> {
         }
     }
 
+    // Without its own opening brace the blob lost its front, and the JSON is
+    // read from START_MARKER with a brace put back in front of it.
+    let front_intact = raw.first() == Some(&b'{');
     let json_bytes = extract_blob_json(raw).ok_or(BlobReject::NoJsonStart)?;
 
     // The serde error names line and column only, never blob content.
@@ -103,7 +106,11 @@ pub fn read_blob(raw: &[u8]) -> Result<BlobRead, BlobReject> {
         .as_object()
         .map(|o| o.keys().cloned().collect())
         .unwrap_or_default();
-    Ok(BlobRead { sections, keys })
+    Ok(BlobRead {
+        sections,
+        keys,
+        front_intact,
+    })
 }
 
 #[cfg(test)]
@@ -544,5 +551,17 @@ mod tests {
             parse_full_account_blob_checked(&raw).unwrap_err(),
             BlobReject::NoItems
         );
+    }
+
+    #[test]
+    fn a_blob_says_whether_it_starts_at_its_own_brace() {
+        let raw = minimal_account_blob();
+        assert!(read_blob(&raw).unwrap().front_intact);
+
+        // The same blob as the stitcher sees it when the region with the
+        // opening brace was not recovered: it starts at the start marker.
+        let read = read_blob(&raw[1..]).unwrap();
+        assert!(!read.front_intact);
+        assert_eq!(read.sections, read_blob(&raw).unwrap().sections);
     }
 }

@@ -5,23 +5,27 @@ use crate::{
 use std::collections::HashMap;
 
 /// Everything read from one blob, section by section.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BlobRead {
     /// One entry per section in [`SECTIONS`](crate::SECTIONS), in that order.
     pub sections: Vec<SectionRead>,
     /// Every top-level key in the blob, including sections that are not read.
     pub keys: Vec<String>,
+    /// The blob starts at its own opening brace. When it does not, its front
+    /// was lost in the capture, and a missing section may only have been cut
+    /// off.
+    pub front_intact: bool,
 }
 
 /// What one section of the blob said.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SectionRead {
     pub section: Section,
     pub state: SectionState,
 }
 
 /// Whether a section could be read.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SectionState {
     /// The blob does not have the section.
     Missing,
@@ -35,7 +39,7 @@ pub enum SectionState {
 /// What a section that was read holds. Each section keeps its own share, so
 /// two sections that count the same item (`RawUpgrades` and `Upgrades` for
 /// mods) can be told apart.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SectionContent {
     Scalar(i64),
     Unique(Vec<BlobUniqueEntry>),
@@ -52,6 +56,27 @@ pub enum SectionContent {
     PendingRecipes(Vec<BlobPendingRecipe>),
     /// Warframe paths the Helminth consumed.
     ConsumedSuits(Vec<String>),
+}
+
+impl SectionContent {
+    /// The content of a section of `kind` that holds nothing.
+    pub fn empty(kind: SectionKind) -> Self {
+        match kind {
+            SectionKind::Scalar(_) => SectionContent::Scalar(0),
+            SectionKind::Unique => SectionContent::Unique(Vec::new()),
+            SectionKind::Stackable { .. } => SectionContent::Stackable(Vec::new()),
+            SectionKind::RawUpgrades | SectionKind::Upgrades => SectionContent::Upgrades {
+                mods: HashMap::new(),
+                rivens: Vec::new(),
+            },
+            SectionKind::FlavourItems | SectionKind::WeaponSkins => {
+                SectionContent::Occurrences(HashMap::new())
+            }
+            SectionKind::Mastery => SectionContent::Mastery(HashMap::new()),
+            SectionKind::PendingRecipes => SectionContent::PendingRecipes(Vec::new()),
+            SectionKind::Helminth => SectionContent::ConsumedSuits(Vec::new()),
+        }
+    }
 }
 
 impl BlobRead {

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct ModCount {
     /// Total copies owned (all ranks combined)
     pub total: i64,
@@ -9,7 +9,7 @@ pub struct ModCount {
     pub by_rank: HashMap<u8, i64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BlobRivenStat {
     pub tag: String,
     pub value: i64,
@@ -30,7 +30,7 @@ pub enum RivenState {
 }
 
 /// One owned riven mod (unrevealed, revealed, or fully unlocked).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlobRivenEntry {
     /// MongoDB ObjectId hex string (empty for unrevealed stacks).
     pub item_id: String,
@@ -70,7 +70,7 @@ pub struct BlobRivenEntry {
 /// One Archon Shard socketed into a Warframe.
 /// `upgrade_type` is the effect path (e.g. `.../ArchonCrystalUpgradeWarframeEnergyMax`).
 /// `color` is the raw string value from the JSON (e.g. `"ACC_CRIMSON"`, `"ACC_AZURE_TAUFORGED"`).
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ArchonShard {
     pub upgrade_type: String,
     pub color: String,
@@ -131,7 +131,7 @@ impl BlobInventory {
 
 /// One owned unique item (warframe, weapon, companion, archwing, amp, mech).
 /// Multiple entries with the same item_type = multiple owned copies.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlobUniqueEntry {
     pub item_type: String,
     pub section: String,
@@ -152,7 +152,7 @@ pub struct BlobUniqueEntry {
 }
 
 /// A stackable item: resource, blueprint, relic, Ayatan sculpture, etc.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlobStackableEntry {
     pub item_type: String,
     pub item_count: i64,
@@ -161,7 +161,7 @@ pub struct BlobStackableEntry {
 }
 
 /// Active Foundry crafting job parsed from PendingRecipes.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlobPendingRecipe {
     pub item_type: String,
     pub completion_ms: i64,

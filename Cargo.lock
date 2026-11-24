@@ -1782,6 +1782,7 @@ dependencies = [
 name = "hexdesk-player"
 version = "1.1.1"
 dependencies = [
+ "hexdesk-blob",
  "serde",
 ]
 
