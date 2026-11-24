@@ -8,7 +8,7 @@ import { expect, test, type Page } from "@playwright/test";
  */
 
 async function open(page: Page, settings: Record<string, unknown> = {}) {
-  await page.setViewportSize({ width: 340, height: 760 });
+  await page.setViewportSize({ width: 460, height: 900 });
   await page.addInitScript((s) => {
     sessionStorage.setItem("ff-mock-settings", JSON.stringify(s));
   }, settings);

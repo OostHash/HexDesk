@@ -37,6 +37,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   is listed, and the part the reward gives is highlighted.
 - All overlays share one look: solid cards with a clear edge, so text stays
   readable over bright game scenes.
+- The relic pick overlay is clearer: each relic shows how many you have and
+  the score it is ranked by, in words ("38% chance of something new"). Every
+  reward shows its drop chance, platinum and ducats under named columns, a
+  lock for vaulted items and a "New" label for items you do not own yet. The
+  window is wider and the rows have more room.
 
 ### Fixed
 

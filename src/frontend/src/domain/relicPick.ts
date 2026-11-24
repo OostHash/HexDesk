@@ -44,12 +44,15 @@ export function pickScore(relic: PickRelic, priority: PickPriority): number {
   return relic.unowned_score;
 }
 
-/** "38% new", "5p EV" or "20 ducats EV". */
-export function scoreLabel(relic: PickRelic, priority: PickPriority): string {
+/**
+ * The score a relic is ranked by, as a headline number and what it means:
+ * "38%" chance of something new, or the average platinum or ducats per run.
+ */
+export function scoreHeadline(relic: PickRelic, priority: PickPriority): { value: string; caption: string } {
   const s = pickScore(relic, priority);
-  if (priority === "platinum") return `${s.toFixed(0)}p EV`;
-  if (priority === "ducat") return `${s.toFixed(0)} ducats EV`;
-  return `${(s * 100).toFixed(0)}% new`;
+  if (priority === "platinum") return { value: `${s.toFixed(0)}p`, caption: "platinum per run, on average" };
+  if (priority === "ducat") return { value: s.toFixed(0), caption: "ducats per run, on average" };
+  return { value: `${(s * 100).toFixed(0)}%`, caption: "chance of something new" };
 }
 
 /** The three best confirmed relics for the priority. Never recommend a relic
@@ -70,11 +73,14 @@ export function shownRewards(relic: PickRelic, lines: PickLines, priority: PickP
   return relic.rewards.filter((r) => !r.owned).sort((a, b) => b.drop_rate - a.drop_rate);
 }
 
-/** Refinement worth running for a reward: rare items gain most from refining. */
-export function recommendedRefinement(rarity: string): "Radiant" | "Exceptional" | "Intact" {
-  if (rarity === "Gold") return "Radiant";
-  if (rarity === "Silver") return "Exceptional";
-  return "Intact";
+/** The in-game word for a reward's rarity tier. */
+const RARITY_LABEL: Readonly<Record<string, string>> = { Gold: "Rare", Silver: "Uncommon", Bronze: "Common" };
+export const rarityLabel = (rarity: string) => RARITY_LABEL[rarity] ?? rarity;
+
+/** A drop chance as a percentage: whole numbers, one decimal below 10%. */
+export function dropChance(rate: number): string {
+  const pct = rate * 100;
+  return `${pct < 10 ? String(Math.round(pct * 10) / 10) : pct.toFixed(0)}%`;
 }
 
 export const refinementLabel = (r: string) => r.charAt(0).toUpperCase() + r.slice(1);

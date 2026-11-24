@@ -191,7 +191,7 @@ export const hideCurrentWindow = () => getCurrentWindow().hide();
 export const ignoreCurrentWindowCursor = () => getCurrentWindow().setIgnoreCursorEvents(true);
 
 /** Width in CSS px; the window follows the content height. */
-export const PICK_WIDTH = 340;
+export const PICK_WIDTH = 460;
 
 /**
  * Sizes the pick window to its content. With native zoom a CSS pixel is
