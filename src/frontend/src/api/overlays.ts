@@ -1,5 +1,5 @@
 import { useQueries, useQuery, type QueryClient } from "@tanstack/react-query";
-import { currentMonitor, getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { currentMonitor, getCurrentWindow, LogicalPosition, LogicalSize } from "@tauri-apps/api/window";
 import { emitEvent } from "./events";
 import { invoke } from "./invoke";
 import { useSettings, type SettingsFile } from "./settings";
@@ -191,12 +191,14 @@ export const hideCurrentWindow = () => getCurrentWindow().hide();
 export const ignoreCurrentWindowCursor = () => getCurrentWindow().setIgnoreCursorEvents(true);
 
 /** Width in CSS px; the window follows the content height. */
-export const PICK_WIDTH = 340;
+export const PICK_WIDTH = 460;
 
 /**
  * Sizes the pick window to its content. With native zoom a CSS pixel is
  * `scale` logical pixels, so the window is the content size times the scale,
- * kept within the monitor.
+ * kept within the monitor. The right edge stays where the backend put it
+ * (src/backend/src/overlays/window.rs), so a wider window grows to the left
+ * instead of off the screen.
  */
 export async function fitPickWindow(contentHeight: number, scale: number): Promise<void> {
   if (contentHeight <= 0) return;
@@ -209,7 +211,13 @@ export async function fitPickWindow(contentHeight: number, scale: number): Promi
     width = Math.min(width, monitor.size.width / f);
     height = Math.min(height, monitor.size.height / f);
   }
+  const factor = await win.scaleFactor().catch(() => 1);
+  const before = await Promise.all([win.outerPosition(), win.outerSize()]).catch(() => null);
   await win.setSize(new LogicalSize(Math.round(width), Math.round(height)));
+  if (!before) return;
+  const [pos, size] = before;
+  const right = (pos.x + size.width) / factor;
+  await win.setPosition(new LogicalPosition(Math.round(right - width), Math.round(pos.y / factor)));
 }
 
 /**

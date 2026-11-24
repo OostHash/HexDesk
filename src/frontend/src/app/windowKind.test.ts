@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { clearMocks, mockWindows } from "@tauri-apps/api/mocks";
+import { isOverlayLocation } from "../state/preferenceSchema";
 import { resolveWindowKind } from "./windowKind";
 
 const at = (search: string, hash = "") => ({ search, hash });
@@ -37,4 +38,16 @@ describe("resolveWindowKind", () => {
     mockWindows("something-else");
     expect(resolveWindowKind(at(""))).toBe("main");
   });
+
+  // The pre-paint script picks the overlay theme from the URL alone; it must
+  // agree with the window kinds that are overlays.
+  it.each(["?overlay", "?modular", "?changelog", "?rivenoverlay", "?relicpickoverlay", "?overlaystatus"])(
+    "treats %s as an overlay exactly when its window kind is one",
+    (search) => {
+      const kind = resolveWindowKind(at(search));
+      const overlay = kind === "overlay" || kind === "riven-overlay" || kind === "relic-pick-overlay" || kind === "overlay-status";
+      expect(isOverlayLocation(at(search))).toBe(overlay);
+      expect(isOverlayLocation(at("", search.replace("?", "#")))).toBe(overlay);
+    },
+  );
 });

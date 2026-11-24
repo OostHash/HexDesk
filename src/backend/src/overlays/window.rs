@@ -20,6 +20,9 @@ const PARKED_Y: i32 = -3000;
 /// The riven window's width at text size 100 %; the window widens itself
 /// with the text size chosen in the app.
 const RIVEN_WIDTH: f64 = 300.0;
+/// Gap between the Relic Pick window and the monitor's right edge, in
+/// logical pixels.
+const PICK_RIGHT_MARGIN: f64 = 100.0;
 
 const STATUS_WIDTH: f64 = 440.0;
 const STATUS_HEIGHT: f64 = 52.0;
@@ -44,22 +47,31 @@ pub(crate) fn saved_offset(app: &tauri::AppHandle, prefix: &str) -> (f64, f64) {
     (axis("X"), axis("Y"))
 }
 
+/// Left edge of the Relic Pick window, in logical pixels: its right edge
+/// sits `PICK_RIGHT_MARGIN` from the monitor's right edge, whatever width
+/// the window has (it follows the text size), then the user's offset.
+pub(crate) fn pick_x(monitor_width: f64, window_width: f64, offset_x: f64) -> f64 {
+    (monitor_width - PICK_RIGHT_MARGIN - window_width + offset_x).round()
+}
+
 /// Places the Relic Pick window at the right edge of the primary monitor,
 /// 20 px from the top, plus the user's offset (Settings → Overlays), and
-/// shows it.
+/// shows it. The window keeps its right edge when it resizes to its content
+/// (`fitPickWindow` in src/frontend/src/api/overlays.ts).
 pub(crate) fn show_relic_pick(app: &tauri::AppHandle) -> Result<(), String> {
     let win = app
         .get_webview_window(RELIC_PICK)
         .ok_or("its window does not exist")?;
-    let x = win
+    let monitor_width = win
         .primary_monitor()
         .ok()
         .flatten()
-        .map(|m| m.size().width as f64 / m.scale_factor() - 440.0)
-        .unwrap_or(1920.0 - 440.0);
+        .map_or(1920.0, |m| m.size().width as f64 / m.scale_factor());
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let window_width = win.outer_size().map_or(460.0, |s| s.width as f64 / scale);
     let (off_x, off_y) = saved_offset(app, "relicPick");
     let _ = win.set_position(tauri::Position::Logical(tauri::LogicalPosition {
-        x: x + off_x,
+        x: pick_x(monitor_width, window_width, off_x),
         y: 20.0 + off_y,
     }));
     win.show().map_err(|e| e.to_string())
@@ -318,7 +330,17 @@ pub(crate) fn describe(app: &tauri::AppHandle, label: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{riven_place, status_bounds};
+    use super::{pick_x, riven_place, status_bounds};
+
+    #[test]
+    fn the_pick_window_keeps_its_right_edge_off_the_monitor_edge() {
+        // 460 px wide on a 1920 px monitor: right edge 100 px from the edge.
+        assert_eq!(pick_x(1920.0, 460.0, 0.0), 1360.0);
+        // Twice as wide at a larger text size: it moves left, not off screen.
+        assert_eq!(pick_x(1920.0, 920.0, 0.0), 900.0);
+        // The user's offset still applies.
+        assert_eq!(pick_x(2560.0, 460.0, -40.0), 1960.0);
+    }
 
     #[test]
     fn the_riven_window_sits_left_over_the_game_window() {

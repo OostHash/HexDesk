@@ -9,6 +9,8 @@ import { keyLabel, type TestingKeys } from "../../domain/overlayKey";
 import { Icon, ProgressBar } from "../../primitives/display";
 import { FLOW_LABEL, type FlowKind } from "../../domain/testing";
 import { usePreferences } from "../../state/preferences";
+import { cn } from "../../primitives/cn";
+import { OVERLAY_PANEL } from "./overlayStyles";
 
 /** Click-through status text centred above the game window. */
 export function OverlayStatus() {
@@ -101,11 +103,7 @@ function StatusLine({ text }: { text: string }) {
   useFitHeight(box);
   return (
     <main aria-label="Overlay status" className="flex h-full items-start justify-center pt-2 text-text">
-      <p
-        ref={box}
-        role="status"
-        className="max-w-full rounded-md border border-accent/40 bg-bg/95 px-3 py-1.5 text-center text-sm font-medium shadow-2"
-      >
+      <p ref={box} role="status" className={cn("max-w-full px-3 py-1.5 text-center font-medium", OVERLAY_PANEL, "border-accent")}>
         {text}
       </p>
     </main>
@@ -123,8 +121,8 @@ function TestingNotice({ text, tone }: EventMap["testing-notice"]) {
         role="status"
         className={
           tone === "success"
-            ? "flex max-w-full items-center gap-2 rounded-md border border-success/50 bg-bg/95 px-3 py-1.5 text-sm font-medium shadow-2"
-            : "flex max-w-full items-center gap-2 rounded-md border border-danger/50 bg-bg/95 px-3 py-1.5 text-sm font-medium shadow-2"
+            ? cn("flex max-w-full items-center gap-2 px-3 py-1.5 font-medium", OVERLAY_PANEL, "border-success")
+            : cn("flex max-w-full items-center gap-2 px-3 py-1.5 font-medium", OVERLAY_PANEL, "border-danger")
         }
       >
         <Icon icon={tone === "success" ? CircleCheck : CircleAlert} size="sm" className={tone === "success" ? "text-success" : "text-danger"} />
@@ -154,7 +152,7 @@ function TestingPrompt({ flow, until, timeoutMs, keys }: { flow: FlowKind; until
       <div
         ref={box}
         role="status"
-        className="flex max-w-full flex-col items-center gap-1.5 rounded-md border border-accent/50 bg-bg/95 px-4 py-2 text-center shadow-2"
+        className={cn("flex max-w-full flex-col items-center gap-1.5 px-4 py-2 text-center", OVERLAY_PANEL, "border-accent")}
       >
         <p className="font-semibold">Did HexDesk read the {FLOW_LABEL[flow]} correctly?</p>
         <p className="text-xs text-muted">

@@ -30,7 +30,36 @@ export function rivenSummary(view: RivenView): string {
 }
 
 export type StatClass = "wanted" | "neutral" | "safe" | "harmful";
-export const STAT_LABEL: Readonly<Record<StatClass, string>> = { wanted: "Wanted", neutral: "Neutral", safe: "Safe", harmful: "Harmful" };
+/** What a stat means for this weapon, in words: a negative that does no harm is harmless. */
+export const STAT_LABEL: Readonly<Record<StatClass, string>> = { wanted: "good", neutral: "not needed", safe: "harmless", harmful: "harmful" };
+
+/** "GOOD — usable" → "Good — usable": the verdict as a sentence, not a shout. */
+export function verdictText(verdict: string): string {
+  const [head = "", ...rest] = verdict.split("—");
+  const word = head.trim();
+  const tail = rest.join("—").trim();
+  const nice = word.charAt(0) + word.slice(1).toLowerCase();
+  return tail ? `${nice} — ${tail}` : nice;
+}
+
+/**
+ * A weapon's good stat combinations, best fit first. The riven database can
+ * list several ("or" paths); a roll only needs to fit one of them. Ties keep
+ * the database order.
+ */
+export function rankCombos<T extends { score: number }>(alternatives: readonly T[]): T[] {
+  return [...alternatives].sort((a, b) => b.score - a.score);
+}
+
+/** A stat combination in words: "Multishot + Base Damage / Status Chance". */
+export const comboName = (alt: { matched: readonly string[]; missing: readonly string[] }) => [...alt.matched, ...alt.missing].join(" + ");
+
+/** New against original roll in a comparison: how many good stats each has. */
+export function compareRolls(newWanted: number, originalWanted: number): "better" | "same" | "worse" {
+  if (newWanted > originalWanted) return "better";
+  if (newWanted < originalWanted) return "worse";
+  return "same";
+}
 
 /** A stat on the new roll: wanted when matched, safe or harmful when negative. */
 export function classifyStat(stat: RollStat, analysis: OverlayAnalysis | null): StatClass {
@@ -87,14 +116,14 @@ export const PREVIEW_VIEW: RivenView = {
   analysis: {
     weapon: "Tenora Prime",
     matched_positives: ["Critical Chance", "Damage to Grineer"],
-    missing_positives: ["Multi-shot"],
+    missing_positives: ["Toxin"],
     safe_negatives_present: ["Zoom"],
     harmful_negatives: ["Damage to Corpus"],
     score: 0.78,
     verdict: "GOOD — usable",
     notes: "Preview",
     alternatives: [
-      { label: "Crit build", matched: ["Critical Chance", "Damage to Grineer"], missing: ["Multi-shot"], score: 0.78, verdict: "GOOD — usable" },
+      { label: "Crit build", matched: ["Critical Chance", "Damage to Grineer"], missing: ["Toxin"], score: 0.78, verdict: "GOOD — usable" },
     ],
   },
   rolledStats: [

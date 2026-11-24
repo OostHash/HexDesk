@@ -56,9 +56,19 @@ it("ranks the relics for the priority and lists their rewards", async () => {
   await expect.element(page.getByRole("heading", { name: "All Eras Fissure" })).toBeVisible();
   const order = () => [...document.querySelectorAll("ol[aria-label='Recommended relics'] h2")].map((h) => h.textContent);
   await vi.waitFor(() => {
-    expect(order()).toEqual(["#1Meso N1Intact×226 ducats EV", "#2Axi R4Intact×120 ducats EV", "#3Lith S1Intact×318 ducats EV"]);
+    expect(order()).toEqual(["2× Meso N1 Intact", "1× Axi R4 Intact", "3× Lith S1 Intact"]);
   });
-  await expect.element(page.getByRole("list", { name: "Meso N1 rewards" }).getByRole("listitem")).toHaveLength(6);
+  // The ranking score is the headline, with what it means.
+  const meso = page
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: "2× Meso N1 Intact" }) })
+    .first();
+  await expect.element(meso.getByText("Best")).toBeVisible();
+  await expect.element(meso.getByText("ducats per run, on average")).toBeVisible();
+  const rows = page.getByRole("list", { name: "Meso N1 rewards" }).getByRole("listitem");
+  await expect.element(rows).toHaveLength(6);
+  // Drop chance with its rarity, both values, and new items marked.
+  expect(rows.first().element().textContent).toMatch(/^Nyx Prime Neuroptics Blueprint[\d.]+% drop chance, Rare30p100 ducatsNew$/);
 });
 
 it("shows the estimate line instead of rewards when asked", async () => {

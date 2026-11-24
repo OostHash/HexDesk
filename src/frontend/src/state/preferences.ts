@@ -1,5 +1,13 @@
 import { useSyncExternalStore } from "react";
-import { PREFERENCE_KEYS, clampTextScale, parsePreferences, resolveAttributes, type MediaState, type Preferences } from "./preferenceSchema";
+import {
+  PREFERENCE_KEYS,
+  clampTextScale,
+  isOverlayLocation,
+  parsePreferences,
+  resolveAttributes,
+  type MediaState,
+  type Preferences,
+} from "./preferenceSchema";
 
 export * from "./preferenceSchema";
 
@@ -17,7 +25,7 @@ let current: Preferences = parsePreferences((key) => localStorage.getItem(key));
 const listeners = new Set<() => void>();
 
 function applyToRoot(prefs: Preferences) {
-  const attrs = resolveAttributes(prefs, readMedia());
+  const attrs = resolveAttributes(prefs, readMedia(), isOverlayLocation(window.location));
   for (const [name, value] of Object.entries(attrs)) {
     document.documentElement.setAttribute(name, value);
   }
@@ -40,6 +48,7 @@ export function setPreferences(patch: Partial<Preferences>) {
   localStorage.setItem(PREFERENCE_KEYS.cvd, String(current.cvd));
   localStorage.setItem(PREFERENCE_KEYS.density, current.density);
   localStorage.setItem(PREFERENCE_KEYS.textScale, String(current.textScale));
+  localStorage.setItem(PREFERENCE_KEYS.overlayTheme, current.overlayTheme);
   emit();
 }
 

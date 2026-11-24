@@ -52,6 +52,15 @@ Every interactive control uses the same roles for its states:
 such as a watched fissure, not a state. Selected always comes with the accent
 border, so it does not rely on the fill alone.
 
+## Overlays
+
+The in-game overlays share the classes in
+`src/frontend/src/screens/overlays/overlayStyles.ts`: an opaque panel with a
+`border-strong` edge, body text at `text-sm` and nothing below `text-xs`, and
+a 2px accent edge plus a label for the one thing to act on. Overlays have
+their own theme preference (`overlayTheme`: same as app, dark or light,
+dark by default); contrast and the colour-blind palette always follow the app.
+
 ## Palette families
 
 - `graphite` (dark) and `stone` (light) are the neutrals. They are separate
