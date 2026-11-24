@@ -58,7 +58,7 @@ test("live rewards", async ({ page }) => {
     await emit(page, "relic-rewards", rewards);
     await expect(page.getByRole("article")).toHaveCount(3, { timeout: 500 });
   }).toPass();
-  await expect(page.getByRole("article", { name: /^Rhino Prime Chassis Blueprint/ }).getByText("Full item not owned")).toBeVisible();
+  await expect(page.getByRole("article", { name: /^Rhino Prime Chassis Blueprint/ }).getByText("3 of 4 parts")).toBeVisible();
   await expect(page.getByRole("heading", { name: "? Spira Prime Pouch" })).toBeVisible();
   await axe(page);
   await expect(page).toHaveScreenshot("relic-overlay-live.png");

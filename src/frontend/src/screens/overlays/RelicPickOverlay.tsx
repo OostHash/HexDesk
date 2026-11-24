@@ -20,6 +20,7 @@ import { IconButton } from "../../primitives/actions";
 import { cn } from "../../primitives/cn";
 import { Badge, domainTone } from "../../primitives/display";
 import { usePreferences } from "../../state/preferences";
+import { OVERLAY_DIVIDER, OVERLAY_HEADING, OVERLAY_INSET, OVERLAY_PANEL } from "./overlayStyles";
 
 type Source = "idle" | "preview" | "live";
 
@@ -32,7 +33,7 @@ const RARITY_TONE: Readonly<Record<string, "rarity-bronze" | "rarity-silver" | "
 function RewardRow({ reward }: { reward: PickReward }) {
   const tone = RARITY_TONE[reward.rarity];
   return (
-    <li className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-1.5 border-b border-border/25 px-2 py-0.5 text-xs last:border-b-0">
+    <li className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-1.5 border-b border-border px-2 py-0.5 text-xs last:border-b-0">
       <span className={cn("w-12 text-center", reward.owned ? "text-success" : "text-muted")}>{reward.owned ? "Owned" : "New"}</span>
       <span className="truncate">
         <span className={cn("font-medium", tone && "text-(--hex-tone)")} style={tone ? domainTone(tone) : undefined}>
@@ -148,13 +149,9 @@ export function RelicPickOverlay() {
   const era = eraLabel(data.era);
 
   return (
-    <main
-      ref={measure}
-      aria-label="Relic pick"
-      className="flex flex-col gap-1 rounded-lg border border-accent/40 bg-bg/95 px-2 py-1.5 text-xs text-text"
-    >
+    <main ref={measure} aria-label="Relic pick" className={cn("flex flex-col gap-1 px-2 py-1.5", OVERLAY_PANEL)}>
       <header className="flex items-center gap-1.5">
-        <h1 className="flex-1 text-xs font-semibold tracking-wide text-info uppercase">{era} Fissure</h1>
+        <h1 className={cn("flex-1", OVERLAY_HEADING)}>{era} Fissure</h1>
         <IconButton
           size="sm"
           icon={X}
@@ -176,11 +173,8 @@ export function RelicPickOverlay() {
           {relics.map((relic, i) => {
             const rewards = shownRewards(relic, pickLines, pickPriority);
             return (
-              <li
-                key={relic.name}
-                className={cn("overflow-hidden rounded-md border", i === 0 ? "border-accent/50 bg-accent/5" : "border-border/60 bg-surface/60")}
-              >
-                <h2 className="flex items-center gap-1.5 border-b border-border/50 px-2 py-1 text-xs">
+              <li key={relic.name} className={cn("overflow-hidden", OVERLAY_INSET, i === 0 && "border-accent")}>
+                <h2 className={cn("flex items-center gap-1.5 border-b px-2 py-1 text-xs", OVERLAY_DIVIDER)}>
                   <span className={cn("min-w-5 font-semibold", i === 0 ? "text-info" : "text-muted")}>#{i + 1}</span>
                   <span className="flex-1 truncate text-sm font-semibold">{relic.base_name}</span>
                   <Badge variant="outline">{refinementLabel(relic.refinement)}</Badge>

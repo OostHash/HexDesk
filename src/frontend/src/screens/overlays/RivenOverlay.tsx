@@ -24,6 +24,7 @@ import { verdictLevel, type RollStat, type VerdictLevel } from "../../domain/riv
 import { Button, IconButton } from "../../primitives/actions";
 import { cn } from "../../primitives/cn";
 import { Badge, ProgressBar, type Tone } from "../../primitives/display";
+import { OVERLAY_HEADING, OVERLAY_PANEL } from "./overlayStyles";
 
 const VERDICT_TONE: Readonly<Record<VerdictLevel, Tone>> = { great: "success", good: "info", mediocre: "warning", bad: "danger" };
 const scoreTone = (score: number): Tone => (score >= 0.8 ? "success" : score >= 0.6 ? "info" : score >= 0.4 ? "warning" : "danger");
@@ -49,9 +50,9 @@ function Analysis({ analysis }: { analysis: OverlayAnalysis }) {
         <section
           key={alt.label}
           aria-label={several ? alt.label : "Analysis"}
-          className={cn("flex flex-col gap-1", i > 0 && "border-t border-border/50 pt-1.5")}
+          className={cn("flex flex-col gap-1", i > 0 && "border-t border-border pt-1.5")}
         >
-          {several && <span className="text-xs font-semibold text-muted uppercase">{alt.label}</span>}
+          {several && <span className={OVERLAY_HEADING}>{alt.label}</span>}
           <Badge tone={VERDICT_TONE[verdictLevel(alt.verdict)]} size="md" className="self-start">
             {alt.verdict}
           </Badge>
@@ -156,7 +157,7 @@ export function RivenOverlay() {
 
   return (
     <main aria-label="Riven check" className="flex h-full w-full items-start justify-center p-2">
-      <div className="flex w-full flex-col gap-2 rounded-lg border border-accent/30 bg-bg/95 px-3.5 py-3 text-sm text-text shadow-3">
+      <div className={cn("flex w-full flex-col gap-2 px-3.5 py-3", OVERLAY_PANEL)}>
         <header className="flex items-center gap-1">
           <h1 className="flex-1 truncate font-semibold">{title}</h1>
           <Button
@@ -226,8 +227,8 @@ export function RivenOverlay() {
           <>
             {analysis && <Analysis analysis={analysis} />}
             {stats.length > 0 && (
-              <section aria-label={result.isComparison ? "New roll" : "Rolled stats"} className="flex flex-col gap-1 border-t border-border/50 pt-2">
-                {result.isComparison && <h2 className="text-xs font-semibold text-muted uppercase">New roll</h2>}
+              <section aria-label={result.isComparison ? "New roll" : "Rolled stats"} className="flex flex-col gap-1 border-t border-border pt-2">
+                {result.isComparison && <h2 className={OVERLAY_HEADING}>New roll</h2>}
                 <ul className="flex flex-col gap-0.5">
                   {stats.map((s, i) => (
                     <StatRow key={`${s.name}-${String(i)}`} stat={s} cls={classifyStat(s, analysis)} />
@@ -236,8 +237,8 @@ export function RivenOverlay() {
               </section>
             )}
             {result.isComparison && result.originalStats.length > 0 && (
-              <section aria-label="Original roll" className="flex flex-col gap-1 border-t border-border/50 pt-1.5">
-                <h2 className="text-xs font-semibold text-muted uppercase">Original roll</h2>
+              <section aria-label="Original roll" className="flex flex-col gap-1 border-t border-border pt-1.5">
+                <h2 className={OVERLAY_HEADING}>Original roll</h2>
                 <ul className="flex flex-col gap-0.5">
                   {result.originalStats.map((s, i) => (
                     <StatRow key={`${s.name}-${String(i)}`} stat={s} cls={classifyOriginal(s, analysis, wanted)} faded />
@@ -245,8 +246,8 @@ export function RivenOverlay() {
                 </ul>
               </section>
             )}
-            {!analysis && stats.length > 0 && <p className="border-t border-border/50 pt-1.5 text-xs text-muted">No database entry for {title}</p>}
-            {analysis?.notes && <p className="border-t border-border/50 pt-1.5 text-xs text-muted italic">{analysis.notes}</p>}
+            {!analysis && stats.length > 0 && <p className="border-t border-border pt-1.5 text-xs text-muted">No database entry for {title}</p>}
+            {analysis?.notes && <p className="border-t border-border pt-1.5 text-xs text-muted italic">{analysis.notes}</p>}
             {!analysis && result.ocrRaw && (
               <details className="mt-1 text-xs text-muted">
                 <summary className="cursor-pointer">Raw OCR</summary>

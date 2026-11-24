@@ -118,7 +118,7 @@ describe("rewardSummary", () => {
     expect(rewardSummary(PREVIEW_CARDS.slice(0, 3))).toBe(
       "Rhino Prime Blueprint 20p: full item not owned (Blueprint 0/1, Chassis Blueprint 1/1, Neuroptics Blueprint 0/1, Systems Blueprint 1/1)" +
         " | Nyx Prime Neuroptics Blueprint 30p: full item owned (Blueprint 1/1, Chassis Blueprint 1/1, Neuroptics Blueprint 1/1, Systems Blueprint 1/1)" +
-        " | Glaive Prime Disc 9p",
+        " | Glaive Prime Disc 9p: full item not owned (Blueprint 1/1, Blade 0/1, Disc 1/2)",
     );
   });
 });

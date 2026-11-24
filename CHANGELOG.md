@@ -7,6 +7,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- An overlay theme in Settings → Overlays: the in-game overlays can stay dark
+  while the app is light, follow the app, or be light. They are dark by
+  default.
+
 ### Changed
 
 - New HexDesk colours: graphite surfaces in the dark theme, warm stone in the
@@ -25,6 +31,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Selected tabs, chips, options and toggle buttons share one selected look:
   an amber edge with a light amber fill.
 - The open changelog casts a shadow that fits the light and dark theme.
+- The relic reward overlay is easier to read: larger text, the platinum price
+  as the main number and a "Best pick" label. Set parts show how many you own
+  of how many the set needs (such as 1/2 for a part needed twice), every part
+  is listed, and the part the reward gives is highlighted.
+- All overlays share one look: solid cards with a clear edge, so text stays
+  readable over bright game scenes.
 
 ### Fixed
 
