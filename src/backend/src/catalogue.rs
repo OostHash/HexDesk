@@ -6,7 +6,6 @@ use tracing::info;
 use crate::app_state::AppState;
 use crate::events;
 use crate::inventory_state::{persist_inventory_state_cache, CachedItem};
-use crate::memory_scanner;
 use crate::wfcd::{RecipeComponent, WfcdItem};
 use crate::{cache, wfcd};
 
@@ -1329,7 +1328,7 @@ const UNMATCHED_EXAMPLES: usize = 10;
 /// at all, or an entry that falls back to Miscellaneous. Paths are game data,
 /// not personal data.
 pub(crate) fn log_unmatched_paths(
-    blob: &memory_scanner::BlobInventory,
+    blob: &hexdesk_blob::BlobInventory,
     path_to_name: &HashMap<String, String>,
     path_to_category: &HashMap<String, String>,
     ignored_paths: &std::collections::HashSet<String>,
@@ -1387,7 +1386,7 @@ pub(crate) fn log_unmatched_paths(
 #[cfg(test)]
 mod unmatched_paths_tests {
     use super::log_unmatched_paths;
-    use crate::memory_scanner::{BlobInventory, BlobStackableEntry};
+    use hexdesk_blob::{BlobInventory, BlobStackableEntry};
     use std::collections::{HashMap, HashSet};
     use std::sync::Arc;
     use tracing_subscriber::layer::SubscriberExt;

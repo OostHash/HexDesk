@@ -32,6 +32,7 @@ memchr = "2"
 ureq = { version = "2", features = ["json"] }
 tungstenite = { version = "0.26", features = ["native-tls"] }
 lzma-rs = "0.3"
+hexdesk-blob = { path = "crates/blob" }
 hexdesk-capture = { path = "crates/capture" }
 hexdesk-diag = { path = "crates/diag" }
 hexdesk-logging = { path = "crates/logging" }

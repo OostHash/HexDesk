@@ -25,11 +25,11 @@ pub(crate) struct BlobCaptureDeps {
     pub inventory_state_cache_path: std::path::PathBuf,
     pub shared_quantities: Arc<Mutex<HashMap<String, i64>>>,
     pub shared_unique: Arc<Mutex<HashMap<String, i64>>>,
-    pub shared_mods: Arc<Mutex<HashMap<String, memory_scanner::ModCount>>>,
+    pub shared_mods: Arc<Mutex<HashMap<String, hexdesk_blob::ModCount>>>,
     pub shared_crafting: Arc<Mutex<Vec<monitor::CraftingJob>>>,
     pub force_pid_check: Arc<AtomicBool>,
-    pub blob_rx: Receiver<memory_scanner::BlobInventory>,
-    pub blob_tx: Sender<memory_scanner::BlobInventory>,
+    pub blob_rx: Receiver<hexdesk_blob::BlobInventory>,
+    pub blob_tx: Sender<hexdesk_blob::BlobInventory>,
 }
 
 /// Spawn the blob-capture thread.
@@ -437,7 +437,7 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
 
 #[allow(clippy::too_many_arguments)]
 fn process_blob(
-    blob: &memory_scanner::BlobInventory,
+    blob: &hexdesk_blob::BlobInventory,
     app: &tauri::AppHandle,
     conn: &rusqlite::Connection,
     inventory_state_cache_path: &std::path::Path,
@@ -453,19 +453,19 @@ fn process_blob(
     path_aliases: &HashMap<String, String>,
     ignored_paths: &std::collections::HashSet<String>,
     shared_quantities: &Arc<Mutex<HashMap<String, i64>>>,
-    shared_mods: &Arc<Mutex<HashMap<String, memory_scanner::ModCount>>>,
+    shared_mods: &Arc<Mutex<HashMap<String, hexdesk_blob::ModCount>>>,
     shared_unique: &Arc<Mutex<HashMap<String, i64>>>,
     shared_crafting: &Arc<Mutex<Vec<monitor::CraftingJob>>>,
     known: &mut HashMap<String, i64>,
-    prev_mods: &mut HashMap<String, memory_scanner::ModCount>,
+    prev_mods: &mut HashMap<String, hexdesk_blob::ModCount>,
     unique_stable: &mut HashMap<String, u8>,
     confirmed_unique: &mut std::collections::HashSet<String>,
-    known_mods: &mut HashMap<String, memory_scanner::ModCount>,
+    known_mods: &mut HashMap<String, hexdesk_blob::ModCount>,
     current_mastery_rank: &mut Option<u32>,
     current_mastery_data: &mut HashMap<String, u32>,
     current_recipes: &mut Vec<memory_scanner::PendingRecipe>,
     current_consumed_suits: &mut Vec<String>,
-    current_socketed_shards: &mut HashMap<String, Vec<memory_scanner::ArchonShard>>,
+    current_socketed_shards: &mut HashMap<String, Vec<hexdesk_blob::ArchonShard>>,
     current_forma_counts: &mut HashMap<String, u32>,
     last_snapshot_date: &mut String,
     now: i64,
@@ -506,7 +506,7 @@ fn process_blob(
     };
 
     // Completeness guard: parse_full_account_blob already rejects blobs missing
-    // required sections (MiscItems, RegularCredits, etc.) — see memory_scanner.rs.
+    // required sections (MiscItems, RegularCredits, etc.) — see src/backend/crates/blob/src/parse.rs.
     // Keep this secondary guard for the unique-items case as a belt-and-suspenders
     // defence against incomplete blobs that slipped through parsing.
     let prev_unique_count = confirmed_unique.len();
