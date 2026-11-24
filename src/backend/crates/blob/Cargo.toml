@@ -1,0 +1,20 @@
+[package]
+name = "hexdesk-blob"
+version.workspace = true
+description = "HexDesk account blob: where the blob sits in a memory buffer and what it says the player owns"
+authors = ["HexDesk contributors"]
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/OostHash/HexDesk"
+publish = false
+
+[lib]
+name = "hexdesk_blob"
+
+# Same versions and features as the backend crate, so the lock file gains no
+# new packages.
+[dependencies]
+memchr = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"

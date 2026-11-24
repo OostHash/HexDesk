@@ -11,6 +11,9 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 - Updated third-party libraries to address reported security vulnerabilities in
   the database and XML parsing dependencies.
+- The inventory and the changelog update right after a mission again. A scan
+  that misses part of the inventory now updates everything it did read and
+  keeps the rest, instead of being ignored until a complete scan comes in.
 
 ## [1.1.1] - 2026-11-22
 

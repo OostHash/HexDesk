@@ -35,10 +35,10 @@ pub(crate) struct InventoryUpdate {
     pub consumed_suits: Vec<String>,
     /// Mod/arcane inventory: unique_name → {total, by_rank}.
     /// Empty when no scan data available yet; scanner-sourced until API provides rank detail.
-    pub mods: HashMap<String, crate::memory_scanner::ModCount>,
+    pub mods: HashMap<String, hexdesk_blob::ModCount>,
     /// Warframe unique-name → socketed Archon Shards read from memory.
     /// Only populated for warframes where ArchonCrystalUpgrades was found.
-    pub socketed_shards: HashMap<String, Vec<crate::memory_scanner::ArchonShard>>,
+    pub socketed_shards: HashMap<String, Vec<hexdesk_blob::ArchonShard>>,
     /// Item unique-name → number of Forma applied (polarized count from blob).
     /// Only populated for items that have at least one Forma applied.
     pub forma_counts: HashMap<String, u32>,
@@ -103,7 +103,7 @@ pub(crate) fn get_monitor_status(state: State<AppState>) -> bool {
 #[tauri::command]
 pub(crate) async fn get_rivens(
     state: tauri::State<'_, AppState>,
-) -> Result<Vec<memory_scanner::BlobRivenEntry>, String> {
+) -> Result<Vec<hexdesk_blob::BlobRivenEntry>, String> {
     let path = state.inventory_state_cache_path.clone();
     tauri::async_runtime::spawn_blocking(move || load_inventory_state_cache(&path).rivens)
         .await
@@ -156,11 +156,9 @@ pub(crate) fn clear_cache(state: State<AppState>) -> Result<(), String> {
     // Delete cache and hint files so nothing reloads on next start
     let _ = std::fs::remove_file(&state.quantities_cache_path);
     let _ = std::fs::remove_file(&state.inventory_state_cache_path);
-    let _ = std::fs::remove_file(
-        state
-            .inventory_state_cache_path
-            .with_file_name("section_baseline.json"),
-    );
+    let _ = std::fs::remove_file(crate::blob_capture::scan_state_path(
+        &state.inventory_state_cache_path,
+    ));
 
     Ok(())
 }
@@ -323,8 +321,8 @@ pub(crate) struct InventoryState<'a> {
     pub known: &'a mut HashMap<String, i64>,
     pub unique_stable: &'a mut HashMap<String, u8>,
     pub confirmed_unique: &'a mut std::collections::HashSet<String>,
-    pub known_mods: &'a mut HashMap<String, memory_scanner::ModCount>,
-    pub current_socketed_shards: &'a mut HashMap<String, Vec<memory_scanner::ArchonShard>>,
+    pub known_mods: &'a mut HashMap<String, hexdesk_blob::ModCount>,
+    pub current_socketed_shards: &'a mut HashMap<String, Vec<hexdesk_blob::ArchonShard>>,
     pub current_forma_counts: &'a mut HashMap<String, u32>,
     pub current_mastery_rank: &'a mut Option<u32>,
     pub current_mastery_data: &'a mut HashMap<String, u32>,
@@ -333,12 +331,13 @@ pub(crate) struct InventoryState<'a> {
 }
 
 pub(crate) fn apply_blob_to_state(
-    blob: &memory_scanner::BlobInventory,
+    blob: &hexdesk_blob::BlobInventory,
     state: &mut InventoryState<'_>,
     path_aliases: &HashMap<String, String>,
     stackable_paths: &std::collections::HashSet<String>,
 ) {
-    // Blob is authoritative — full replacement, not a merge.
+    // `blob` holds every section the scans have shown, merged per section,
+    // so it replaces the state as a whole.
     state.known.clear();
 
     // Currency
@@ -464,20 +463,20 @@ pub(crate) fn build_crafting_jobs(
 
 pub(crate) struct MonitorStartupState {
     pub known: HashMap<String, i64>,
-    pub prev_mods: HashMap<String, memory_scanner::ModCount>,
+    pub prev_mods: HashMap<String, hexdesk_blob::ModCount>,
     pub unique_stable: HashMap<String, u8>,
     pub confirmed_unique: std::collections::HashSet<String>,
-    pub known_mods: HashMap<String, memory_scanner::ModCount>,
+    pub known_mods: HashMap<String, hexdesk_blob::ModCount>,
     pub current_mastery_rank: Option<u32>,
     pub current_mastery_data: HashMap<String, u32>,
     pub current_consumed_suits: Vec<String>,
-    pub current_socketed_shards: HashMap<String, Vec<memory_scanner::ArchonShard>>,
+    pub current_socketed_shards: HashMap<String, Vec<hexdesk_blob::ArchonShard>>,
     pub current_forma_counts: HashMap<String, u32>,
 }
 
 pub(crate) fn init_monitor_startup_state(
     shared_quantities: &std::sync::Arc<std::sync::Mutex<HashMap<String, i64>>>,
-    shared_mods: &std::sync::Arc<std::sync::Mutex<HashMap<String, memory_scanner::ModCount>>>,
+    shared_mods: &std::sync::Arc<std::sync::Mutex<HashMap<String, hexdesk_blob::ModCount>>>,
     inventory_state_cache_path: &std::path::PathBuf,
 ) -> MonitorStartupState {
     let mut known: HashMap<String, i64> = shared_quantities
@@ -487,7 +486,7 @@ pub(crate) fn init_monitor_startup_state(
 
     let startup_cache = load_inventory_state_cache(inventory_state_cache_path);
 
-    let prev_mods: HashMap<String, memory_scanner::ModCount> = startup_cache
+    let prev_mods: HashMap<String, hexdesk_blob::ModCount> = startup_cache
         .items
         .iter()
         .filter(|(_, v)| v.mod_ranks.is_some())
@@ -503,7 +502,7 @@ pub(crate) fn init_monitor_startup_state(
                 })
                 .unwrap_or_default();
             let total = by_rank.values().sum();
-            (path.clone(), memory_scanner::ModCount { total, by_rank })
+            (path.clone(), hexdesk_blob::ModCount { total, by_rank })
         })
         .collect();
 
@@ -537,7 +536,7 @@ pub(crate) fn init_monitor_startup_state(
     let mut confirmed_unique: std::collections::HashSet<String> =
         unique_stable.keys().cloned().collect();
 
-    let known_mods: HashMap<String, memory_scanner::ModCount> = {
+    let known_mods: HashMap<String, hexdesk_blob::ModCount> = {
         let from_shared = shared_mods
             .lock()
             .unwrap_or_else(|e| e.into_inner())
@@ -561,7 +560,7 @@ pub(crate) fn init_monitor_startup_state(
                         })
                         .unwrap_or_default();
                     let total = by_rank.values().sum();
-                    (path.clone(), memory_scanner::ModCount { total, by_rank })
+                    (path.clone(), hexdesk_blob::ModCount { total, by_rank })
                 })
                 .collect()
         }
@@ -575,7 +574,7 @@ pub(crate) fn init_monitor_startup_state(
         .map(|(k, v)| (k.clone(), v.mastery_rank))
         .collect();
     let current_consumed_suits: Vec<String> = startup_cache.consumed_suits();
-    let current_socketed_shards: HashMap<String, Vec<memory_scanner::ArchonShard>> = startup_cache
+    let current_socketed_shards: HashMap<String, Vec<hexdesk_blob::ArchonShard>> = startup_cache
         .items
         .iter()
         .filter(|(_, v)| !v.archon_shards.is_empty())

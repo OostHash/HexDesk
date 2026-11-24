@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::memory_scanner;
 use crate::wfcd::RecipeComponent;
 use crate::BlobBuildParams;
 
@@ -29,7 +28,7 @@ pub(crate) struct CachedItem {
     pub(crate) mastery_rank: u32,
     /// Socketed Archon Shards (warframes only).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(crate) archon_shards: Vec<memory_scanner::ArchonShard>,
+    pub(crate) archon_shards: Vec<hexdesk_blob::ArchonShard>,
     /// Resolved modular components (Amp Prism/Scaffold/Brace, Kitgun parts, etc.).
     /// Populated from the blob's ModularParts array with names looked up from WFCD + corrections.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -108,7 +107,7 @@ pub(crate) struct InventoryStateCache {
     pub(crate) mastery_rank: Option<u32>,
     /// All owned riven mods (veiled and revealed), populated from blob scans.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(crate) rivens: Vec<memory_scanner::BlobRivenEntry>,
+    pub(crate) rivens: Vec<hexdesk_blob::BlobRivenEntry>,
 }
 
 impl InventoryStateCache {
@@ -148,7 +147,7 @@ pub(crate) fn is_unique_path(p: &str) -> bool {
 /// Both the inventory cache and the change-detection state must key these the
 /// same way. When they disagree, the cache seeds a quantity the first scanned
 /// blob cannot reproduce, and the difference is reported as a real change.
-pub(crate) fn modular_component_path(entry: &memory_scanner::BlobUniqueEntry) -> Option<String> {
+pub(crate) fn modular_component_path(entry: &hexdesk_blob::BlobUniqueEntry) -> Option<String> {
     let marker = match entry.section.as_str() {
         "OperatorAmps" => "Barrel",
         "Melee" if entry.item_type.contains("LotusModularWeapon") => "/Tip",
@@ -223,7 +222,7 @@ pub(crate) fn build_inventory_from_blob(params: BlobBuildParams<'_>) -> Inventor
                 });
             item.amount += 1;
             if entry.item_name.is_some() {
-                let rank = memory_scanner::xp_to_rank(entry.xp, &entry.item_type).min(30);
+                let rank = hexdesk_blob::xp_to_rank(entry.xp, &entry.item_type).min(30);
                 if rank > item.mastery_rank {
                     item.mastery_rank = rank;
                 }
@@ -303,7 +302,7 @@ pub(crate) fn build_inventory_from_blob(params: BlobBuildParams<'_>) -> Inventor
     // Rivens — group by item_type so they land in `items` with mod_ranks.
     // This ensures the startup cache seeds known_mods with riven counts, preventing
     // spurious 0→N change log entries on every app restart.
-    let mut riven_counts: HashMap<String, memory_scanner::ModCount> = HashMap::new();
+    let mut riven_counts: HashMap<String, hexdesk_blob::ModCount> = HashMap::new();
     for riven in &blob.rivens {
         let mc = riven_counts.entry(riven.item_type.clone()).or_default();
         mc.total += riven.count as i64;

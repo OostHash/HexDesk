@@ -25,11 +25,11 @@ pub(crate) struct BlobCaptureDeps {
     pub inventory_state_cache_path: std::path::PathBuf,
     pub shared_quantities: Arc<Mutex<HashMap<String, i64>>>,
     pub shared_unique: Arc<Mutex<HashMap<String, i64>>>,
-    pub shared_mods: Arc<Mutex<HashMap<String, memory_scanner::ModCount>>>,
+    pub shared_mods: Arc<Mutex<HashMap<String, hexdesk_blob::ModCount>>>,
     pub shared_crafting: Arc<Mutex<Vec<monitor::CraftingJob>>>,
     pub force_pid_check: Arc<AtomicBool>,
-    pub blob_rx: Receiver<memory_scanner::BlobInventory>,
-    pub blob_tx: Sender<memory_scanner::BlobInventory>,
+    pub blob_rx: Receiver<hexdesk_blob::BlobRead>,
+    pub blob_tx: Sender<hexdesk_blob::BlobRead>,
 }
 
 /// Spawn the blob-capture thread.
@@ -86,15 +86,12 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
         };
         let _ = conn.execute_batch("PRAGMA journal_mode=WAL;");
 
-        let section_baseline_path =
-            inventory_state_cache_path.with_file_name("section_baseline.json");
-        let mut section_baseline = memory_scanner::SectionBaseline::from_keys(
-            std::fs::read(&section_baseline_path)
-                .ok()
-                .and_then(|b| serde_json::from_slice::<Vec<String>>(&b).ok())
-                .unwrap_or_default(),
-        );
-        let mut last_applied_hash: Option<u64> = None;
+        for name in STALE_CACHE_FILES {
+            let _ = std::fs::remove_file(inventory_state_cache_path.with_file_name(name));
+        }
+        let scan_state_path = scan_state_path(&inventory_state_cache_path);
+        let mut scan_state = load_scan_state(&scan_state_path);
+        let mut last_unread_keys: Vec<String> = Vec::new();
 
         let startup = monitor::init_monitor_startup_state(
             &shared_quantities,
@@ -181,40 +178,23 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                     unique_stable.clear();
                     confirmed_unique.clear();
                     known_mods.clear();
-                    last_applied_hash = None;
-                    section_baseline = memory_scanner::SectionBaseline::default();
+                    scan_state = hexdesk_player::ScanState::default();
                 }
             }
 
             let now = chrono::Utc::now().timestamp();
 
             // Process any incoming blob (non-blocking)
-            while let Ok(blob) = blob_rx.try_recv() {
-                match section_baseline.evaluate(&blob.sections) {
-                    Err(missing) => {
-                        let _ = DiagError::new(
-                            Source::Scanner,
-                            Kind::Invalid,
-                            "Account blob rejected: sections that the last accepted blob had are missing",
-                        )
-                        .with("missing", missing.join(","))
-                        .log();
-                        continue;
-                    }
-                    Ok(true) => {
-                        if let Ok(json) = serde_json::to_string(&section_baseline.keys()) {
-                            let _ = atomic_write(&section_baseline_path, json.as_bytes());
-                        }
-                    }
-                    Ok(false) => {}
-                }
-
-                if blob.content_hash != 0 && Some(blob.content_hash) == last_applied_hash {
+            while let Ok(read) = blob_rx.try_recv() {
+                let outcome = scan_state.apply(&read, chrono::Utc::now().timestamp_millis());
+                log_scan_outcome(&read, &outcome, &mut last_unread_keys);
+                if !outcome.changed() {
                     debug!(scanner, "Account blob unchanged since the last one");
                     continue;
                 }
+                let blob = scan_state.to_inventory();
 
-                if process_blob(
+                process_blob(
                     &blob,
                     &app,
                     &conn,
@@ -247,9 +227,8 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                     &mut current_forma_counts,
                     &mut last_snapshot_date,
                     now,
-                ) {
-                    last_applied_hash = Some(blob.content_hash);
-                }
+                );
+                save_scan_state(&scan_state_path, &scan_state);
             }
 
             // Re-enumerate processes at most every 5 s (CreateToolhelp32Snapshot overhead).
@@ -437,7 +416,7 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
 
 #[allow(clippy::too_many_arguments)]
 fn process_blob(
-    blob: &memory_scanner::BlobInventory,
+    blob: &hexdesk_blob::BlobInventory,
     app: &tauri::AppHandle,
     conn: &rusqlite::Connection,
     inventory_state_cache_path: &std::path::Path,
@@ -453,23 +432,23 @@ fn process_blob(
     path_aliases: &HashMap<String, String>,
     ignored_paths: &std::collections::HashSet<String>,
     shared_quantities: &Arc<Mutex<HashMap<String, i64>>>,
-    shared_mods: &Arc<Mutex<HashMap<String, memory_scanner::ModCount>>>,
+    shared_mods: &Arc<Mutex<HashMap<String, hexdesk_blob::ModCount>>>,
     shared_unique: &Arc<Mutex<HashMap<String, i64>>>,
     shared_crafting: &Arc<Mutex<Vec<monitor::CraftingJob>>>,
     known: &mut HashMap<String, i64>,
-    prev_mods: &mut HashMap<String, memory_scanner::ModCount>,
+    prev_mods: &mut HashMap<String, hexdesk_blob::ModCount>,
     unique_stable: &mut HashMap<String, u8>,
     confirmed_unique: &mut std::collections::HashSet<String>,
-    known_mods: &mut HashMap<String, memory_scanner::ModCount>,
+    known_mods: &mut HashMap<String, hexdesk_blob::ModCount>,
     current_mastery_rank: &mut Option<u32>,
     current_mastery_data: &mut HashMap<String, u32>,
     current_recipes: &mut Vec<memory_scanner::PendingRecipe>,
     current_consumed_suits: &mut Vec<String>,
-    current_socketed_shards: &mut HashMap<String, Vec<memory_scanner::ArchonShard>>,
+    current_socketed_shards: &mut HashMap<String, Vec<hexdesk_blob::ArchonShard>>,
     current_forma_counts: &mut HashMap<String, u32>,
     last_snapshot_date: &mut String,
     now: i64,
-) -> bool {
+) {
     let existing_wfm: HashMap<String, u32> =
         load_inventory_state_cache(&inventory_state_cache_path.to_path_buf())
             .items
@@ -505,23 +484,8 @@ fn process_blob(
         m
     };
 
-    // Completeness guard: parse_full_account_blob already rejects blobs missing
-    // required sections (MiscItems, RegularCredits, etc.) — see memory_scanner.rs.
-    // Keep this secondary guard for the unique-items case as a belt-and-suspenders
-    // defence against incomplete blobs that slipped through parsing.
-    let prev_unique_count = confirmed_unique.len();
-    if blob.unique_items.is_empty() && prev_unique_count > 0 {
-        let _ = DiagError::new(
-            Source::Scanner,
-            Kind::Invalid,
-            "Account blob rejected: it has no Warframes or weapons, the previous one had some",
-        )
-        .with("previous_unique", prev_unique_count)
-        .log();
-        return false;
-    }
-
-    // Blob is authoritative — full replacement, not a merge.
+    // `blob` is the merged state of every section, so it replaces the
+    // previous inventory as a whole.
     {
         let mut inv_state = monitor::InventoryState {
             known,
@@ -644,5 +608,186 @@ fn process_blob(
             }
         }
     }
-    true
+}
+
+/// Cache files this version does not read. They are removed at start so they
+/// do not linger in the cache folder.
+const STALE_CACHE_FILES: &[&str] = &["section_baseline.json"];
+
+/// Where the inventory per section is saved, next to the inventory cache.
+pub(crate) fn scan_state_path(inventory_state_cache_path: &std::path::Path) -> std::path::PathBuf {
+    inventory_state_cache_path.with_file_name("scan_sections.json")
+}
+
+/// The inventory per section as it was saved, or an empty one when nothing
+/// was saved or the file could not be read.
+fn load_scan_state(path: &std::path::Path) -> hexdesk_player::ScanState {
+    let bytes = match std::fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return hexdesk_player::ScanState::default();
+        }
+        Err(e) => {
+            let _ = DiagError::new(
+                Source::Scanner,
+                Kind::Io,
+                "Saved inventory sections could not be read: the next scan starts from nothing",
+            )
+            .caused_by(&e)
+            .log();
+            return hexdesk_player::ScanState::default();
+        }
+    };
+    let saved = match serde_json::from_slice::<hexdesk_player::SavedScan>(&bytes) {
+        Ok(saved) => saved,
+        Err(e) => {
+            let _ = DiagError::new(
+                Source::Scanner,
+                Kind::Parse,
+                "Saved inventory sections could not be read: the next scan starts from nothing",
+            )
+            .caused_by(&e)
+            .log();
+            return hexdesk_player::ScanState::default();
+        }
+    };
+    let (state, dropped) = hexdesk_player::ScanState::from_saved(saved);
+    if !dropped.is_empty() {
+        info!(
+            scanner,
+            sections = %dropped.join(","),
+            "Saved inventory sections left out: not read by this version"
+        );
+    }
+    state
+}
+
+fn save_scan_state(path: &std::path::Path, state: &hexdesk_player::ScanState) {
+    let result = serde_json::to_vec(&state.to_saved())
+        .map_err(|e| e.to_string())
+        .and_then(|json| atomic_write(path, &json).map_err(|e| e.to_string()));
+    if let Err(e) = result {
+        let _ = DiagError::new(
+            Source::Scanner,
+            Kind::Io,
+            "Inventory sections could not be saved: a restart starts from the last saved scan",
+        )
+        .with("cause", e)
+        .log();
+    }
+}
+
+/// Logs what a blob did per section: which were kept from an earlier scan and
+/// why, which were taken as empty, and which top-level keys are not read.
+fn log_scan_outcome(
+    read: &hexdesk_blob::BlobRead,
+    outcome: &hexdesk_player::ScanOutcome,
+    last_unread_keys: &mut Vec<String>,
+) {
+    use hexdesk_player::SectionOutcome;
+
+    let missing = outcome.named(|o| matches!(o, SectionOutcome::KeptMissing { .. }));
+    let front_lost = outcome.named(|o| *o == SectionOutcome::KeptFrontLost);
+    if !missing.is_empty() || !front_lost.is_empty() {
+        debug!(
+            scanner,
+            missing = %missing.join(","),
+            front_lost = %front_lost.join(","),
+            "Account blob sections kept from an earlier scan: not in this blob"
+        );
+    }
+    for (name, o) in &outcome.sections {
+        if let SectionOutcome::KeptUnreadable { expected } = o {
+            let _ = DiagError::new(
+                Source::Scanner,
+                Kind::Invalid,
+                "Account blob section kept from an earlier scan: it has another shape",
+            )
+            .with("section", *name)
+            .with("expected", *expected)
+            .log();
+        }
+    }
+    let emptied = outcome.named(|o| *o == SectionOutcome::Emptied);
+    if !emptied.is_empty() {
+        info!(
+            scanner,
+            sections = %emptied.join(","),
+            blobs = hexdesk_player::EMPTY_AFTER,
+            "Account blob sections taken as empty: missing from complete blobs in a row"
+        );
+    }
+
+    let unread: Vec<String> = read.unread_keys().into_iter().map(String::from).collect();
+    if unread != *last_unread_keys {
+        debug!(
+            scanner,
+            keys = %unread.join(","),
+            "Account blob sections that are not read"
+        );
+        *last_unread_keys = unread;
+    }
+}
+
+#[cfg(test)]
+mod scan_state_file_tests {
+    use super::{load_scan_state, save_scan_state, scan_state_path};
+    use hexdesk_blob::{
+        BlobRead, BlobStackableEntry, SectionContent, SectionRead, SectionState, SECTIONS,
+    };
+    use hexdesk_player::ScanState;
+
+    fn dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("hexdesk-scan-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn state_with_alloy() -> ScanState {
+        let read = BlobRead {
+            sections: SECTIONS
+                .iter()
+                .map(|section| SectionRead {
+                    section: *section,
+                    state: if section.name == "MiscItems" {
+                        SectionState::Read(SectionContent::Stackable(vec![BlobStackableEntry {
+                            item_type: "/Lotus/Types/Items/MiscItems/Alloy".to_string(),
+                            item_count: 100,
+                            sockets: None,
+                        }]))
+                    } else {
+                        SectionState::Missing
+                    },
+                })
+                .collect(),
+            keys: Vec::new(),
+            front_intact: true,
+        };
+        let mut state = ScanState::default();
+        state.apply(&read, 1);
+        state
+    }
+
+    #[test]
+    fn saved_sections_are_loaded_after_a_restart() {
+        let dir = dir("roundtrip");
+        let path = scan_state_path(&dir.join("inventory_state.json"));
+        let state = state_with_alloy();
+        save_scan_state(&path, &state);
+        let loaded = load_scan_state(&path);
+        assert_eq!(loaded.to_inventory(), state.to_inventory());
+        assert_eq!(loaded.read_at("MiscItems"), Some(1));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_missing_or_unreadable_file_starts_from_nothing() {
+        let dir = dir("unreadable");
+        let path = scan_state_path(&dir.join("inventory_state.json"));
+        assert_eq!(load_scan_state(&path).to_saved().sections.len(), 0);
+        std::fs::write(&path, b"{not json").unwrap();
+        assert_eq!(load_scan_state(&path).to_saved().sections.len(), 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
