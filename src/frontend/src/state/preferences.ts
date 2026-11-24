@@ -49,6 +49,7 @@ export function setPreferences(patch: Partial<Preferences>) {
   localStorage.setItem(PREFERENCE_KEYS.density, current.density);
   localStorage.setItem(PREFERENCE_KEYS.textScale, String(current.textScale));
   localStorage.setItem(PREFERENCE_KEYS.overlayTheme, current.overlayTheme);
+  localStorage.setItem(PREFERENCE_KEYS.accent, current.accent);
   emit();
 }
 

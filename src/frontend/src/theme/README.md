@@ -52,6 +52,16 @@ Every interactive control uses the same roles for its states:
 such as a watched fissure, not a state. Selected always comes with the accent
 border, so it does not rely on the fill alone.
 
+## Accent presets
+
+The player picks the accent in Settings → General → Appearance. Presets live
+in `accentPresets` in `tokens.ts`, one value per theme; amber is the default
+and is the theme's own `accent`. The generated CSS swaps only `--hex-accent`,
+only on normal contrast, so high contrast keeps its own accent and status
+and domain colours never move. `tests/tooling/tokens.test.ts` checks every
+preset against the accent contrast pairs. Settings draws the swatches from
+`--hex-swatch-<preset>`.
+
 ## Overlays
 
 The in-game overlays share the classes in

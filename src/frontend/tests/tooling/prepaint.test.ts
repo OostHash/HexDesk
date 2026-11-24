@@ -33,6 +33,8 @@ const STORED: Array<Record<string, string>> = [
   { [PREFERENCE_KEYS.theme]: "light", [PREFERENCE_KEYS.density]: "compact" },
   { [PREFERENCE_KEYS.theme]: "dark", [PREFERENCE_KEYS.contrast]: "high", [PREFERENCE_KEYS.cvd]: "true" },
   { [PREFERENCE_KEYS.theme]: "bogus", [PREFERENCE_KEYS.density]: "huge", [PREFERENCE_KEYS.contrast]: "x" },
+  { [PREFERENCE_KEYS.accent]: "teal" },
+  { [PREFERENCE_KEYS.theme]: "light", [PREFERENCE_KEYS.accent]: "neon" },
 ];
 
 describe("pre-paint script", () => {
@@ -72,6 +74,12 @@ describe("pre-paint script", () => {
     const stored = { [PREFERENCE_KEYS.theme]: "light" };
     expect(runPrepaint(stored, MEDIA[0] as MediaState, { search: "", hash: "#relicpickoverlay" })["data-resolved-theme"]).toBe("dark");
     expect(runPrepaint(stored, MEDIA[0] as MediaState)["data-resolved-theme"]).toBe("light");
+  });
+
+  it("restores the chosen accent and falls back to amber", () => {
+    expect(runPrepaint({ [PREFERENCE_KEYS.accent]: "rose" }, MEDIA[0] as MediaState)["data-accent"]).toBe("rose");
+    expect(runPrepaint({ [PREFERENCE_KEYS.accent]: "neon" }, MEDIA[0] as MediaState)["data-accent"]).toBe("amber");
+    expect(runPrepaint({}, MEDIA[0] as MediaState)["data-accent"]).toBe("amber");
   });
 
   it("renders light when chosen", () => {

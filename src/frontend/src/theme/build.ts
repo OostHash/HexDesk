@@ -1,6 +1,8 @@
 import { cvdDomainColors, domainColors } from "./domain.ts";
 import {
+  accentPresets,
   cvdHighContrastThemes,
+  DEFAULT_ACCENT,
   cvdThemes,
   highContrastThemes,
   DEFAULT_DENSITY,
@@ -36,7 +38,35 @@ export function renderSemanticCss(): string {
   const highBlocks = Object.entries(highContrastThemes).map(([name, theme]) => block(high(name), ordered(theme)));
   const cvdBlocks = Object.entries(cvdThemes).map(([name, tokens]) => block(`[data-resolved-theme="${name}"][data-cvd="on"]`, tokens));
   const cvdHighBlocks = Object.entries(cvdHighContrastThemes).map(([name, tokens]) => block(`${high(name)}[data-cvd="on"]`, tokens));
-  return HEADER + [block(":root", staticTokens), ...themeBlocks, ...highBlocks, ...cvdBlocks, ...cvdHighBlocks, ...schemeBlocks].join("\n");
+  // Accent presets: three attributes, and only on normal contrast, so high
+  // contrast keeps its own accent. The default accent is the theme's own.
+  const accentBlocks = Object.entries(accentPresets)
+    .filter(([accent]) => accent !== DEFAULT_ACCENT)
+    .flatMap(([accent, perTheme]) =>
+      Object.entries(perTheme).map(([name, value]) =>
+        block(`[data-resolved-theme="${name}"][data-resolved-contrast="normal"][data-accent="${accent}"]`, { accent: value }),
+      ),
+    );
+  // Swatch colours for Settings, per theme, whatever accent is chosen.
+  const swatchBlocks = Object.keys(themes).map((name) =>
+    block(
+      name === DEFAULT_THEME ? `:root,\n[data-resolved-theme="${name}"]` : `[data-resolved-theme="${name}"]`,
+      Object.fromEntries(Object.entries(accentPresets).map(([accent, perTheme]) => [`swatch-${accent}`, perTheme[name as keyof typeof perTheme]])),
+    ),
+  );
+  return (
+    HEADER +
+    [
+      block(":root", staticTokens),
+      ...themeBlocks,
+      ...highBlocks,
+      ...cvdBlocks,
+      ...cvdHighBlocks,
+      ...accentBlocks,
+      ...swatchBlocks,
+      ...schemeBlocks,
+    ].join("\n")
+  );
 }
 
 /** density.css: one block per density preset; the default also on :root. */

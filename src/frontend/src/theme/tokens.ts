@@ -55,6 +55,23 @@ const derived = {
   selected: "color-mix(in oklab, var(--hex-accent) 14%, transparent)",
 } as const satisfies Partial<ThemeTokens>;
 
+/** Accent presets the player can pick in Settings → Appearance; amber is the default. */
+export const ACCENTS = ["amber", "teal", "violet", "rose", "steel"] as const;
+export type AccentName = (typeof ACCENTS)[number];
+export const DEFAULT_ACCENT: AccentName = "amber";
+
+/**
+ * The accent of each preset per theme. Every value meets the accent pairs in
+ * contrastPairs on its theme; high contrast keeps its own accent.
+ */
+export const accentPresets = {
+  amber: { dark: palette.amber[400], light: palette.amber[700] },
+  teal: { dark: palette.teal[400], light: palette.teal[700] },
+  violet: { dark: palette.iris[400], light: palette.iris[700] },
+  rose: { dark: palette.rose[400], light: palette.rose[700] },
+  steel: { dark: palette.azure[400], light: palette.azure[700] },
+} as const satisfies Record<AccentName, Record<"dark" | "light", string>>;
+
 /**
  * Surfaces from back to front: bg is the page, panel the window chrome (title
  * bar, header, docks), nav the main navigation, surface the cards and controls
@@ -75,7 +92,7 @@ export const dark = {
   border: g[700],
   text: g[100],
   "text-muted": g[400],
-  accent: palette.amber[400],
+  accent: accentPresets[DEFAULT_ACCENT].dark,
   "on-accent": g[950],
   "on-danger": g[950],
   success: palette.sage[400],
@@ -106,7 +123,7 @@ export const light = {
   border: s[200],
   text: s[900],
   "text-muted": s[600],
-  accent: palette.amber[700],
+  accent: accentPresets[DEFAULT_ACCENT].light,
   "on-accent": s[0],
   "on-danger": s[0],
   success: palette.sage[700],

@@ -1,8 +1,19 @@
-import { DEFAULT_DENSITY, DEFAULT_THEME, densities, highContrastThemes, themes, type DensityName, type ThemeName } from "../theme/tokens";
+import {
+  ACCENTS,
+  DEFAULT_ACCENT,
+  DEFAULT_DENSITY,
+  DEFAULT_THEME,
+  densities,
+  highContrastThemes,
+  themes,
+  type AccentName,
+  type DensityName,
+  type ThemeName,
+} from "../theme/tokens";
 
 /**
- * UI preferences: theme, overlay theme, contrast, colour-blind palette,
- * density and text scale.
+ * UI preferences: theme, accent, overlay theme, contrast, colour-blind
+ * palette, density and text scale.
  * Source of truth is localStorage, so index.html can apply them before the
  * first paint. Some keys are older than HexDesk (ff-colorblind, ff-text-scale)
  * and are kept, so a saved choice survives after
@@ -16,6 +27,7 @@ export const PREFERENCE_KEYS = {
   density: "ff-density",
   textScale: "ff-text-scale",
   overlayTheme: "hex-overlay-theme",
+  accent: "hex-accent",
 } as const;
 
 /** The text-size slider range. */
@@ -50,6 +62,7 @@ export type Preferences = {
   density: DensityName;
   textScale: number;
   overlayTheme: OverlayThemeChoice;
+  accent: AccentName;
 };
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -62,6 +75,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   textScale: 1,
   // A light card over a dark game scene glares, so overlays start dark.
   overlayTheme: "dark",
+  accent: DEFAULT_ACCENT,
 };
 
 /** Attributes written to <html>. index.html computes the same before first paint. */
@@ -72,6 +86,7 @@ export type RootAttributes = {
   "data-resolved-contrast": "normal" | "high";
   "data-cvd": "on" | "off";
   "data-density": DensityName;
+  "data-accent": AccentName;
 };
 
 export type MediaState = { prefersDark: boolean; prefersMoreContrast: boolean };
@@ -93,6 +108,7 @@ export function parsePreferences(read: (key: string) => string | null): Preferen
     density: oneOf(Object.keys(densities) as DensityName[], read(PREFERENCE_KEYS.density), DEFAULT_PREFERENCES.density),
     textScale: clampTextScale(parseFloat(read(PREFERENCE_KEYS.textScale) ?? "")),
     overlayTheme: oneOf(OVERLAY_THEME_CHOICES, read(PREFERENCE_KEYS.overlayTheme), DEFAULT_PREFERENCES.overlayTheme),
+    accent: oneOf(ACCENTS, read(PREFERENCE_KEYS.accent), DEFAULT_PREFERENCES.accent),
   };
 }
 
@@ -112,6 +128,7 @@ export function resolveAttributes(prefs: Preferences, media: MediaState, overlay
     "data-resolved-contrast": resolvedContrast,
     "data-cvd": prefs.cvd ? "on" : "off",
     "data-density": prefs.density,
+    "data-accent": prefs.accent,
   };
 }
 
@@ -132,6 +149,15 @@ export function availableChoices(
 }
 
 export const THEME_LABEL: Readonly<Record<ThemeChoice, string>> = { system: "System", dark: "Dark", light: "Light" };
+export const ACCENT_LABEL: Readonly<Record<AccentName, string>> = {
+  amber: "Amber",
+  teal: "Teal",
+  violet: "Violet",
+  rose: "Rose",
+  steel: "Steel blue",
+};
+export const ACCENT_CHOICES = ACCENTS;
+export type { AccentName };
 export const OVERLAY_THEME_LABEL: Readonly<Record<OverlayThemeChoice, string>> = { app: "Same as app", dark: "Dark", light: "Light" };
 export const CONTRAST_LABEL: Readonly<Record<ContrastChoice, string>> = { system: "System", normal: "Normal", high: "High" };
 export const DENSITY_LABEL: Readonly<Record<DensityName, string>> = { compact: "Compact", normal: "Normal", comfortable: "Comfortable" };

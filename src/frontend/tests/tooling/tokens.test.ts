@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { generatedFiles } from "../../src/theme/build.ts";
 import {
+  accentPresets,
   contrastPairs,
   DEFAULT_THEME,
   cvdHighContrastThemes,
@@ -52,6 +53,12 @@ describe("contrast", () => {
     { name: `${name} + colour-blind palette`, high: false, theme: { ...themes[name], ...cvdThemes[name] } },
     { name: `${name} high contrast`, high: true, theme: highContrastThemes[name] },
     { name: `${name} high contrast + colour-blind palette`, high: true, theme: { ...highContrastThemes[name], ...cvdHighContrastThemes[name] } },
+    // Every accent preset on normal contrast; high contrast keeps its own accent.
+    ...Object.entries(accentPresets).map(([accent, perTheme]) => ({
+      name: `${name} with the ${accent} accent`,
+      high: false,
+      theme: { ...themes[name], accent: perTheme[name] },
+    })),
   ]);
   // High contrast: 7:1 for text, and borders that read as edges (WCAG 1.4.11).
   const pairsFor = (high: boolean) =>
@@ -89,6 +96,22 @@ describe("main window", () => {
     };
     const main = conf.app.windows.find((w) => w.label === "main");
     expect(main?.backgroundColor?.toLowerCase()).toBe(themes[DEFAULT_THEME].bg.toLowerCase());
+  });
+});
+
+describe("accent presets", () => {
+  const css = generatedFiles["semantic.css"]();
+  it("change only the accent, and only on normal contrast", () => {
+    const blocks = [...css.matchAll(/^(\[[^{]*data-accent="([a-z]+)"[^{]*) \{\n([^}]*)\}/gm)];
+    expect(blocks.length).toBe((Object.keys(accentPresets).length - 1) * Object.keys(themes).length);
+    for (const [, selector, , body] of blocks) {
+      expect(selector).toContain('[data-resolved-contrast="normal"]');
+      expect(body?.trim()).toMatch(/^--hex-accent: #[0-9a-f]{6};$/);
+    }
+  });
+  it("give every theme a swatch per preset", () => {
+    for (const accent of Object.keys(accentPresets))
+      expect(css.match(new RegExp(`--hex-swatch-${accent}:`, "g"))?.length).toBe(Object.keys(themes).length);
   });
 });
 
