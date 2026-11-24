@@ -12,7 +12,7 @@ export function Textarea({ invalid, id, required, rows = 3, className, ...rest }
     <textarea
       rows={rows}
       className={cn(
-        "w-full min-w-0 rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm text-text placeholder:text-faint",
+        "w-full min-w-0 rounded-md border border-border bg-field px-3 py-2 text-sm text-text placeholder:text-faint",
         "hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger",
         FIELD_FOCUS,
         className,

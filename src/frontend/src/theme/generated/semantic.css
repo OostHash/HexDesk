@@ -8,23 +8,26 @@
 
 :root,
 [data-resolved-theme="dark"] {
-  --hex-bg: #0d1117;
-  --hex-surface: #161b22;
-  --hex-surface-raised: #1a1f2a;
-  --hex-surface-sunken: #0d1117;
-  --hex-border: #30363d;
+  --hex-bg: #17191c;
+  --hex-panel: #1d2024;
+  --hex-nav: #14171b;
+  --hex-surface: #25282c;
+  --hex-surface-raised: #292d32;
+  --hex-surface-sunken: #171a1e;
+  --hex-field: #171a1e;
+  --hex-border: #373b41;
   --hex-border-strong: color-mix(in oklab, var(--hex-text) 28%, transparent);
-  --hex-text: #e6edf3;
-  --hex-text-muted: #8b949e;
+  --hex-text: #e8e5df;
+  --hex-text-muted: #8e949b;
   --hex-text-faint: color-mix(in oklab, var(--hex-text-muted) 70%, transparent);
-  --hex-accent: #388bfd;
+  --hex-accent: #c1874a;
   --hex-accent-soft: color-mix(in oklab, var(--hex-accent) 14%, transparent);
-  --hex-on-accent: #1e1e2e;
-  --hex-success: #3fb950;
-  --hex-danger: #f85149;
-  --hex-on-danger: #1e1e2e;
-  --hex-warning: #d29922;
-  --hex-info: #58a6ff;
+  --hex-on-accent: #17191c;
+  --hex-success: #7a9a92;
+  --hex-danger: #cc7670;
+  --hex-on-danger: #17191c;
+  --hex-warning: #d2b04c;
+  --hex-info: #7fa6cc;
   --hex-focus-ring: var(--hex-accent);
   --hex-hover: color-mix(in oklab, var(--hex-text) 6%, transparent);
   --hex-active: color-mix(in oklab, var(--hex-text) 10%, transparent);
@@ -37,23 +40,26 @@
 }
 
 [data-resolved-theme="light"] {
-  --hex-bg: #f6f8fa;
+  --hex-bg: #f5f4f0;
+  --hex-panel: #ffffff;
+  --hex-nav: #e6e8e7;
   --hex-surface: #ffffff;
-  --hex-surface-raised: #ffffff;
-  --hex-surface-sunken: #eaeef2;
-  --hex-border: #d0d7de;
+  --hex-surface-raised: #f0efeb;
+  --hex-surface-sunken: #eeefef;
+  --hex-field: #eeefef;
+  --hex-border: #d8dad9;
   --hex-border-strong: color-mix(in oklab, var(--hex-text) 28%, transparent);
-  --hex-text: #1f2328;
-  --hex-text-muted: #59636e;
+  --hex-text: #252a2f;
+  --hex-text-muted: #626971;
   --hex-text-faint: color-mix(in oklab, var(--hex-text-muted) 70%, transparent);
-  --hex-accent: #0969da;
+  --hex-accent: #8f5c27;
   --hex-accent-soft: color-mix(in oklab, var(--hex-accent) 14%, transparent);
   --hex-on-accent: #ffffff;
-  --hex-success: #1a7f37;
-  --hex-danger: #cf222e;
+  --hex-success: #397569;
+  --hex-danger: #b44f4e;
   --hex-on-danger: #ffffff;
-  --hex-warning: #9a6700;
-  --hex-info: #0550ae;
+  --hex-warning: #736a00;
+  --hex-info: #3d6a94;
   --hex-focus-ring: var(--hex-accent);
   --hex-hover: color-mix(in oklab, var(--hex-text) 6%, transparent);
   --hex-active: color-mix(in oklab, var(--hex-text) 10%, transparent);
@@ -67,9 +73,12 @@
 
 [data-resolved-theme="dark"][data-resolved-contrast="high"] {
   --hex-bg: #000000;
+  --hex-panel: #0a0c10;
+  --hex-nav: #000000;
   --hex-surface: #0a0c10;
   --hex-surface-raised: #14171c;
   --hex-surface-sunken: #000000;
+  --hex-field: #000000;
   --hex-border: #7d8590;
   --hex-border-strong: #ffffff;
   --hex-text: #ffffff;
@@ -96,9 +105,12 @@
 
 [data-resolved-theme="light"][data-resolved-contrast="high"] {
   --hex-bg: #ffffff;
+  --hex-panel: #ffffff;
+  --hex-nav: #e8ebef;
   --hex-surface: #ffffff;
   --hex-surface-raised: #ffffff;
   --hex-surface-sunken: #e8ebef;
+  --hex-field: #ffffff;
   --hex-border: #20252c;
   --hex-border-strong: #0e1116;
   --hex-text: #0e1116;

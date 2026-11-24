@@ -7,7 +7,7 @@ const buttonClass =
 /** Empty draggable title bar with native-window controls and no duplicate branding. */
 export function WindowTitleBar() {
   return (
-    <div data-tauri-drag-region className="flex h-8 shrink-0 select-none justify-end border-b border-border bg-surface">
+    <div data-tauri-drag-region className="flex h-8 shrink-0 select-none justify-end border-b border-border bg-panel">
       <button
         type="button"
         className={buttonClass}

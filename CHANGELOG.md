@@ -9,6 +9,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Changed
 
+- New HexDesk colours: graphite surfaces in the dark theme, warm stone in the
+  light theme and a copper-amber accent. The title bar, header, navigation and
+  input fields each have their own surface colour, and warnings are ochre so
+  they stand apart from the accent.
+- Axi relics have their own colour in fissures, apart from Neo.
 - The Sale, Purchase and Trade labels in the trade report use the same status
   colours as the rest of the app, so they follow the light theme, high
   contrast and the colour-blind palette.
