@@ -1,0 +1,85 @@
+name: Dependency audit
+
+on:
+  schedule:
+    # Daily, shortly after Dependabot's Monday update run (.github/dependabot.yml).
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "**/Cargo.toml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "**/package.json"
+      - ".github/workflows/dependency-audit.yml"
+      - ".github/scripts/**"
+      - ".github/security/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  exceptions:
+    name: Validate exceptions
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate dependency exceptions
+        run: bash .github/scripts/dependency-exceptions.sh check
+
+  rust:
+    name: Rust audit
+    needs: exceptions
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc
+        with:
+          toolchain: 1.97.0
+
+      - uses: taiki-e/install-action@fe3acb53a98b62c772db35de75ce0e4595e7ca8c # v2.90.8
+        with:
+          tool: cargo-audit@0.23.0
+
+      # A pull request reports the full result without blocking on advisories
+      # that already exist on the base branch. Scheduled and manual runs fail.
+      - name: Audit Rust dependencies
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        run: |
+          mapfile -t ignored < <(bash .github/scripts/dependency-exceptions.sh list cargo)
+          args=()
+          for id in "${ignored[@]}"; do
+            args+=(--ignore "$id")
+          done
+          cargo audit "${args[@]}"
+
+  frontend:
+    name: Frontend audit
+    needs: exceptions
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
+      # pnpm audit reads the lockfile, so no install is needed. The script
+      # applies the GHSA exceptions without rewriting pnpm-workspace.yaml.
+      - name: Audit frontend dependencies
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        run: node .github/scripts/frontend-audit.mjs
