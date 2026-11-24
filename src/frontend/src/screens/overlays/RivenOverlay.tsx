@@ -1,4 +1,4 @@
-import { RefreshCw, Save, X, Zap } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Equal, RefreshCw, Save, TriangleAlert, X, Zap, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isTauri } from "../../api/env";
 import { emitEvent, onEvent } from "../../api/events";
@@ -8,11 +8,13 @@ import { useRollActions } from "../../api/rivens";
 import {
   classifyOriginal,
   classifyStat,
+  compareRolls,
   PREVIEW_VIEW,
   RIVEN_WIDTH,
   rivenSummary,
   savedRollLabel,
   STAT_LABEL,
+  verdictText,
   wantedNames,
   weaponTitle,
   type OverlayAnalysis,
@@ -23,22 +25,89 @@ import { getPreferences } from "../../state/preferences";
 import { verdictLevel, type RollStat, type VerdictLevel } from "../../domain/rivens";
 import { Button, IconButton } from "../../primitives/actions";
 import { cn } from "../../primitives/cn";
-import { Badge, ProgressBar, type Tone } from "../../primitives/display";
+import { Badge, Icon, ProgressBar, type Tone } from "../../primitives/display";
 import { OVERLAY_HEADING, OVERLAY_PANEL } from "./overlayStyles";
 
-const VERDICT_TONE: Readonly<Record<VerdictLevel, Tone>> = { great: "success", good: "info", mediocre: "warning", bad: "danger" };
-const scoreTone = (score: number): Tone => (score >= 0.8 ? "success" : score >= 0.6 ? "info" : score >= 0.4 ? "warning" : "danger");
-const STAT_TONE: Readonly<Record<StatClass, Tone>> = { wanted: "success", neutral: "neutral", safe: "info", harmful: "danger" };
+const VERDICT_TONE: Readonly<Record<VerdictLevel, Tone>> = { great: "success", good: "success", mediocre: "warning", bad: "danger" };
 
-function StatRow({ stat, cls, faded = false }: { stat: RollStat; cls: StatClass; faded?: boolean }) {
+/** How each kind of stat looks: an icon for the two that matter, plain words for the rest. */
+const STAT_LOOK: Readonly<Record<StatClass, { icon?: LucideIcon; className: string }>> = {
+  wanted: { icon: Check, className: "text-success" },
+  neutral: { className: "text-muted" },
+  safe: { className: "text-muted" },
+  harmful: { icon: TriangleAlert, className: "text-danger" },
+};
+
+/** One stat: name and value first, then what it means for this weapon. */
+function StatRow({ stat, cls, judged }: { stat: RollStat; cls: StatClass; judged: boolean }) {
+  const look = STAT_LOOK[cls];
   return (
-    <li className={cn("flex items-center gap-2 rounded-sm px-1.5 py-0.5 text-xs", faded && "opacity-75")}>
-      <Badge tone={STAT_TONE[cls]} className="w-16 justify-center">
-        {STAT_LABEL[cls]}
-      </Badge>
-      <span className="flex-1">{stat.name}</span>
-      <span className="font-semibold tabular-nums">{stat.value}</span>
+    <li className="grid grid-cols-[1fr_auto_5.5rem] items-center gap-2 py-0.5">
+      <span className={cn("truncate", cls === "wanted" && "font-semibold")}>{stat.name}</span>
+      <span className={cn("text-end tabular-nums", cls === "wanted" && "font-semibold")}>{stat.value}</span>
+      {judged ? (
+        <span className={cn("inline-flex items-center gap-1 text-xs", look.className)}>
+          {look.icon && <Icon icon={look.icon} size="xs" />}
+          {STAT_LABEL[cls]}
+        </span>
+      ) : (
+        <span />
+      )}
     </li>
+  );
+}
+
+const COMPARISON: Readonly<Record<"better" | "same" | "worse", { icon: LucideIcon; className: string; text: string }>> = {
+  better: { icon: ArrowUp, className: "border-success text-success", text: "New roll is better" },
+  same: { icon: Equal, className: "border-border text-muted", text: "Both rolls are even" },
+  worse: { icon: ArrowDown, className: "border-danger text-danger", text: "Original roll is better" },
+};
+
+/** New against original roll, counted in wanted stats. */
+function RollComparison({ newWanted, originalWanted }: { newWanted: number; originalWanted: number }) {
+  const look = COMPARISON[compareRolls(newWanted, originalWanted)];
+  return (
+    <div className={cn("flex flex-col rounded-md border px-2 py-1", look.className)}>
+      <p className="flex items-center gap-1.5 font-semibold">
+        <Icon icon={look.icon} size="xs" />
+        {look.text}
+      </p>
+      <p className="text-xs text-muted">
+        Wanted stats: new {newWanted}, original {originalWanted}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Every stat this build wants, so the player need not look it up: a check
+ * when the roll has it, grey when it is still missing. A missing entry can
+ * be a choice ("Multishot / Toxin").
+ */
+function WantedStats({ matched, missing }: { matched: readonly string[]; missing: readonly string[] }) {
+  if (matched.length + missing.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <h2 className={OVERLAY_HEADING}>Wanted stats</h2>
+      <ul aria-label="Wanted stats" className="flex flex-wrap gap-1">
+        {matched.map((name) => (
+          <li key={name}>
+            <Badge tone="success" icon={Check}>
+              {name}
+              <span className="sr-only">, on this roll</span>
+            </Badge>
+          </li>
+        ))}
+        {missing.map((name) => (
+          <li key={name}>
+            <Badge variant="outline">
+              {name}
+              <span className="sr-only">, missing</span>
+            </Badge>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -46,41 +115,25 @@ function Analysis({ analysis }: { analysis: OverlayAnalysis }) {
   const several = analysis.alternatives.length > 1;
   return (
     <>
-      {analysis.alternatives.map((alt, i) => (
-        <section
-          key={alt.label}
-          aria-label={several ? alt.label : "Analysis"}
-          className={cn("flex flex-col gap-1", i > 0 && "border-t border-border pt-1.5")}
-        >
-          {several && <span className={OVERLAY_HEADING}>{alt.label}</span>}
-          <Badge tone={VERDICT_TONE[verdictLevel(alt.verdict)]} size="md" className="self-start">
-            {alt.verdict}
-          </Badge>
-          <ProgressBar
-            value={Math.round(alt.score * 100)}
-            max={100}
-            label={`${String(Math.round(alt.score * 100))}%`}
-            name={several ? `${alt.label} score` : "Score"}
-            tone={scoreTone(alt.score)}
-          />
-          {i === 0 && (analysis.safe_negatives_present.length > 0 || analysis.harmful_negatives.length > 0) && (
-            <ul aria-label="Negatives" className="flex flex-col gap-0.5">
-              {analysis.safe_negatives_present.map((s) => (
-                <StatRow key={s} stat={{ name: `−${s}`, value: "", positive: false }} cls="safe" />
-              ))}
-              {analysis.harmful_negatives.map((s) => (
-                <StatRow key={s} stat={{ name: `−${s}`, value: "", positive: false }} cls="harmful" />
-              ))}
-            </ul>
-          )}
-          {alt.missing.length > 0 && (
-            <p className="text-xs text-muted">
-              <span className="font-semibold">Wanted: </span>
-              {alt.missing.join(", ")}
+      {analysis.alternatives.map((alt, i) => {
+        const pct = Math.round(alt.score * 100);
+        const tone = VERDICT_TONE[verdictLevel(alt.verdict)];
+        return (
+          <section
+            key={alt.label}
+            aria-label={several ? alt.label : "Analysis"}
+            className={cn("flex flex-col gap-1", i > 0 && "border-t border-border pt-1.5")}
+          >
+            {several && <span className={OVERLAY_HEADING}>{alt.label}</span>}
+            <p className="flex items-baseline gap-2">
+              <span className="text-xl leading-tight font-semibold tabular-nums">{pct}%</span>
+              <span className="text-muted">roll score</span>
             </p>
-          )}
-        </section>
-      ))}
+            <ProgressBar value={pct} max={100} label={verdictText(alt.verdict)} name={several ? `${alt.label} score` : "Score"} tone={tone} />
+            <WantedStats matched={alt.matched} missing={alt.missing} />
+          </section>
+        );
+      })}
     </>
   );
 }
@@ -226,12 +279,18 @@ export function RivenOverlay() {
         {result && (stats.length > 0 || analysis) && (
           <>
             {analysis && <Analysis analysis={analysis} />}
+            {analysis && result.isComparison && result.originalStats.length > 0 && (
+              <RollComparison
+                newWanted={stats.filter((s) => classifyStat(s, analysis) === "wanted").length}
+                originalWanted={result.originalStats.filter((s) => classifyOriginal(s, analysis, wanted) === "wanted").length}
+              />
+            )}
             {stats.length > 0 && (
               <section aria-label={result.isComparison ? "New roll" : "Rolled stats"} className="flex flex-col gap-1 border-t border-border pt-2">
                 {result.isComparison && <h2 className={OVERLAY_HEADING}>New roll</h2>}
-                <ul className="flex flex-col gap-0.5">
+                <ul className="flex flex-col">
                   {stats.map((s, i) => (
-                    <StatRow key={`${s.name}-${String(i)}`} stat={s} cls={classifyStat(s, analysis)} />
+                    <StatRow key={`${s.name}-${String(i)}`} stat={s} cls={classifyStat(s, analysis)} judged={analysis !== null} />
                   ))}
                 </ul>
               </section>
@@ -239,9 +298,9 @@ export function RivenOverlay() {
             {result.isComparison && result.originalStats.length > 0 && (
               <section aria-label="Original roll" className="flex flex-col gap-1 border-t border-border pt-1.5">
                 <h2 className={OVERLAY_HEADING}>Original roll</h2>
-                <ul className="flex flex-col gap-0.5">
+                <ul className="flex flex-col">
                   {result.originalStats.map((s, i) => (
-                    <StatRow key={`${s.name}-${String(i)}`} stat={s} cls={classifyOriginal(s, analysis, wanted)} faded />
+                    <StatRow key={`${s.name}-${String(i)}`} stat={s} cls={classifyOriginal(s, analysis, wanted)} judged={analysis !== null} />
                   ))}
                 </ul>
               </section>

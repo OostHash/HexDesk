@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   classifyOriginal,
   classifyStat,
+  compareRolls,
   PREVIEW_VIEW,
   rivenSummary,
   savedRollLabel,
+  verdictText,
   wantedNames,
   weaponTitle,
   type OverlayAnalysis,
@@ -33,11 +35,22 @@ describe("stat classes", () => {
   });
   it("marks the original roll by the full wanted list, never harmful", () => {
     const wanted = wantedNames(analysis);
-    expect(classifyOriginal({ name: "Multi-shot", value: "+1", positive: true }, analysis, wanted)).toBe("wanted");
-    expect(classifyOriginal({ name: "Toxin", value: "+1", positive: true }, analysis, wanted)).toBe("neutral");
+    expect(classifyOriginal({ name: "Toxin", value: "+1", positive: true }, analysis, wanted)).toBe("wanted");
+    expect(classifyOriginal({ name: "Multi-shot", value: "+1", positive: true }, analysis, wanted)).toBe("neutral");
     expect(classifyOriginal({ name: "Zoom", value: "-1", positive: false }, analysis, wanted)).toBe("safe");
     expect(classifyOriginal({ name: "Damage to Corpus", value: "-1", positive: false }, analysis, wanted)).toBe("neutral");
   });
+});
+
+it("writes the verdict as a sentence", () => {
+  expect(verdictText("GOOD — usable")).toBe("Good — usable");
+  expect(verdictText("GREAT")).toBe("Great");
+});
+
+it("compares a new roll with the original by wanted stats", () => {
+  expect(compareRolls(2, 1)).toBe("better");
+  expect(compareRolls(1, 1)).toBe("same");
+  expect(compareRolls(0, 1)).toBe("worse");
 });
 
 it("titles the weapon and labels a saved roll", () => {

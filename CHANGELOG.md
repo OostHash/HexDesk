@@ -42,6 +42,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   reward shows its drop chance, platinum and ducats under named columns, a
   lock for vaulted items and a "New" label for items you do not own yet. The
   window is wider and the rows have more room.
+- The riven overlay is clearer: the roll score is the headline with the
+  verdict next to its bar, each stat is listed once with what it means
+  (wanted, not needed, harmless or harmful), and a "Wanted stats" list shows
+  every stat the weapon wants, checked when the roll has it. When you compare rolls, it says whether the new
+  or the original roll has more wanted stats.
 
 ### Fixed
 
