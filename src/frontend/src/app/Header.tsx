@@ -29,7 +29,7 @@ type Props = {
  */
 export function Header({ onOpenScreen, onOpenSettings }: Props) {
   return (
-    <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface px-4 py-2">
+    <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-panel px-4 py-2">
       <Account />
       <div className="ms-auto flex flex-wrap items-center gap-1.5">
         <OverlayStatus />

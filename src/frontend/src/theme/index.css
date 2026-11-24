@@ -21,9 +21,12 @@
  */
 @theme inline {
   --color-bg: var(--hex-bg);
+  --color-panel: var(--hex-panel);
+  --color-nav: var(--hex-nav);
   --color-surface: var(--hex-surface);
   --color-surface-raised: var(--hex-surface-raised);
   --color-surface-sunken: var(--hex-surface-sunken);
+  --color-field: var(--hex-field);
   --color-border: var(--hex-border);
   --color-border-strong: var(--hex-border-strong);
   --color-text: var(--hex-text);

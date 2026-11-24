@@ -2,51 +2,38 @@
 
 :root {
   --hex-rarity-bronze: #cd7f32;
-  --hex-rarity-silver: #c0c0c0;
+  --hex-rarity-silver: #b8b9bd;
   --hex-rarity-gold: #f0c040;
   --hex-ducat: #f0c040;
-  --hex-relic-bronze: #e8923a;
   --hex-relic-highlight: #88b8ff;
-  --hex-reward-name: #f0e0a0;
-  --hex-reward-bronze: #c47d3a;
-  --hex-reward-silver: #9ba8b5;
-  --hex-refinement-exceptional: #79c0ff;
-  --hex-refinement-flawless: #a371f7;
-  --hex-refinement-radiant: #d4a847;
-  --hex-state-cool: #6eb6ff;
+  --hex-state-cool: #6eb2ff;
   --hex-state-warm: #ff8c5a;
   --hex-state-fass: #ff6b4a;
   --hex-state-void: #c084fc;
   --hex-state-anger: #f87171;
   --hex-state-envy: #4ade80;
-  --hex-state-sorrow: #60a5fa;
-  --hex-tier-lith: #c8853a;
-  --hex-tier-meso: #a8a9ad;
+  --hex-state-sorrow: #58a6f8;
+  --hex-state-day: #f0c040;
+  --hex-state-joy: #f0c040;
+  --hex-tier-lith: #cd7f32;
+  --hex-tier-meso: #b8b9bd;
   --hex-tier-neo: #f0c040;
-  --hex-tier-axi: #e5c04a;
-  --hex-tier-requiem: #9b6dff;
+  --hex-tier-axi: #ecd9a0;
+  --hex-tier-requiem: #9d6cff;
   --hex-tier-omnia: #e0e0e0;
   --hex-news-prime: #e6af32;
   --hex-news-stream: #a47bff;
-  --hex-news-update: #4ea8f0;
-  --hex-txn-sale: #27ae60;
-  --hex-txn-purchase: #e74c3c;
-  --hex-txn-trade: #3498db;
+  --hex-news-update: #58a6f8;
   --hex-price-platinum: #b39ddb;
-  --hex-set-price: #c8a8ff;
-  --hex-direct-trade: #a371f7;
+  --hex-direct-trade: #a47bff;
   --hex-vaulted: #ff6b6b;
   --hex-mastered: #4ecdc4;
   --hex-mastery: #c0a060;
   --hex-owned: #5dbf7a;
   --hex-kuva: #9d6cff;
-  --hex-archon: #b48cff;
-  --hex-mod-arcane: #bc8cff;
-  --hex-mod-chip: #d4a843;
-  --hex-riven-card: #b49650;
-  --hex-riven-buff: #2ea043;
-  --hex-wiki-link: #6ea8fe;
-  --hex-wiki-link-hover: #a8c8ff;
+  --hex-archon: #b88cff;
+  --hex-mod-arcane: #b88cff;
+  --hex-mod-standard: #6eb2ff;
   --hex-syndicate-steel-meridian: #c43434;
   --hex-syndicate-arbiters-of-hexis: #d4a017;
   --hex-syndicate-cephalon-suda: #00b5cc;
@@ -74,14 +61,9 @@
   --hex-syndicate-cephalon-simaris: #e67e22;
   --hex-syndicate-conclave: #c0392b;
   --hex-syndicate-operational-supply: #607d8b;
-  --hex-brand-discord: #5865f2;
-  --hex-brand-kofi: #ff5e5b;
 }
 
 [data-cvd="on"] {
-  --hex-txn-sale: #56b4e9;
   --hex-owned: #56b4e9;
-  --hex-riven-buff: #56b4e9;
-  --hex-txn-purchase: #e69f00;
   --hex-vaulted: #e69f00;
 }

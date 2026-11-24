@@ -1,40 +1,53 @@
 /**
- * Layer 1: raw colour values. Only tokens.ts reads this file; components never
- * do. Values change where contrast or consistency asks for it.
+ * Layer 1: raw colour values. Only tokens.ts and domain.ts read this file;
+ * components never do. Values change where contrast or consistency asks for it.
  */
 export const palette = {
-  neutral: {
-    950: "#0d1117",
-    900: "#161b22",
-    850: "#1a1f2a",
-    700: "#30363d",
-    500: "#6e7681",
-    400: "#8b949e",
-    100: "#e6edf3",
+  /** Dark neutrals: graphite surfaces with warm off-white text. */
+  graphite: {
+    1000: "#14171b",
+    950: "#17191c",
+    925: "#171a1e",
+    900: "#1d2024",
+    800: "#25282c",
+    750: "#292d32",
+    700: "#373b41",
+    400: "#a0a5ab",
+    100: "#e8e5df",
   },
-  blue: { 500: "#388bfd", 400: "#58a6ff" },
-  green: { 500: "#3fb950" },
-  red: { 500: "#f85149" },
-  amber: { 500: "#d29922" },
-  ink: { onAccent: "#1e1e2e" },
+  /** Light neutrals: warm stone, not an inverted dark theme. */
+  stone: {
+    0: "#ffffff",
+    50: "#f5f4f0",
+    75: "#f0efeb",
+    100: "#eeefef",
+    150: "#e6e8e7",
+    200: "#d8dad9",
+    600: "#5c636a",
+    900: "#252a2f",
+  },
+
+  /**
+   * UI hues. 400 is the step for dark pages, 700 for light pages; both reach
+   * 4.5:1 as text on every surface of their theme.
+   */
+  amber: { 400: "#c1874a", 700: "#8f5c27" },
+  /** Warning sits towards yellow so it never reads as the amber accent. */
+  ochre: { 400: "#d2b04c", 700: "#736a00" },
+  sage: { 400: "#7a9a92", 700: "#397569" },
+  brick: { 400: "#d0807a", 700: "#ae4c4b" },
+  steel: { 400: "#7fa6cc", 700: "#3d6a94" },
+
+  /** Domain hues, shared by aliases in domain.ts that mean the same kind of thing. */
+  bronze: { 500: "#cd7f32" },
+  silver: { 400: "#b8b9bd" },
+  gold: { 200: "#ecd9a0", 400: "#f0c040", 500: "#e6af32" },
+  violet: { 300: "#c084fc", 400: "#b88cff", 500: "#a47bff", 600: "#9d6cff" },
+  sky: { 300: "#88b8ff", 400: "#6eb2ff", 500: "#58a6f8" },
+
   /** Okabe-Ito: stays apart under deuteranopia and protanopia (colour-blind palette). */
   cvd: { blue: "#56b4e9", orange: "#e69f00", yellow: "#f0e442", purple: "#cc79a7" },
-
-  /** Light theme (fase 7B): the same hues, darkened for a white page. */
-  light: {
-    bg: "#f6f8fa",
-    surface: "#ffffff",
-    sunken: "#eaeef2",
-    border: "#d0d7de",
-    text: "#1f2328",
-    muted: "#59636e",
-    blue: "#0969da",
-    blueText: "#0550ae",
-    green: "#1a7f37",
-    red: "#cf222e",
-    amber: "#9a6700",
-  },
-  cvdLight: { blue: "#0072b2", orange: "#b35000", yellow: "#7a6200", purple: "#a3417e" },
+  cvdLight: { blue: "#0072b2", orange: "#b04f00", yellow: "#7a6200", purple: "#a3417e" },
 
   /** High contrast (7:1 for text): near-black or white pages, strong borders. */
   highDark: {

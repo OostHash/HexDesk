@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { generatedFiles } from "../../src/theme/build.ts";
 import {
   contrastPairs,
+  DEFAULT_THEME,
   cvdHighContrastThemes,
   cvdThemes,
   highContrastThemes,
@@ -78,6 +79,16 @@ describe("themes", () => {
     for (const theme of [...Object.values(themes), ...Object.values(highContrastThemes)]) {
       expect(Object.keys(theme).sort()).toEqual([...semanticTokens].sort());
     }
+  });
+});
+
+describe("main window", () => {
+  it("paints the default theme's bg before the page loads", async () => {
+    const conf = JSON.parse(await readFile(fileURLToPath(new URL("../../../backend/tauri.conf.json", import.meta.url)), "utf8")) as {
+      app: { windows: { label: string; backgroundColor?: string }[] };
+    };
+    const main = conf.app.windows.find((w) => w.label === "main");
+    expect(main?.backgroundColor?.toLowerCase()).toBe(themes[DEFAULT_THEME].bg.toLowerCase());
   });
 });
 

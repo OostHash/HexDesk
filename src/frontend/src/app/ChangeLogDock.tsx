@@ -306,7 +306,7 @@ export function ChangeLogDock({ onOpenInventory }: Props) {
   return (
     <section
       aria-label="Changelog"
-      className={cn("relative flex shrink-0 flex-col border-t border-border bg-surface", expanded && "shadow-dock-up")}
+      className={cn("relative flex shrink-0 flex-col border-t border-border bg-panel", expanded && "shadow-dock-up")}
       style={expanded ? { height: shownHeight } : undefined}
     >
       {expanded && (
