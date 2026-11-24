@@ -23,7 +23,6 @@ pub const EMPTY_AFTER: u32 = 3;
 #[derive(Debug, Clone, Default)]
 pub struct ScanState {
     known: BTreeMap<&'static str, Known>,
-    keys: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -86,7 +85,6 @@ impl ScanOutcome {
 impl ScanState {
     /// Applies one blob, read at `at`.
     pub fn apply(&mut self, read: &BlobRead, at: Millis) -> ScanOutcome {
-        self.keys.clone_from(&read.keys);
         let sections = read
             .sections
             .iter()
@@ -180,7 +178,7 @@ impl ScanState {
             .collect();
         BlobRead {
             sections,
-            keys: self.keys.clone(),
+            keys: Vec::new(),
             front_intact: true,
         }
         .to_inventory()

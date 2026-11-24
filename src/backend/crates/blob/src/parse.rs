@@ -1,12 +1,5 @@
 use crate::read::read_section;
-use crate::{extract_blob_json, find_blob_end, BlobInventory, BlobRead, SectionRead, SECTIONS};
-
-/// `raw` must span from the JSON opening `{` (or from `"SubscribedToEmails"`) through
-/// the closing brace after one of [`END_MARKERS`](crate::END_MARKERS). Returns `None` when
-/// the blob is rejected; [`parse_full_account_blob_checked`] says why.
-pub fn parse_full_account_blob(raw: &[u8]) -> Option<BlobInventory> {
-    parse_full_account_blob_checked(raw).ok()
-}
+use crate::{extract_blob_json, find_blob_end, BlobRead, SectionRead, SectionState, SECTIONS};
 
 /// Why a candidate blob was not accepted. Logged as the cause when no
 /// candidate in a capture pass could be read.
@@ -14,10 +7,9 @@ pub fn parse_full_account_blob(raw: &[u8]) -> Option<BlobInventory> {
 pub enum BlobReject {
     NoEnd,
     TooSmall { bytes: usize, min: usize },
-    MissingSection(&'static str),
     NoJsonStart,
     Json(String),
-    NoItems,
+    NoKnownSection,
 }
 
 impl std::fmt::Display for BlobReject {
@@ -27,34 +19,21 @@ impl std::fmt::Display for BlobReject {
             BlobReject::TooSmall { bytes, min } => {
                 write!(f, "{bytes} bytes, below the {min}-byte minimum")
             }
-            BlobReject::MissingSection(s) => write!(f, "required section \"{s}\" is missing"),
             BlobReject::NoJsonStart => f.write_str("no JSON start found"),
             BlobReject::Json(e) => write!(f, "JSON could not be read: {e}"),
-            BlobReject::NoItems => f.write_str("no Warframes or weapons in the blob"),
+            BlobReject::NoKnownSection => f.write_str("no section that is read could be read"),
         }
     }
 }
 
-/// Like [`parse_full_account_blob`], but says why a blob was rejected.
+/// Reads every section in [`SECTIONS`] from a blob.
+///
+/// `raw` must span from the JSON opening `{` (or from `"SubscribedToEmails"`)
+/// through the closing brace after one of [`END_MARKERS`](crate::END_MARKERS).
+/// A section that is missing or unreadable is reported as such. Only a buffer
+/// that is not an account blob is rejected: no end marker, too small, no valid
+/// JSON, or not one section that could be read.
 #[tracing::instrument(target = "hexdesk::scanner", level = "debug", skip_all)]
-pub fn parse_full_account_blob_checked(raw: &[u8]) -> Result<BlobInventory, BlobReject> {
-    let mut inv = read_blob(raw)?.to_inventory();
-
-    // Every valid FULL_ACCOUNT blob at the orbiter has at least one Warframe in Suits.
-    // An empty unique_items means we captured an incomplete blob (game is mid-write,
-    // returning from mission, or the blob sections were partially stitched out of order).
-    if inv.unique_items.is_empty() {
-        return Err(BlobReject::NoItems);
-    }
-
-    inv.content_hash = inv.compute_content_hash();
-    Ok(inv)
-}
-
-/// Reads every section in [`SECTIONS`] from a blob. `raw` is the same as for
-/// [`parse_full_account_blob`]. A section that is missing or unreadable is
-/// reported as such; only a blob that is not an account blob at all, or that
-/// lacks a core section, is rejected.
 pub fn read_blob(raw: &[u8]) -> Result<BlobRead, BlobReject> {
     let end_pos = find_blob_end(raw).ok_or(BlobReject::NoEnd)?;
 
@@ -68,24 +47,6 @@ pub fn read_blob(raw: &[u8]) -> Result<BlobRead, BlobReject> {
         });
     }
 
-    // Section completeness check: field order varies per account, so the true
-    // outer `{` of the blob can sit in a memory region the stitcher never
-    // recovered — the resulting seed still parses as valid JSON, just starting
-    // mid-object (e.g. right at SubscribedToEmails) and silently missing every
-    // top-level section that came before it.
-    //
-    // Which optional sections exist differs per account, so this is only a
-    // small universal core that every real account has. The per-account check
-    // ("a section the last good blob had is now gone") is up to the caller,
-    // using `BlobInventory::sections`.
-    let search_range = &raw[..end_pos.min(raw.len())];
-    for section in SECTIONS.iter().filter(|s| s.core) {
-        let needle = format!("\"{}\":", section.name);
-        if memchr::memmem::find(search_range, needle.as_bytes()).is_none() {
-            return Err(BlobReject::MissingSection(section.name));
-        }
-    }
-
     // Without its own opening brace the blob lost its front, and the JSON is
     // read from START_MARKER with a brace put back in front of it.
     let front_intact = raw.first() == Some(&b'{');
@@ -95,13 +56,19 @@ pub fn read_blob(raw: &[u8]) -> Result<BlobRead, BlobReject> {
     let json: serde_json::Value =
         serde_json::from_slice(&json_bytes).map_err(|e| BlobReject::Json(e.to_string()))?;
 
-    let sections = SECTIONS
+    let sections: Vec<SectionRead> = SECTIONS
         .iter()
         .map(|section| SectionRead {
             section: *section,
             state: read_section(section, json.get(section.name)),
         })
         .collect();
+    if !sections
+        .iter()
+        .any(|s| matches!(s.state, SectionState::Read(_)))
+    {
+        return Err(BlobReject::NoKnownSection);
+    }
     let keys = json
         .as_object()
         .map(|o| o.keys().cloned().collect())
@@ -115,10 +82,10 @@ pub fn read_blob(raw: &[u8]) -> Result<BlobRead, BlobReject> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_full_account_blob, parse_full_account_blob_checked, read_blob, BlobReject};
+    use super::{read_blob, BlobReject};
     use crate::{SectionContent, SectionState};
 
-    /// Account with only the core sections: no Sentinels, KubrowPets,
+    /// Account with only a few sections: no Sentinels, KubrowPets,
     /// MechSuits and so on. `extra` goes in before the padding.
     fn account_blob(extra: &str, suits: &str) -> String {
         let padding = "x".repeat(60_000);
@@ -137,58 +104,40 @@ mod tests {
 
     #[test]
     fn account_without_optional_sections_is_accepted() {
-        let inv =
-            parse_full_account_blob(&minimal_account_blob()).expect("core-only account must parse");
-        assert_eq!(inv.credits, 5);
-        assert!(inv.sections.iter().any(|s| s == "Suits"));
-        assert!(!inv.sections.iter().any(|s| s == "Sentinels"));
+        let read = read_blob(&minimal_account_blob()).expect("small account must be read");
+        assert_eq!(read.to_inventory().credits, 5);
+        assert!(read.keys.iter().any(|s| s == "Suits"));
+        assert!(!read.keys.iter().any(|s| s == "Sentinels"));
     }
 
     #[test]
-    fn identical_blobs_hash_equal_and_changed_content_differs() {
-        let a = parse_full_account_blob(&minimal_account_blob()).unwrap();
-        let b = parse_full_account_blob(&minimal_account_blob()).unwrap();
-        assert_ne!(a.content_hash, 0);
-        assert_eq!(a.content_hash, b.content_hash);
-
-        let changed = String::from_utf8(minimal_account_blob())
-            .unwrap()
-            .replace("\"RegularCredits\":5", "\"RegularCredits\":6");
-        let c = parse_full_account_blob(changed.as_bytes()).unwrap();
-        assert_ne!(a.content_hash, c.content_hash);
-    }
-
-    #[test]
-    fn blob_missing_a_core_section_is_rejected() {
+    fn a_blob_without_misc_items_is_still_read() {
         let s = String::from_utf8(minimal_account_blob())
             .unwrap()
             .replace("\"MiscItems\":[],", "");
-        assert!(parse_full_account_blob(s.as_bytes()).is_none());
+        let read = read_blob(s.as_bytes()).expect("the other sections are read");
+        assert!(matches!(state(&read, "MiscItems"), SectionState::Missing));
+        assert!(matches!(state(&read, "Suits"), SectionState::Read(_)));
     }
 
     #[test]
     fn parser_names_the_reason_for_each_rejection() {
-        assert_eq!(
-            parse_full_account_blob_checked(b"{\"a\":1}").unwrap_err(),
-            BlobReject::NoEnd
-        );
+        assert_eq!(read_blob(b"{\"a\":1}").unwrap_err(), BlobReject::NoEnd);
         assert!(matches!(
-            parse_full_account_blob_checked(br#"{"SubscribedToEmails":0,"DeathSquadable":false}"#),
+            read_blob(br#"{"SubscribedToEmails":0,"DeathSquadable":false}"#),
             Err(BlobReject::TooSmall { min: 50_000, .. })
         ));
-        let no_misc = account_blob("", SUIT).replace("\"MiscItems\":[],", "");
-        assert_eq!(
-            parse_full_account_blob_checked(no_misc.as_bytes()).unwrap_err(),
-            BlobReject::MissingSection("MiscItems")
+        let unknown_only = format!(
+            r#"{{"SubscribedToEmails":0,"_pad":"{}","DeathSquadable":false}}"#,
+            "x".repeat(60_000)
         );
-        let no_suits = account_blob("", "");
         assert_eq!(
-            parse_full_account_blob_checked(no_suits.as_bytes()).unwrap_err(),
-            BlobReject::NoItems
+            read_blob(unknown_only.as_bytes()).unwrap_err(),
+            BlobReject::NoKnownSection
         );
         let broken = account_blob(r#""Broken":[1,,2],"#, SUIT);
         assert!(matches!(
-            parse_full_account_blob_checked(broken.as_bytes()),
+            read_blob(broken.as_bytes()),
             Err(BlobReject::Json(_))
         ));
     }
@@ -196,9 +145,7 @@ mod tests {
     #[test]
     fn rejection_reasons_contain_no_blob_content() {
         let broken = account_blob(r#""Secret":"abc"x,"#, SUIT);
-        let reason = parse_full_account_blob_checked(broken.as_bytes())
-            .unwrap_err()
-            .to_string();
+        let reason = read_blob(broken.as_bytes()).unwrap_err().to_string();
         assert!(reason.starts_with("JSON could not be read:"), "{reason}");
         assert!(!reason.contains("abc"), "{reason}");
     }
@@ -291,12 +238,10 @@ mod tests {
 
     #[test]
     fn every_section_is_read_into_the_inventory() {
-        let inv = parse_full_account_blob(&blob_from(&full_account_json()))
-            .expect("full account must parse");
-        let mut got = serde_json::to_value(&inv).unwrap();
-        let obj = got.as_object_mut().unwrap();
-        obj.remove("sections");
-        obj.remove("content_hash");
+        let inv = read_blob(&blob_from(&full_account_json()))
+            .expect("full account must parse")
+            .to_inventory();
+        let got = serde_json::to_value(&inv).unwrap();
         let expected = serde_json::json!({
             "credits": 1234,
             "endo": 500,
@@ -540,17 +485,13 @@ mod tests {
     }
 
     #[test]
-    fn a_blob_without_items_is_read_but_not_turned_into_an_inventory() {
+    fn a_blob_without_items_is_read() {
         let mut body = full_account_json();
         for name in ["Suits", "LongGuns", "KubrowPets", "OperatorAmps"] {
             body[name] = serde_json::json!([]);
         }
-        let raw = blob_from(&body);
-        assert!(read_blob(&raw).is_ok());
-        assert_eq!(
-            parse_full_account_blob_checked(&raw).unwrap_err(),
-            BlobReject::NoItems
-        );
+        let read = read_blob(&blob_from(&body)).expect("a blob without items is read");
+        assert!(read.to_inventory().unique_items.is_empty());
     }
 
     #[test]

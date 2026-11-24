@@ -1,6 +1,6 @@
 use hexdesk_blob::{
-    blob_seed_offsets, find_blob_end, parse_full_account_blob, parse_full_account_blob_checked,
-    BlobInventory, BlobReject, ALT_STARTS, END_MARKERS, END_MARKER_MAX_LEN, START_MARKER,
+    blob_seed_offsets, find_blob_end, read_blob, BlobRead, BlobReject, ALT_STARTS, END_MARKERS,
+    END_MARKER_MAX_LEN, START_MARKER,
 };
 use hexdesk_diag::{debug, info, DiagError, Kind, OptionExt, Source};
 use serde::Serialize;
@@ -27,79 +27,6 @@ pub fn elevated_text() -> &'static str {
 pub fn find_warframe_pid_pub() -> Option<u32> {
     use crate::platform::{Platform, ProcessAccess};
     Platform::find_warframe_pid()
-}
-
-/// Consecutive rejected blobs after which a missing section is accepted as
-/// genuinely gone (~2 min at the 10 s scan interval).
-pub const MAX_MISSING_STREAK: u32 = 12;
-
-/// Top-level JSON sections that appear and disappear from memory depending on
-/// game state (e.g. after a vendor interaction or inventory sync). These should
-/// never trigger a truncated-capture rejection because their absence is normal.
-/// `FoundToday` is present before a mission and missing from the blob the
-/// game writes right after it.
-const VOLATILE_SECTIONS: &[&str] = &["RecentVendorPurchases", "MiscAccountData", "FoundToday"];
-
-/// Per-account memory of which top-level sections a complete blob contains.
-///
-/// The monitor applies each accepted blob as a full replacement, so a blob that
-/// lost its front (sections before `SubscribedToEmails`) would wipe those items
-/// and the next full capture would restore them — visible flicker. Instead of a
-/// fixed section list (which rejects accounts that never had an optional
-/// section), a blob is rejected only if it lacks a section the previous accepted
-/// blob had. Gaining sections is always fine.
-#[derive(Debug, Default, Clone)]
-pub struct SectionBaseline {
-    known: std::collections::BTreeSet<String>,
-    missing_streak: u32,
-}
-
-impl SectionBaseline {
-    pub fn from_keys<I: IntoIterator<Item = String>>(keys: I) -> Self {
-        Self {
-            known: keys.into_iter().collect(),
-            missing_streak: 0,
-        }
-    }
-
-    pub fn keys(&self) -> Vec<String> {
-        self.known.iter().cloned().collect()
-    }
-
-    /// `Ok(changed)` — blob accepted; `changed` is true when the baseline was updated
-    /// and should be persisted. `Err(missing)` — blob rejected as truncated.
-    pub fn evaluate(&mut self, sections: &[String]) -> Result<bool, Vec<String>> {
-        let current: std::collections::BTreeSet<&str> =
-            sections.iter().map(String::as_str).collect();
-        let missing: Vec<String> = self
-            .known
-            .iter()
-            .filter(|k| !current.contains(k.as_str()))
-            .filter(|k| !VOLATILE_SECTIONS.contains(&k.as_str()))
-            .cloned()
-            .collect();
-
-        if !missing.is_empty() {
-            self.missing_streak += 1;
-            if self.missing_streak < MAX_MISSING_STREAK {
-                return Err(missing);
-            }
-            // Persistently absent: the account really dropped these sections.
-        }
-
-        self.missing_streak = 0;
-        // Filter volatile sections from the baseline so they are never tracked.
-        let new_known: std::collections::BTreeSet<String> = sections
-            .iter()
-            .filter(|k| !VOLATILE_SECTIONS.contains(&k.as_str()))
-            .cloned()
-            .collect();
-        let changed = self.known != new_known;
-        if changed {
-            self.known = new_known;
-        }
-        Ok(changed)
-    }
 }
 
 // ─── Blob capture ─────────────────────────────────────────────────────────────
@@ -152,7 +79,7 @@ const ANCHORS: &[&[u8]] = &[
 ///   5. Drop any scan that grows past MAX_SCAN_BYTES without finding the end.
 ///
 /// Returns why no blob was found when none was.
-pub fn capture_all_blobs(blob_tx: std::sync::mpsc::Sender<BlobInventory>) -> Result<(), DiagError> {
+pub fn capture_all_blobs(blob_tx: std::sync::mpsc::Sender<BlobRead>) -> Result<(), DiagError> {
     use crate::mem_regions;
     const MIN_REGION: usize = 64_000;
 
@@ -259,7 +186,7 @@ impl StitchReport {
 fn try_cached_blob(
     src: &dyn crate::mem_regions::RegionSource,
     cached_addr: usize,
-    blob_tx: &std::sync::mpsc::Sender<BlobInventory>,
+    blob_tx: &std::sync::mpsc::Sender<BlobRead>,
 ) -> bool {
     // Quick check: is the cached address still mapped? Avoids a costly read_at
     // on a region that has been unmapped since the last scan.
@@ -326,15 +253,17 @@ fn try_cached_blob(
     }
 
     if memchr::memmem::find(&stitched, START_MARKER).is_some() {
-        if let Some(inv) = parse_full_account_blob(&stitched) {
+        if let Ok(read) = read_blob(&stitched) {
+            let counts = read.item_counts();
             info!(
                 scanner,
                 addr = format_args!("0x{cached_addr:012x}"),
-                unique = inv.unique_items.len(),
-                stackable = inv.stackable_items.len(),
+                sections = counts.sections,
+                unique = counts.unique,
+                stackable = counts.stackable,
                 "Account blob found at the cached address"
             );
-            blob_tx.send(inv).ok();
+            blob_tx.send(read).ok();
             return true;
         }
     }
@@ -351,7 +280,7 @@ fn try_cached_blob(
 /// Returns what the walk found.
 fn stitch_blobs(
     src: &mut dyn crate::mem_regions::RegionSource,
-    blob_tx: std::sync::mpsc::Sender<BlobInventory>,
+    blob_tx: std::sync::mpsc::Sender<BlobRead>,
 ) -> StitchReport {
     // Cap on how many distinct candidate seeds (start-marker
     // occurrences) we'll open scans for, and how much further (in bytes read)
@@ -404,7 +333,7 @@ fn stitch_blobs(
     // `candidate_at_bytes` is set the moment the first candidate resolves and drives
     // the EXTRA_SEED_BUDGET window below (see also MAX_CANDIDATE_SEEDS above).
     let mut candidate_at_bytes: Option<u64> = None;
-    let mut completed: Vec<(usize, BlobInventory)> = Vec::new();
+    let mut completed: Vec<(usize, BlobRead)> = Vec::new();
     let mut too_large = 0usize;
     let mut rejected: Vec<(usize, BlobReject)> = Vec::new();
 
@@ -455,21 +384,23 @@ fn stitch_blobs(
                 .iter()
                 .any(|m| memchr::memmem::find(window, m).is_some());
             if has_end && find_blob_end(&scan.data).is_some() {
-                match parse_full_account_blob_checked(&scan.data) {
-                    Ok(inv) => {
+                match read_blob(&scan.data) {
+                    Ok(read) => {
+                        let counts = read.item_counts();
                         debug!(
                             scanner,
                             candidate = scan.id,
                             addr = %format_args!("0x{:012x}", scan.seed_addr),
-                            unique = inv.unique_items.len(),
-                            stackable = inv.stackable_items.len(),
-                            mods = inv.mods.len(),
+                            sections = counts.sections,
+                            unique = counts.unique,
+                            stackable = counts.stackable,
+                            mods = counts.mods,
                             "Candidate read"
                         );
                         if candidate_at_bytes.is_none() {
                             candidate_at_bytes = Some(bytes_read);
                         }
-                        completed.push((scan.seed_addr, inv));
+                        completed.push((scan.seed_addr, read));
                     }
                     Err(reason) => {
                         debug!(
@@ -590,20 +521,22 @@ fn stitch_blobs(
 
             let seed_ends = find_blob_end(&seed).is_some();
             if seed_ends {
-                match parse_full_account_blob_checked(&seed) {
-                    Ok(inv) => {
+                match read_blob(&seed) {
+                    Ok(read) => {
+                        let counts = read.item_counts();
                         debug!(
                             scanner,
                             candidate = id,
                             addr = %format_args!("0x{region_addr:012x}"),
-                            unique = inv.unique_items.len(),
-                            stackable = inv.stackable_items.len(),
+                            sections = counts.sections,
+                            unique = counts.unique,
+                            stackable = counts.stackable,
                             "Candidate read"
                         );
                         if candidate_at_bytes.is_none() {
                             candidate_at_bytes = Some(bytes_read);
                         }
-                        completed.push((seed_addr, inv));
+                        completed.push((seed_addr, read));
                     }
                     Err(reason) => {
                         debug!(
@@ -635,21 +568,23 @@ fn stitch_blobs(
     // Ties (e.g. a single candidate) keep the last one, which is fine — it's the
     // only one, or an arbitrary but deterministic pick among truly-identical data.
     let candidates = completed.len();
-    if let Some((seed_addr, inv)) = completed
+    if let Some((seed_addr, read)) = completed
         .into_iter()
-        .max_by_key(|(_, inv)| inv.unique_items.len() + inv.stackable_items.len() + inv.mods.len())
+        .max_by_key(|(_, read)| read.item_counts().total())
     {
         LAST_BLOB_REGION.store(seed_addr as u64, std::sync::atomic::Ordering::Relaxed);
+        let counts = read.item_counts();
         info!(
             scanner,
             addr = %format_args!("0x{seed_addr:012x}"),
             candidates,
-            unique = inv.unique_items.len(),
-            stackable = inv.stackable_items.len(),
-            mods = inv.mods.len(),
+            sections = counts.sections,
+            unique = counts.unique,
+            stackable = counts.stackable,
+            mods = counts.mods,
             "Account blob found"
         );
-        blob_tx.send(inv).ok();
+        blob_tx.send(read).ok();
     }
 
     debug!(
@@ -669,15 +604,14 @@ fn stitch_blobs(
 
 #[cfg(test)]
 mod stitch_engine_tests {
-    use super::{stitch_blobs, BlobInventory};
+    use super::stitch_blobs;
     use crate::mem_regions::RecordedRegions;
+    use hexdesk_blob::BlobInventory;
 
-    /// Builds a blob with every section `parse_full_account_blob`'s completeness
-    /// checks require: all sections in `CORE_SECTIONS` (plus the optional ones), padded past
-    /// `MIN_PARSE_BYTES`, and one real Suit entry (parse_full_account_blob also
-    /// rejects a blob with zero unique items as incomplete). `fields` is
+    /// Builds a blob with every section in `hexdesk_blob::SECTIONS`, padded
+    /// past the parser's minimum size, and one real Suit entry. `fields` is
     /// interpolated last, right before the padding/close, so a test's override
-    /// (e.g. `"RegularCredits":42`) wins over the section's default here — JSON
+    /// (e.g. `"RegularCredits":42`) wins over the section's default here: JSON
     /// objects with a duplicate key keep the last occurrence's value.
     fn make_blob(fields: &str) -> Vec<u8> {
         let padding = "x".repeat(60_000);
@@ -698,7 +632,7 @@ mod stitch_engine_tests {
         let mut src = RecordedRegions::new(regions);
         let (tx, rx) = std::sync::mpsc::channel();
         stitch_blobs(&mut src, tx);
-        rx.try_recv().ok()
+        rx.try_recv().ok().map(|read| read.to_inventory())
     }
 
     #[test]
@@ -783,72 +717,6 @@ mod stitch_engine_tests {
 }
 
 #[cfg(test)]
-mod section_baseline_tests {
-    use super::{SectionBaseline, MAX_MISSING_STREAK};
-
-    fn keys(v: &[&str]) -> Vec<String> {
-        v.iter().map(|s| s.to_string()).collect()
-    }
-
-    #[test]
-    fn first_blob_is_accepted_and_sets_baseline() {
-        let mut b = SectionBaseline::default();
-        assert_eq!(b.evaluate(&keys(&["A", "B"])), Ok(true));
-        assert_eq!(b.keys(), vec!["A", "B"]);
-    }
-
-    #[test]
-    fn identical_blob_does_not_change_baseline() {
-        let mut b = SectionBaseline::from_keys(keys(&["A", "B"]));
-        assert_eq!(b.evaluate(&keys(&["B", "A"])), Ok(false));
-    }
-
-    #[test]
-    fn gaining_a_section_is_accepted() {
-        let mut b = SectionBaseline::from_keys(keys(&["A", "B"]));
-        assert_eq!(b.evaluate(&keys(&["A", "B", "C"])), Ok(true));
-        assert_eq!(b.keys(), vec!["A", "B", "C"]);
-    }
-
-    #[test]
-    fn truncated_blob_after_good_blob_is_rejected() {
-        let mut b = SectionBaseline::from_keys(keys(&["A", "B", "C"]));
-        assert_eq!(b.evaluate(&keys(&["B", "C"])), Err(keys(&["A"])));
-        // Baseline untouched: the next complete blob is still accepted unchanged.
-        assert_eq!(b.evaluate(&keys(&["A", "B", "C"])), Ok(false));
-    }
-
-    #[test]
-    fn interleaved_good_blobs_reset_the_streak() {
-        let mut b = SectionBaseline::from_keys(keys(&["A", "B"]));
-        for _ in 0..(MAX_MISSING_STREAK * 3) {
-            assert!(b.evaluate(&keys(&["B"])).is_err());
-            assert_eq!(b.evaluate(&keys(&["A", "B"])), Ok(false));
-        }
-    }
-
-    /// A saved baseline can still list a volatile section; a blob without it,
-    /// such as the one right after a mission, is accepted at once.
-    #[test]
-    fn a_missing_volatile_section_never_rejects_a_blob() {
-        let mut b = SectionBaseline::from_keys(keys(&["A", "FoundToday"]));
-        assert_eq!(b.evaluate(&keys(&["A"])), Ok(true));
-        assert_eq!(b.keys(), vec!["A"]);
-        assert_eq!(b.evaluate(&keys(&["A", "FoundToday"])), Ok(false));
-    }
-
-    #[test]
-    fn persistently_missing_section_is_eventually_accepted() {
-        let mut b = SectionBaseline::from_keys(keys(&["A", "B"]));
-        for _ in 0..(MAX_MISSING_STREAK - 1) {
-            assert!(b.evaluate(&keys(&["B"])).is_err());
-        }
-        assert_eq!(b.evaluate(&keys(&["B"])), Ok(true));
-        assert_eq!(b.keys(), vec!["B"]);
-    }
-}
-
-#[cfg(test)]
 mod failure_reason_tests {
     //! A failed capture must say why in the log, without a raw capture.
 
@@ -892,17 +760,19 @@ mod failure_reason_tests {
 
     #[test]
     fn rejected_candidates_report_each_reason() {
-        let no_misc = account_blob("", SUIT).replace("\"MiscItems\":[],", "");
-        let report = walk(vec![(0x1000, no_misc.into_bytes())]);
+        let broken = account_blob(r#""Broken":[1,,2],"#, SUIT);
+        let report = walk(vec![(0x1000, broken.into_bytes())]);
         let err = report.into_result().unwrap_err();
         assert_eq!(err.code(), "scanner.parse");
         assert_eq!(
             err.message(),
             "Account blob not found: no candidate could be read"
         );
-        assert_eq!(
-            err.causes(),
-            ["candidate 0: required section \"MiscItems\" is missing"]
+        let causes = err.causes();
+        assert_eq!(causes.len(), 1);
+        assert!(
+            causes[0].starts_with("candidate 0: JSON could not be read:"),
+            "{causes:?}"
         );
         assert!(err
             .fields()

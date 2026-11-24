@@ -28,8 +28,8 @@ pub(crate) struct BlobCaptureDeps {
     pub shared_mods: Arc<Mutex<HashMap<String, hexdesk_blob::ModCount>>>,
     pub shared_crafting: Arc<Mutex<Vec<monitor::CraftingJob>>>,
     pub force_pid_check: Arc<AtomicBool>,
-    pub blob_rx: Receiver<hexdesk_blob::BlobInventory>,
-    pub blob_tx: Sender<hexdesk_blob::BlobInventory>,
+    pub blob_rx: Receiver<hexdesk_blob::BlobRead>,
+    pub blob_tx: Sender<hexdesk_blob::BlobRead>,
 }
 
 /// Spawn the blob-capture thread.
@@ -86,15 +86,8 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
         };
         let _ = conn.execute_batch("PRAGMA journal_mode=WAL;");
 
-        let section_baseline_path =
-            inventory_state_cache_path.with_file_name("section_baseline.json");
-        let mut section_baseline = memory_scanner::SectionBaseline::from_keys(
-            std::fs::read(&section_baseline_path)
-                .ok()
-                .and_then(|b| serde_json::from_slice::<Vec<String>>(&b).ok())
-                .unwrap_or_default(),
-        );
-        let mut last_applied_hash: Option<u64> = None;
+        let mut scan_state = hexdesk_player::ScanState::default();
+        let mut last_unread_keys: Vec<String> = Vec::new();
 
         let startup = monitor::init_monitor_startup_state(
             &shared_quantities,
@@ -181,40 +174,23 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                     unique_stable.clear();
                     confirmed_unique.clear();
                     known_mods.clear();
-                    last_applied_hash = None;
-                    section_baseline = memory_scanner::SectionBaseline::default();
+                    scan_state = hexdesk_player::ScanState::default();
                 }
             }
 
             let now = chrono::Utc::now().timestamp();
 
             // Process any incoming blob (non-blocking)
-            while let Ok(blob) = blob_rx.try_recv() {
-                match section_baseline.evaluate(&blob.sections) {
-                    Err(missing) => {
-                        let _ = DiagError::new(
-                            Source::Scanner,
-                            Kind::Invalid,
-                            "Account blob rejected: sections that the last accepted blob had are missing",
-                        )
-                        .with("missing", missing.join(","))
-                        .log();
-                        continue;
-                    }
-                    Ok(true) => {
-                        if let Ok(json) = serde_json::to_string(&section_baseline.keys()) {
-                            let _ = atomic_write(&section_baseline_path, json.as_bytes());
-                        }
-                    }
-                    Ok(false) => {}
-                }
-
-                if blob.content_hash != 0 && Some(blob.content_hash) == last_applied_hash {
+            while let Ok(read) = blob_rx.try_recv() {
+                let outcome = scan_state.apply(&read, chrono::Utc::now().timestamp_millis());
+                log_scan_outcome(&read, &outcome, &mut last_unread_keys);
+                if !outcome.changed() {
                     debug!(scanner, "Account blob unchanged since the last one");
                     continue;
                 }
+                let blob = scan_state.to_inventory();
 
-                if process_blob(
+                process_blob(
                     &blob,
                     &app,
                     &conn,
@@ -247,9 +223,7 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                     &mut current_forma_counts,
                     &mut last_snapshot_date,
                     now,
-                ) {
-                    last_applied_hash = Some(blob.content_hash);
-                }
+                );
             }
 
             // Re-enumerate processes at most every 5 s (CreateToolhelp32Snapshot overhead).
@@ -469,7 +443,7 @@ fn process_blob(
     current_forma_counts: &mut HashMap<String, u32>,
     last_snapshot_date: &mut String,
     now: i64,
-) -> bool {
+) {
     let existing_wfm: HashMap<String, u32> =
         load_inventory_state_cache(&inventory_state_cache_path.to_path_buf())
             .items
@@ -505,23 +479,8 @@ fn process_blob(
         m
     };
 
-    // Completeness guard: parse_full_account_blob already rejects blobs missing
-    // required sections (MiscItems, RegularCredits, etc.) — see src/backend/crates/blob/src/parse.rs.
-    // Keep this secondary guard for the unique-items case as a belt-and-suspenders
-    // defence against incomplete blobs that slipped through parsing.
-    let prev_unique_count = confirmed_unique.len();
-    if blob.unique_items.is_empty() && prev_unique_count > 0 {
-        let _ = DiagError::new(
-            Source::Scanner,
-            Kind::Invalid,
-            "Account blob rejected: it has no Warframes or weapons, the previous one had some",
-        )
-        .with("previous_unique", prev_unique_count)
-        .log();
-        return false;
-    }
-
-    // Blob is authoritative — full replacement, not a merge.
+    // `blob` is the merged state of every section, so it replaces the
+    // previous inventory as a whole.
     {
         let mut inv_state = monitor::InventoryState {
             known,
@@ -644,5 +603,56 @@ fn process_blob(
             }
         }
     }
-    true
+}
+
+/// Logs what a blob did per section: which were kept from an earlier scan and
+/// why, which were taken as empty, and which top-level keys are not read.
+fn log_scan_outcome(
+    read: &hexdesk_blob::BlobRead,
+    outcome: &hexdesk_player::ScanOutcome,
+    last_unread_keys: &mut Vec<String>,
+) {
+    use hexdesk_player::SectionOutcome;
+
+    let missing = outcome.named(|o| matches!(o, SectionOutcome::KeptMissing { .. }));
+    let front_lost = outcome.named(|o| *o == SectionOutcome::KeptFrontLost);
+    if !missing.is_empty() || !front_lost.is_empty() {
+        debug!(
+            scanner,
+            missing = %missing.join(","),
+            front_lost = %front_lost.join(","),
+            "Account blob sections kept from an earlier scan: not in this blob"
+        );
+    }
+    for (name, o) in &outcome.sections {
+        if let SectionOutcome::KeptUnreadable { expected } = o {
+            let _ = DiagError::new(
+                Source::Scanner,
+                Kind::Invalid,
+                "Account blob section kept from an earlier scan: it has another shape",
+            )
+            .with("section", *name)
+            .with("expected", *expected)
+            .log();
+        }
+    }
+    let emptied = outcome.named(|o| *o == SectionOutcome::Emptied);
+    if !emptied.is_empty() {
+        info!(
+            scanner,
+            sections = %emptied.join(","),
+            blobs = hexdesk_player::EMPTY_AFTER,
+            "Account blob sections taken as empty: missing from complete blobs in a row"
+        );
+    }
+
+    let unread: Vec<String> = read.unread_keys().into_iter().map(String::from).collect();
+    if unread != *last_unread_keys {
+        debug!(
+            scanner,
+            keys = %unread.join(","),
+            "Account blob sections that are not read"
+        );
+        *last_unread_keys = unread;
+    }
 }

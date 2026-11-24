@@ -5,9 +5,6 @@ pub struct Section {
     pub name: &'static str,
     /// What the section holds, which decides how it is read.
     pub kind: SectionKind,
-    /// Every real account has this section. A blob without it lost its front
-    /// in the capture and is rejected.
-    pub core: bool,
 }
 
 /// What a section holds. Each kind has one reader, so a new section of a
@@ -48,35 +45,23 @@ pub enum Scalar {
 }
 
 const fn section(name: &'static str, kind: SectionKind) -> Section {
-    Section {
-        name,
-        kind,
-        core: false,
-    }
-}
-
-const fn core(name: &'static str, kind: SectionKind) -> Section {
-    Section {
-        name,
-        kind,
-        core: true,
-    }
+    Section { name, kind }
 }
 
 /// Every section the parser reads, in the order it reads them. Items are
 /// listed in this order, so unique items and stackable items keep the same
 /// order from one blob to the next.
 pub const SECTIONS: &[Section] = &[
-    core("RegularCredits", SectionKind::Scalar(Scalar::Credits)),
+    section("RegularCredits", SectionKind::Scalar(Scalar::Credits)),
     section("FusionPoints", SectionKind::Scalar(Scalar::Endo)),
     section("PremiumCredits", SectionKind::Scalar(Scalar::Platinum)),
     section(
         "PremiumCreditsFree",
         SectionKind::Scalar(Scalar::FreePlatinum),
     ),
-    core("PlayerLevel", SectionKind::Scalar(Scalar::MasteryRank)),
-    core("XPInfo", SectionKind::Mastery),
-    core("Suits", SectionKind::Unique),
+    section("PlayerLevel", SectionKind::Scalar(Scalar::MasteryRank)),
+    section("XPInfo", SectionKind::Mastery),
+    section("Suits", SectionKind::Unique),
     section("LongGuns", SectionKind::Unique),
     section("Pistols", SectionKind::Unique),
     section("Melee", SectionKind::Unique),
@@ -88,7 +73,7 @@ pub const SECTIONS: &[Section] = &[
     section("KubrowPets", SectionKind::Unique),
     section("OperatorAmps", SectionKind::Unique),
     section("MechSuits", SectionKind::Unique),
-    core("MiscItems", SectionKind::Stackable { sockets: false }),
+    section("MiscItems", SectionKind::Stackable { sockets: false }),
     section("Recipes", SectionKind::Stackable { sockets: false }),
     section("FusionTreasures", SectionKind::Stackable { sockets: true }),
     section(
@@ -96,7 +81,7 @@ pub const SECTIONS: &[Section] = &[
         SectionKind::Stackable { sockets: false },
     ),
     section("ShipDecorations", SectionKind::Stackable { sockets: false }),
-    core("RawUpgrades", SectionKind::RawUpgrades),
+    section("RawUpgrades", SectionKind::RawUpgrades),
     section("Upgrades", SectionKind::Upgrades),
     section("FlavourItems", SectionKind::FlavourItems),
     section("WeaponSkins", SectionKind::WeaponSkins),

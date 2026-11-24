@@ -102,31 +102,6 @@ pub struct BlobInventory {
     pub consumed_suits: Vec<String>,
     /// All owned riven mods (veiled and revealed).
     pub rivens: Vec<BlobRivenEntry>,
-    /// Top-level JSON keys present in the blob — used to detect front-truncated captures.
-    #[serde(default)]
-    pub sections: Vec<String>,
-    /// Hash of the parsed inventory content (0 = unknown). Lets the monitor skip a
-    /// blob identical to the one it already applied.
-    #[serde(default)]
-    pub content_hash: u64,
-}
-
-impl BlobInventory {
-    /// Deterministic hash of everything except `content_hash` itself. Goes through
-    /// `serde_json::Value` (sorted maps) so HashMap iteration order can't change it.
-    /// Returns 0 if serialization fails, which callers treat as "never equal".
-    pub fn compute_content_hash(&self) -> u64 {
-        use std::hash::{Hash, Hasher};
-        let mut copy = self.clone();
-        copy.content_hash = 0;
-        let bytes = match serde_json::to_value(&copy).and_then(|v| serde_json::to_vec(&v)) {
-            Ok(b) => b,
-            Err(_) => return 0,
-        };
-        let mut h = std::collections::hash_map::DefaultHasher::new();
-        bytes.hash(&mut h);
-        h.finish().max(1)
-    }
 }
 
 /// One owned unique item (warframe, weapon, companion, archwing, amp, mech).

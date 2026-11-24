@@ -79,16 +79,59 @@ impl SectionContent {
     }
 }
 
+/// How much a blob holds: for the log, and to pick the most complete of
+/// several copies of the blob found in one memory walk.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ItemCounts {
+    /// Sections that were read.
+    pub sections: usize,
+    pub unique: usize,
+    pub stackable: usize,
+    /// Distinct mods over `RawUpgrades` and `Upgrades`.
+    pub mods: usize,
+}
+
+impl ItemCounts {
+    /// Entries in total, to compare two copies of the blob.
+    pub fn total(&self) -> usize {
+        self.unique + self.stackable + self.mods
+    }
+}
+
 impl BlobRead {
+    /// How much the sections that were read hold.
+    pub fn item_counts(&self) -> ItemCounts {
+        let mut counts = ItemCounts::default();
+        let mut mods = std::collections::HashSet::new();
+        for read in &self.sections {
+            let SectionState::Read(content) = &read.state else {
+                continue;
+            };
+            counts.sections += 1;
+            match content {
+                SectionContent::Unique(items) => counts.unique += items.len(),
+                SectionContent::Stackable(items) => counts.stackable += items.len(),
+                SectionContent::Upgrades { mods: m, .. } => mods.extend(m.keys()),
+                _ => {}
+            }
+        }
+        counts.mods = mods.len();
+        counts
+    }
+
+    /// Top-level keys of the blob that are not in [`SECTIONS`](crate::SECTIONS).
+    pub fn unread_keys(&self) -> Vec<&str> {
+        self.keys
+            .iter()
+            .map(String::as_str)
+            .filter(|k| !self.sections.iter().any(|s| s.section.name == *k))
+            .collect()
+    }
+
     /// The inventory these sections describe. A section that is missing or
     /// unreadable adds nothing, so its values are 0 or empty.
-    ///
-    /// `content_hash` is left at 0.
     pub fn to_inventory(&self) -> BlobInventory {
-        let mut inv = BlobInventory {
-            sections: self.keys.clone(),
-            ..BlobInventory::default()
-        };
+        let mut inv = BlobInventory::default();
         for read in &self.sections {
             let SectionState::Read(content) = &read.state else {
                 continue;

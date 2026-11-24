@@ -338,7 +338,8 @@ pub(crate) fn apply_blob_to_state(
     path_aliases: &HashMap<String, String>,
     stackable_paths: &std::collections::HashSet<String>,
 ) {
-    // Blob is authoritative — full replacement, not a merge.
+    // `blob` holds every section the scans have shown, merged per section,
+    // so it replaces the state as a whole.
     state.known.clear();
 
     // Currency

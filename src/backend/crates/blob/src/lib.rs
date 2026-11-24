@@ -6,10 +6,10 @@
 //!
 //! - [`find_blob_end`], [`blob_seed_offsets`] and [`extract_blob_json`]
 //!   locate the blob in a stitched buffer.
-//! - [`parse_full_account_blob_checked`] reads a blob into a
-//!   [`BlobInventory`], or says why it was not accepted ([`BlobReject`]).
 //! - [`read_blob`] reads a blob section by section into a [`BlobRead`], which
-//!   says per section whether it was read, missing or unreadable.
+//!   says per section whether it was read, missing or unreadable, or says why
+//!   the buffer is not an account blob ([`BlobReject`]).
+//!   [`BlobRead::to_inventory`] turns the sections into a [`BlobInventory`].
 //! - [`SECTIONS`] lists the sections that are read and what each one holds.
 
 mod bounds;
@@ -28,7 +28,7 @@ pub use inventory::{
     xp_to_rank, ArchonShard, BlobInventory, BlobPendingRecipe, BlobRivenEntry, BlobRivenStat,
     BlobStackableEntry, BlobUniqueEntry, ModCount, RivenState,
 };
-pub use parse::{parse_full_account_blob, parse_full_account_blob_checked, read_blob, BlobReject};
+pub use parse::{read_blob, BlobReject};
 pub use riven::compute_riven_mod_name;
-pub use section_read::{BlobRead, SectionContent, SectionRead, SectionState};
+pub use section_read::{BlobRead, ItemCounts, SectionContent, SectionRead, SectionState};
 pub use sections::{Scalar, Section, SectionKind, SECTIONS};

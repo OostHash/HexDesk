@@ -421,7 +421,7 @@ async fn start_monitor(app: tauri::AppHandle, state: State<'_, AppState>) -> Res
 
     let flag = state.monitor_active.clone();
 
-    let (blob_tx, blob_rx) = std::sync::mpsc::channel::<hexdesk_blob::BlobInventory>();
+    let (blob_tx, blob_rx) = std::sync::mpsc::channel::<hexdesk_blob::BlobRead>();
 
     blob_capture::spawn_blob_capture_thread(
         blob_capture::BlobCaptureDeps {
