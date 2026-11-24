@@ -1,8 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X } from "lucide-react";
 
-const buttonClass =
-  "grid h-8 w-11 place-items-center text-muted transition-colors hover:bg-hover hover:text-text focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus";
+const buttonClass = "grid h-8 w-11 place-items-center text-muted transition-colors hover:bg-hover hover:text-text focus-visible:-outline-offset-2";
 
 /** Empty draggable title bar with native-window controls and no duplicate branding. */
 export function WindowTitleBar() {

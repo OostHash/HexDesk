@@ -181,7 +181,7 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
                           onClick={() => {
                             open({ ...target, rank: null });
                           }}
-                          className="line-clamp-2 rounded-sm font-semibold hover:text-accent hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+                          className="line-clamp-2 rounded-sm font-semibold hover:text-accent hover:underline"
                         >
                           {item.name}
                           <span className="sr-only"> — show orders</span>
@@ -200,7 +200,7 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
                                 onClick={() => {
                                   open({ ...target, rank: r.rank });
                                 }}
-                                className="rounded-sm bg-hover px-1.5 py-0.5 text-xs font-medium tabular-nums hover:bg-selected focus-visible:outline-2 focus-visible:outline-focus"
+                                className="rounded-sm bg-hover px-1.5 py-0.5 text-xs font-medium tabular-nums hover:bg-active"
                               >
                                 <span className="sr-only">{item.name}, </span>R{r.rank} ×{r.count}
                                 <span className="sr-only"> owned — show orders</span>

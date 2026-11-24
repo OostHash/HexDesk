@@ -61,7 +61,7 @@ export function Chip(props: Props) {
       className={cn(
         BASE,
         "px-2.5 disabled:cursor-not-allowed disabled:opacity-50",
-        active ? "border-accent bg-accent-soft text-text" : "border-border text-muted hover:bg-hover hover:text-text",
+        active ? "border-accent bg-selected text-text" : "border-border text-muted hover:bg-hover hover:text-text",
         className,
       )}
     >

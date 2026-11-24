@@ -86,7 +86,7 @@ function SetCard({
                 onClick={() => {
                   onOpen({ slug: summary.slug, name: `${set.name} Set`, imageName: image, rank: null });
                 }}
-                className="truncate rounded-sm text-start font-semibold hover:text-accent hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+                className="truncate rounded-sm text-start font-semibold hover:text-accent hover:underline"
               >
                 {set.name}
                 <span className="sr-only"> — show set orders</span>
@@ -129,7 +129,7 @@ function SetCard({
                 onClick={() => {
                   onOpen({ slug: p.slug, name: p.item.name, imageName: p.item.image_name ?? null, rank: null });
                 }}
-                className="grid w-full grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-sm px-1 py-1 text-start hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus"
+                className="grid w-full grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-sm px-1 py-1 text-start hover:bg-hover"
               >
                 <span className={cn("truncate", p.qty === 0 && "text-muted")}>{p.label}</span>
                 <span className="text-muted tabular-nums">{p.item.ducats ?? "—"} ducats</span>

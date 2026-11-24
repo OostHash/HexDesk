@@ -176,10 +176,7 @@ export function RecipeButton({ item, onOpen, className }: { item: FoundryItem; o
       onClick={() => {
         onOpen(item);
       }}
-      className={cn(
-        "truncate rounded-sm text-start font-semibold hover:text-accent hover:underline focus-visible:outline-2 focus-visible:outline-focus",
-        className,
-      )}
+      className={cn("truncate rounded-sm text-start font-semibold hover:text-accent hover:underline", className)}
     >
       {item.name}
       <span className="sr-only"> — show recipe</span>

@@ -36,6 +36,22 @@ From back to front:
 | `surface-sunken` | A well inside a card                     |
 | `field`          | The inside of an input, select or switch |
 
+## States
+
+Every interactive control uses the same roles for its states:
+
+| State    | Look                                                                                                       |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| Hover    | `bg-hover`; a filled button goes to `/90` of its own colour                                                |
+| Pressed  | `bg-active`; a filled button goes to `/80`                                                                 |
+| Selected | `border-accent bg-selected text-text`                                                                      |
+| Focus    | global `:focus-visible` outline (`index.css`); own classes only after `outline-none` or for a hidden input |
+| Disabled | `opacity-50`; text fields get `FIELD_DISABLED` instead                                                     |
+
+`accent-soft` has the same value as `selected` but is a tint for emphasis,
+such as a watched fissure, not a state. Selected always comes with the accent
+border, so it does not rely on the fill alone.
+
 ## Palette families
 
 - `graphite` (dark) and `stone` (light) are the neutrals. They are separate
