@@ -169,7 +169,7 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
                       className={cn("flex h-full flex-col items-center gap-1 text-center", count === 0 && "border-dashed bg-transparent")}
                     >
                       <span className="self-start">
-                        <Badge tone="domain" style={domainTone(arcane ? "mod-arcane" : "wiki-link")}>
+                        <Badge tone="domain" style={domainTone(arcane ? "mod-arcane" : "mod-standard")}>
                           {arcane ? "Arcane" : "Mod"}
                         </Badge>
                       </span>

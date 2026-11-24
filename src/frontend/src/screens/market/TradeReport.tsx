@@ -23,7 +23,7 @@ import { ItemImage } from "../../patterns/ItemImage";
 import { RankBar } from "../../patterns/RankBar";
 import { cn } from "../../primitives/cn";
 import { Table, type TableColumn } from "../../primitives/data";
-import { Alert, Badge, Card, domainTone, EmptyState, ProgressBar, Spinner } from "../../primitives/display";
+import { Alert, Badge, Card, EmptyState, ProgressBar, Spinner, type Tone } from "../../primitives/display";
 import { RadioGroup } from "../../primitives/forms";
 import { useMinuteNow } from "../../state/useNow";
 
@@ -149,10 +149,10 @@ function ItemTable({ label, rows, valueClass, emptyText }: { label: string; rows
 }
 
 const SESSION_BADGE = {
-  sale: { label: "Sale", color: "txn-sale" },
-  purchase: { label: "Purchase", color: "txn-purchase" },
-  trade: { label: "Trade", color: "txn-trade" },
-} as const;
+  sale: { label: "Sale", tone: "success" },
+  purchase: { label: "Purchase", tone: "danger" },
+  trade: { label: "Trade", tone: "info" },
+} as const satisfies Record<TradeSession["tradeType"], { label: string; tone: Tone }>;
 
 function Side({ label, platinum, items }: { label: string; platinum: number; items: TradeSession["givenItems"] }) {
   return (
@@ -178,9 +178,7 @@ function SessionCard({ session, when }: { session: TradeSession; when: string })
     <li>
       <Card as="article" padding="sm" className="flex flex-col gap-2">
         <header className="flex flex-wrap items-center gap-2">
-          <Badge tone="domain" style={domainTone(badge.color)}>
-            {badge.label}
-          </Badge>
+          <Badge tone={badge.tone}>{badge.label}</Badge>
           {session.withPlayer && <h4 className="text-sm font-semibold">{session.withPlayer}</h4>}
           <time className="ms-auto text-xs text-muted" dateTime={session.timestamp}>
             {when}
