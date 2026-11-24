@@ -18,40 +18,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Keep the required Frontend and Backend checks present on docs-only PRs,
-  # but avoid installing toolchains or running their test suites.
+  # Keep the required Frontend and Backend checks present on every PR, but only
+  # install toolchains and run a suite for the side that changed. Shared files,
+  # pushes and release PRs (to master) run both.
   changes:
     name: Detect relevant changes
     runs-on: ubuntu-24.04
     outputs:
-      code: ${{ steps.scope.outputs.code }}
+      frontend: ${{ steps.scope.outputs.frontend }}
+      backend: ${{ steps.scope.outputs.backend }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - name: Detect code changes
+      - name: Detect relevant changes
         id: scope
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          if [[ "$EVENT_NAME" != "pull_request" ]]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
+          if [[ "$EVENT_NAME" != "pull_request" || "$BASE_REF" == "master" ]]; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            echo "backend=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          code=false
+          frontend=false
+          backend=false
           while IFS= read -r path; do
             case "$path" in
               *.md|docs/*|.github/ISSUE_TEMPLATE/*) ;;
-              *) code=true; break ;;
+              src/frontend/*) frontend=true ;;
+              src/backend/*) backend=true ;;
+              # Everything else is shared: root manifests and lockfiles,
+              # toolchain pins, and the workflows themselves.
+              *) frontend=true; backend=true ;;
             esac
           done < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
 
-          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
+          echo "backend=$backend" >> "$GITHUB_OUTPUT"
 
   frontend:
     name: Frontend
@@ -63,34 +73,34 @@ jobs:
         if: needs.changes.result != 'success'
         run: exit 1
 
-      - name: No code changes
-        if: needs.changes.outputs.code != 'true'
-        run: echo "Only documentation or issue forms changed; frontend checks are not needed."
+      - name: No frontend changes
+        if: needs.changes.outputs.frontend != 'true'
+        run: echo "No frontend changes; frontend checks are not needed."
 
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.frontend == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.frontend == 'true'
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 11.25.0
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.frontend == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: pnpm
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.frontend == 'true'
         run: pnpm install --frozen-lockfile
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.frontend == 'true'
         run: pnpm --filter @hexdesk/frontend exec playwright install --with-deps chromium
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.frontend == 'true'
         run: pnpm format:check
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.frontend == 'true'
         run: pnpm lint
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.frontend == 'true'
         run: pnpm typecheck
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.frontend == 'true'
         run: pnpm test:frontend
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.frontend == 'true'
         run: pnpm build
 
   backend:
@@ -103,23 +113,23 @@ jobs:
         if: needs.changes.result != 'success'
         run: exit 1
 
-      - name: No code changes
-        if: needs.changes.outputs.code != 'true'
-        run: echo "Only documentation or issue forms changed; backend checks are not needed."
+      - name: No backend changes
+        if: needs.changes.outputs.backend != 'true'
+        run: echo "No backend changes; backend checks are not needed."
 
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.backend == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.backend == 'true'
         uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc
         with:
           toolchain: 1.97.0
           components: rustfmt
           targets: x86_64-pc-windows-msvc
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.backend == 'true'
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.backend == 'true'
         run: cargo fmt --all -- --check
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.backend == 'true'
         run: cargo check --workspace --all-targets
-      - if: needs.changes.outputs.code == 'true'
+      - if: needs.changes.outputs.backend == 'true'
         run: cargo test --workspace
