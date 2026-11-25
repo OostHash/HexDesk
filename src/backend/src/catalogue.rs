@@ -1201,12 +1201,12 @@ fn patch_item_category(name: &str, category: &str, unique_name: &str) -> String 
 }
 
 /// Bump this whenever a parsing-logic change (not an upstream data change) makes
-/// previously-cached `ducats` values wrong, so upgrading users get a forced
-/// one-time recompute instead of carrying stale values forever (the normal
-/// refresh only refetches on an upstream ETag change, which a local logic fix
-/// never triggers). v2: rarity is derived from relic reward chance-grouping
-/// instead of WFCD's `rarity` string, which never labels the Common tier.
-const DUCAT_SCHEMA_VERSION: u32 = 2;
+/// a cached catalogue wrong or incomplete (its items, their `ducats`, or the
+/// relic drops built with them), so upgrading users get a forced one-time
+/// rebuild instead of carrying stale data forever (the normal refresh only
+/// refetches on an upstream ETag change, which a local logic fix never
+/// triggers).
+const DUCAT_SCHEMA_VERSION: u32 = 3;
 
 pub(crate) fn load_items_cache(path: &PathBuf) -> Option<Vec<WfcdItem>> {
     let s = std::fs::read_to_string(path).ok()?;

@@ -99,6 +99,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - The inventory and the changelog update right after a mission again. A scan
   that misses part of the inventory now updates everything it did read and
   keeps the rest, instead of being ignored until a complete scan comes in.
+- Foundry shows again which of your relics drop a missing part.
+- A newly released prime set lists all its parts with their ducats, also
+  before the public game data catches up. Citrine Prime showed only its
+  blueprint and counted as complete.
 
 ## [1.1.1] - 2026-11-22
 
