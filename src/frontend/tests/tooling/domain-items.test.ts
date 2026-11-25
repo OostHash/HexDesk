@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardSubline, itemRows, limitRows, rankRows, type CardMeta } from "../../src/domain/items.ts";
+import { cardSubline, formatChance, formatDrain, itemRows, limitRows, rankRows, startRank, type CardMeta } from "../../src/domain/items.ts";
 
 const meta = (patch: Partial<CardMeta>): CardMeta => ({
   rarity: "Rare",
@@ -51,5 +51,21 @@ describe("card rows", () => {
     ]);
     expect(itemRows({ masterable: true }, 12, false)).toEqual([{ label: "Mastery", value: "Rank 12" }]);
     expect(itemRows({ masterable: null, mastery_req: 0 }, 0, false)).toEqual([]);
+  });
+});
+
+describe("info window values", () => {
+  it("starts at the highest owned rank", () => {
+    expect(startRank({ "0": 4, "5": 1, "10": 0 }, 10)).toBe(5);
+    expect(startRank(undefined, 10)).toBe(0);
+    expect(startRank({ "12": 1 }, 10)).toBe(10);
+  });
+
+  it("formats chances and drain", () => {
+    expect(formatChance(0.0912)).toBe("0.09%");
+    expect(formatChance(8.6)).toBe("8.6%");
+    expect(formatChance(5)).toBe("5%");
+    expect(formatDrain(14)).toBe("14");
+    expect(formatDrain(-7)).toBe("+7");
   });
 });

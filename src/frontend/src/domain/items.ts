@@ -114,3 +114,22 @@ export function itemRows(item: { mastery_req?: number | null; masterable?: boole
   if (building) rows.push({ label: "Foundry", value: "Building" });
   return rows;
 }
+
+/** The rank the info window starts at: the highest rank you own, capped at the max rank. */
+export function startRank(byRank: Readonly<Record<string, number>> | undefined, maxRank: number): number {
+  const owned = Object.entries(byRank ?? {})
+    .filter(([, count]) => count > 0)
+    .map(([rank]) => Number(rank));
+  return Math.min(maxRank, Math.max(0, ...owned));
+}
+
+/** A drop chance in percent: two decimals below 1%, otherwise at most one. */
+export function formatChance(chance: number): string {
+  const digits = chance < 1 ? 2 : 1;
+  return `${chance.toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: 0 })}%`;
+}
+
+/** Mod capacity as shown in the game: a mod that adds capacity gets a plus sign. */
+export function formatDrain(drain: number): string {
+  return drain < 0 ? `+${String(-drain)}` : String(drain);
+}
