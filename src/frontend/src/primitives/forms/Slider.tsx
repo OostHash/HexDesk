@@ -59,7 +59,7 @@ export function Slider({ value, onValueChange, onValueCommit, min, max, step = 1
         {...rest}
       />
       {text !== undefined && (
-        <output htmlFor={field.id} className="w-12 shrink-0 text-end text-sm text-muted tabular-nums">
+        <output htmlFor={field.id} className="min-w-12 shrink-0 whitespace-nowrap text-end text-sm text-muted tabular-nums">
           {text}
         </output>
       )}
