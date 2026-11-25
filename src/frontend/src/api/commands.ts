@@ -5,6 +5,7 @@ import type { CacheStatuses } from "../domain/cache";
 import type { LogEntry } from "../domain/console";
 import type { RelicRewards } from "./events";
 import type { ChangeEntry } from "../domain/inventory";
+import type { CardMeta, ItemDetails } from "../domain/items";
 import type { WfmItemInfo, WfmItemOrders, WfmStatPoint } from "../domain/market";
 import type { CatalogItem } from "../domain/relics";
 import type { BackendCard } from "../domain/relicReward";
@@ -38,6 +39,10 @@ export interface CommandMap {
   /** Base URL of the local image server, e.g. "http://127.0.0.1:51234". */
   get_img_cache_dir: { args: undefined; result: string };
   get_all_items: { args: undefined; result: CatalogItem[] };
+  /** Card facts (rarity, polarity, compatibility, max rank) of every mod and arcane, by uniqueName. */
+  get_card_meta: { args: undefined; result: Record<string, CardMeta> };
+  /** Details of one mod or arcane; null for other items. */
+  get_item_details: { args: { uniqueName: string }; result: ItemDetails | null };
   /** Raw drop tables JSON; force re-downloads. */
   get_drop_data: { args: { force: boolean }; result: unknown };
   fetch_wfm_items: { args: undefined; result: Array<{ id: string; item_name: string; url_name: string }> };

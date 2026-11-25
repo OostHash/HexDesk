@@ -1,19 +1,22 @@
 import { PackageOpen } from "lucide-react";
 import { useMemo, useState } from "react";
-import { imageSources, useImageBaseUrl } from "../../api/catalog";
+import { useImageBaseUrl } from "../../api/catalog";
 import { useModCounts, useOwnership } from "../../api/inventory";
 import { prioritisePrice, useCatalogList, useLivePrices, useQueuePrices, useWfmLookup } from "../../api/market";
-import { DEFAULT_MOD_FILTERS, modQty, normalizeForWfm, priceOf, rankCopies, slugFor, visibleMods, type ModFilters } from "../../domain/market";
-import { ItemImage } from "../../patterns/ItemImage";
-import { cn } from "../../primitives/cn";
-import { Badge, Card, domainTone, EmptyState, Skeleton } from "../../primitives/display";
+import { DEFAULT_MOD_FILTERS, modQty, normalizeForWfm, priceOf, slugFor, visibleMods, type ModFilters } from "../../domain/market";
+import { cardSubline, limitRows, rankRows } from "../../domain/items";
+import { useCardMeta } from "../../api/items";
+import { useSaveSettings, useSettings } from "../../api/settings";
+import { openItemInfo } from "../../state/itemInfo";
+import { ItemCard } from "./ItemCard";
+import { Card, EmptyState, Skeleton } from "../../primitives/display";
 import { RadioGroup, SearchInput, Select } from "../../primitives/forms";
 import { Pagination } from "../../primitives/navigation";
 import { CARD_GRID, cardGridStyle, useCardScale } from "../../patterns/CardScale";
 import { ItemImagesContext } from "../../patterns/ItemImage";
 import { useShowImages, ViewControls } from "../../patterns/ViewControls";
 import { pageAfterResize, usePageSize, useScrollTopOn } from "../../patterns/PageSize";
-import { fmt, PlatBadge } from "../../patterns/MarketBadges";
+import { fmt } from "../../patterns/MarketBadges";
 import type { MarketTarget } from "../../domain/market";
 
 const SORT_LABEL: Readonly<Record<ModFilters["sort"], string>> = {
@@ -31,6 +34,15 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
   const lookup = useWfmLookup();
   const { prices } = useLivePrices();
   const baseUrl = useImageBaseUrl();
+  const cardMeta = useCardMeta();
+  const { data: settings } = useSettings();
+  const saveSettings = useSaveSettings();
+  const favoriteList = settings?.favorites;
+  const favorites = useMemo(() => new Set(Array.isArray(favoriteList) ? (favoriteList as string[]) : []), [favoriteList]);
+  const toggleFavorite = (id: string) => {
+    const next = favorites.has(id) ? [...favorites].filter((f) => f !== id) : [...favorites, id];
+    saveSettings.mutate({ favorites: next });
+  };
   const [filters, setFilters] = useState<ModFilters>(DEFAULT_MOD_FILTERS);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePageSize("mods");
@@ -157,63 +169,33 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
                 const slug = slugFor(lookup, item.name);
                 const price = priceOf(prices, slug);
                 const count = modQty(own, mods, item.unique_name);
-                const ranks = rankCopies(mods, item.unique_name);
-                const arcane = item.category === "Arcanes";
-                const target = { slug, name: item.name, imageName: item.image_name ?? null };
+                const meta = cardMeta[item.unique_name];
+                const imageName = item.image_name ?? null;
                 return (
-                  <li key={item.unique_name}>
-                    <Card
-                      as="article"
-                      padding="sm"
-                      interactive
-                      className={cn("flex h-full flex-col items-center gap-1 text-center", count === 0 && "border-dashed bg-transparent")}
-                    >
-                      <span className="self-start">
-                        <Badge tone="domain" style={domainTone(arcane ? "mod-arcane" : "mod-standard")}>
-                          {arcane ? "Arcane" : "Mod"}
-                        </Badge>
-                      </span>
-                      <ItemImage sources={imageSources(item.image_name ?? undefined, baseUrl)} name={item.name} />
-                      <h3 className="text-sm">
-                        <button
-                          type="button"
-                          aria-haspopup="dialog"
-                          onClick={() => {
-                            open({ ...target, rank: null });
-                          }}
-                          className="line-clamp-2 rounded-sm font-semibold hover:text-accent hover:underline"
-                        >
-                          {item.name}
-                          <span className="sr-only"> — show orders</span>
-                        </button>
-                      </h3>
-                      <p className={cn("text-xs tabular-nums", count === 0 ? "text-muted" : "")}>
-                        {count === 0 ? "Not owned" : `${fmt(count)} owned`}
-                      </p>
-                      {ranks.length > 0 && (
-                        <ul aria-label={`${item.name} by rank`} className="flex flex-wrap justify-center gap-1">
-                          {ranks.map((r) => (
-                            <li key={r.rank}>
-                              <button
-                                type="button"
-                                aria-haspopup="dialog"
-                                onClick={() => {
-                                  open({ ...target, rank: r.rank });
-                                }}
-                                className="rounded-sm bg-hover px-1.5 py-0.5 text-xs font-medium tabular-nums hover:bg-active"
-                              >
-                                <span className="sr-only">{item.name}, </span>R{r.rank} ×{r.count}
-                                <span className="sr-only"> owned — show orders</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      <span className="mt-auto">
-                        {price !== null ? <PlatBadge value={price} /> : <span className="text-xs text-muted">No price</span>}
-                      </span>
-                    </Card>
-                  </li>
+                  <ItemCard
+                    key={item.unique_name}
+                    name={item.name}
+                    imageName={imageName}
+                    baseUrl={baseUrl}
+                    subline={cardSubline(item.category, meta)}
+                    rarity={meta?.rarity}
+                    count={count === 0 ? "—" : fmt(count)}
+                    countLabel={count === 0 ? "Not owned" : `${fmt(count)} owned`}
+                    missing={count === 0}
+                    plat={price}
+                    ducats={null}
+                    onOpenMarket={() => {
+                      open({ slug, name: item.name, imageName, rank: null });
+                    }}
+                    onOpen={() => {
+                      openItemInfo({ uniqueName: item.unique_name, name: item.name, imageName, category: item.category });
+                    }}
+                    favorite={favorites.has(item.unique_name)}
+                    onToggleFavorite={() => {
+                      toggleFavorite(item.unique_name);
+                    }}
+                    rows={limitRows(rankRows(mods[item.unique_name]?.by_rank, meta?.max_rank))}
+                  />
                 );
               })}
             </ul>

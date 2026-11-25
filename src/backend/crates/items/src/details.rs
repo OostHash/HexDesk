@@ -11,6 +11,9 @@ pub struct CardMeta {
     pub polarity: Option<String>,
     /// What a mod fits: a weapon class, a warframe, "Aura", ...
     pub compat: Option<String>,
+    /// "Primary Mod", "Warframe Arcane", ...
+    pub type_name: String,
+    pub max_rank: u32,
     pub augment: bool,
 }
 
@@ -100,10 +103,14 @@ impl ItemDetails {
                 rarity: m.rarity.clone(),
                 polarity: m.polarity.clone(),
                 compat: m.compat.clone(),
+                type_name: m.type_name.clone(),
+                max_rank: m.max_rank,
                 augment: m.augment,
             },
             ItemDetails::Arcane(a) => CardMeta {
                 rarity: a.rarity.clone(),
+                type_name: a.type_name.clone(),
+                max_rank: a.max_rank,
                 ..CardMeta::default()
             },
         }

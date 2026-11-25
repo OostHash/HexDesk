@@ -88,15 +88,17 @@ describe("Inventory: Prime Sets and Mods & Arcanes", () => {
     await expect.element(form).not.toBeInTheDocument();
   });
 
-  it("shows mods with ranks and opens the window at that rank", async () => {
+  it("shows mods with copies per rank and opens the market from the price", async () => {
     const screen = await renderScreen();
     await userEvent.click(screen.getByRole("tab", { name: "Mods & Arcanes" }));
     await userEvent.click(screen.getByText("Arcanes", { exact: true }));
     await expect.element(screen.getByText("2 shown", { exact: false })).toBeVisible();
     await userEvent.click(screen.getByText("All types", { exact: true }));
-    await userEvent.click(screen.getByRole("button", { name: "Serration, R10 ×1 owned — show orders" }));
+    await expect.element(screen.getByText("Rank 10 (max)").first()).toBeVisible();
+    await expect.element(screen.getByText("Rifle · Madurai")).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: /^Serration: .* platinum, open the market$/ }));
     const dialog = page.getByRole("dialog", { name: /Serration/ });
-    await expect.element(dialog.getByRole("spinbutton", { name: "Showing rank" })).toHaveValue(10);
+    await expect.element(dialog.getByRole("spinbutton", { name: "Showing rank" })).toHaveValue(0);
   });
 
   it("shows the empty state", async () => {

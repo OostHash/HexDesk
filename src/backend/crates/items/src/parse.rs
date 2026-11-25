@@ -309,9 +309,12 @@ mod tests {
         let serration = &metas["/Lotus/Upgrades/Mods/Rifle/WeaponDamageAmountMod"];
         assert_eq!(serration.polarity.as_deref(), Some("madurai"));
         assert_eq!(serration.compat.as_deref(), Some("Rifle"));
+        assert_eq!(serration.max_rank, 2);
         let energize = &metas
             ["/Lotus/Upgrades/CosmeticEnhancers/Utility/GolemArcaneRadialEnergyOnEnergyPickup"];
         assert_eq!(energize.rarity.as_deref(), Some("Legendary"));
         assert_eq!(energize.polarity, None);
+        assert_eq!(energize.type_name, "Warframe Arcane");
+        assert_eq!(energize.max_rank, 1);
     }
 }
