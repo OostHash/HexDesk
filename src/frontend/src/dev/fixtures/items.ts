@@ -12,15 +12,21 @@ const mod = (compat: string, polarity: string, rarity: string, maxRank: number, 
   type_name: typeName,
   max_rank: maxRank,
   augment: false,
+  exilus: false,
+  utility: false,
+  damage_types: [],
+  effect: [],
 });
+
+const ARCANE = { augment: false, exilus: false, utility: false, damage_types: [], effect: [] };
 
 const META: Record<string, CardMeta> = {
   "/Mods/Serration": mod("Rifle", "madurai", "Uncommon", 10, "Primary Mod"),
   "/Mods/Vitality": mod("Warframe", "vazarin", "Common", 10, "Warframe Mod"),
   "/Mods/BlindRage": mod("Warframe", "madurai", "Rare", 10, "Warframe Mod"),
   "/Mods/PrimedContinuity": mod("Warframe", "madurai", "Legendary", 10, "Warframe Mod"),
-  "/Arcanes/Energize": { rarity: "Legendary", polarity: null, compat: null, type_name: "Warframe Arcane", max_rank: 5, augment: false },
-  "/Arcanes/Grace": { rarity: "Legendary", polarity: null, compat: null, type_name: "Warframe Arcane", max_rank: 5, augment: false },
+  "/Arcanes/Energize": { rarity: "Legendary", polarity: null, compat: null, type_name: "Warframe Arcane", max_rank: 5, ...ARCANE },
+  "/Arcanes/Grace": { rarity: "Legendary", polarity: null, compat: null, type_name: "Warframe Arcane", max_rank: 5, ...ARCANE },
 };
 
 const perRank = (maxRank: number, text: (rank: number) => string[]): RankStats[] =>
@@ -40,6 +46,7 @@ const SERRATION: ModDetails = {
   augment: false,
   exilus: false,
   utility: false,
+  damage_types: [],
   tradable: true,
   drops: [
     { location: "Ceres/Hapke (Spy), Rotation C", variant: null, chance: 8.6, rarity: "Rare" },
@@ -65,6 +72,7 @@ const ENERGIZE: ItemDetails = {
     "15s cooldown",
     ...(rank >= 3 ? ["+1 Arcane Revive"] : []),
   ]),
+  damage_types: [],
   tradable: true,
   drops: [
     { location: "Eidolon Hydrolyst (Capture)", variant: null, chance: 5, rarity: "Rare" },

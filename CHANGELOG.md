@@ -27,10 +27,20 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   rank with the max rank marked; weapons and frames show mastery, the required
   mastery rank and Foundry state. Click the price to open the market. The ⋮
   menu is gone; the wiki link is in the item info window.
-- Mods & Arcanes has a navigator like Items: mods by Warframe, Primary,
-  Secondary, Melee, Companion, Archwing & Necramech, Railjack and Other, and
-  arcanes by Warframe, Weapon and Operator & Amp, each with how many you own.
-  Riven placeholders are no longer listed; rivens have their own screen.
+- Mods & Arcanes has a navigator like Items, following the game's mod
+  filters: Warframe, Aura, Exilus, Primary, Secondary, Melee, Stance,
+  Companion, Archwing, Arch-Gun, Arch-Melee, Necramech, Parazon, K-Drive,
+  Railjack, Rivens and Other for mods, and Warframe, Weapon and Operator & Amp
+  for arcanes, each with how many you own. Exilus mods also appear under their
+  own type, and veiled rivens are marked as such.
+- Search in Mods & Arcanes understands what mods do: it also matches damage
+  types, what a mod fits, polarity, rarity, augment and exilus, and the effect
+  text. Searching a combined element finds the mods that build it, as in the
+  game: "viral" also finds Cold and Toxin mods. A card shows why it matched
+  when the name does not say. A Filters menu narrows the list by rarity,
+  polarity, augment or exilus, and owned rank.
+- Mods & Arcanes shows everything by default; the Owned chip limits it to what
+  you own, and Incomplete to mods you own with no copy at the max rank yet.
 
 - New HexDesk colours: graphite surfaces in the dark theme, warm stone in the
   light theme and a copper-amber accent. The title bar, header, navigation and

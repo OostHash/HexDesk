@@ -4,6 +4,63 @@
 //! markup such as `<DT_FIRE_COLOR>` (damage type colour), `<ENERGY>` (an icon)
 //! or `<LINE_SEPARATOR>` sits inside the text.
 
+/// Damage types by the tag the game puts before their name, in the order the
+/// game lists them: physical, primary elements, combined elements, others.
+pub const DAMAGE_TYPES: [(&str, &str); 15] = [
+    ("DT_IMPACT_COLOR", "Impact"),
+    ("DT_PUNCTURE_COLOR", "Puncture"),
+    ("DT_SLASH_COLOR", "Slash"),
+    ("DT_FIRE_COLOR", "Heat"),
+    ("DT_FREEZE_COLOR", "Cold"),
+    ("DT_ELECTRICITY_COLOR", "Electricity"),
+    ("DT_POISON_COLOR", "Toxin"),
+    ("DT_EXPLOSION_COLOR", "Blast"),
+    ("DT_CORROSIVE_COLOR", "Corrosive"),
+    ("DT_GAS_COLOR", "Gas"),
+    ("DT_MAGNETIC_COLOR", "Magnetic"),
+    ("DT_RADIATION_COLOR", "Radiation"),
+    ("DT_VIRAL_COLOR", "Viral"),
+    ("DT_RADIANT_COLOR", "Void"),
+    ("DT_SENTIENT", "Tau"),
+];
+
+/// The damage types the strings name through their damage-type tags, each
+/// once, in [`DAMAGE_TYPES`] order. Plain words do not count: "Heat" in
+/// "Turret Heat Capacity" is no damage type.
+pub fn damage_types<'a>(texts: impl IntoIterator<Item = &'a str>) -> Vec<String> {
+    let texts: Vec<&str> = texts.into_iter().collect();
+    DAMAGE_TYPES
+        .iter()
+        .filter(|(tag, _)| {
+            let tag = format!("<{tag}>");
+            texts.iter().any(|t| t.contains(&tag))
+        })
+        .map(|(_, name)| (*name).to_string())
+        .collect()
+}
+
+/// A compatibility name as a card shows it. WFCD writes a few in capitals
+/// ("AURA", "PRIMARY"); those become "Aura" and "Primary". Anything else
+/// stays as it is, weapon names such as "AX-52" included.
+pub fn compat_name(raw: &str) -> String {
+    if !raw.chars().all(|c| c.is_ascii_uppercase() || c == ' ') {
+        return raw.to_string();
+    }
+    raw.split(' ')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => first
+                    .to_uppercase()
+                    .chain(chars.flat_map(char::to_lowercase))
+                    .collect(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(" ")
+}
+
 /// One string of effect text as lines, without markup or empty lines.
 pub fn lines(raw: &str) -> Vec<String> {
     let broken = raw
@@ -82,6 +139,28 @@ mod tests {
     fn a_lone_angle_bracket_is_text() {
         assert_eq!(lines("Range < 5m"), vec!["Range < 5m"]);
         assert_eq!(lines("a <b> c"), vec!["a <b> c"]);
+    }
+
+    #[test]
+    fn damage_types_come_from_tags_in_game_order() {
+        let texts = [
+            "+150% <DT_VIRAL_COLOR>Viral and <DT_MAGNETIC_COLOR>Magnetic Damage",
+            "+60% <DT_FREEZE_COLOR>Cold",
+        ];
+        assert_eq!(damage_types(texts), vec!["Cold", "Magnetic", "Viral"]);
+    }
+
+    #[test]
+    fn capital_compat_names_are_tidied() {
+        assert_eq!(compat_name("AURA"), "Aura");
+        assert_eq!(compat_name("PRIMARY"), "Primary");
+        assert_eq!(compat_name("Heavy Blade"), "Heavy Blade");
+        assert_eq!(compat_name("AX-52"), "AX-52");
+    }
+
+    #[test]
+    fn plain_words_are_no_damage_type() {
+        assert!(damage_types(["+27% Turret Heat Capacity"]).is_empty());
     }
 
     #[test]

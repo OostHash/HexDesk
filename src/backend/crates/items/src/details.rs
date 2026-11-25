@@ -15,6 +15,14 @@ pub struct CardMeta {
     pub type_name: String,
     pub max_rank: u32,
     pub augment: bool,
+    pub exilus: bool,
+    pub utility: bool,
+    /// Damage types the effect names, in [`text::DAMAGE_TYPES`] order.
+    ///
+    /// [`text::DAMAGE_TYPES`]: crate::text::DAMAGE_TYPES
+    pub damage_types: Vec<String>,
+    /// The effect at the max rank, one entry per line, for search.
+    pub effect: Vec<String>,
 }
 
 /// The effect text at one rank.
@@ -59,6 +67,10 @@ pub struct ModDetails {
     pub augment: bool,
     pub exilus: bool,
     pub utility: bool,
+    /// Damage types the effect names, in [`text::DAMAGE_TYPES`] order.
+    ///
+    /// [`text::DAMAGE_TYPES`]: crate::text::DAMAGE_TYPES
+    pub damage_types: Vec<String>,
     pub tradable: bool,
     /// Highest chance first.
     pub drops: Vec<Drop>,
@@ -75,6 +87,10 @@ pub struct ArcaneDetails {
     pub max_rank: u32,
     /// Effect per rank, index = rank.
     pub stats_by_rank: Vec<RankStats>,
+    /// Damage types the effect names, in [`text::DAMAGE_TYPES`] order.
+    ///
+    /// [`text::DAMAGE_TYPES`]: crate::text::DAMAGE_TYPES
+    pub damage_types: Vec<String>,
     pub tradable: bool,
     /// Highest chance first.
     pub drops: Vec<Drop>,
@@ -106,15 +122,25 @@ impl ItemDetails {
                 type_name: m.type_name.clone(),
                 max_rank: m.max_rank,
                 augment: m.augment,
+                exilus: m.exilus,
+                utility: m.utility,
+                damage_types: m.damage_types.clone(),
+                effect: max_rank_effect(&m.stats_by_rank),
             },
             ItemDetails::Arcane(a) => CardMeta {
                 rarity: a.rarity.clone(),
                 type_name: a.type_name.clone(),
                 max_rank: a.max_rank,
+                damage_types: a.damage_types.clone(),
+                effect: max_rank_effect(&a.stats_by_rank),
                 ..CardMeta::default()
             },
         }
     }
+}
+
+fn max_rank_effect(stats: &[RankStats]) -> Vec<String> {
+    stats.last().map(|s| s.lines.clone()).unwrap_or_default()
 }
 
 /// Mod capacity at a rank. Each rank costs one more capacity; a mod that adds

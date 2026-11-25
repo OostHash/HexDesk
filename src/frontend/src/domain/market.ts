@@ -1,8 +1,9 @@
 import type { Ownership } from "./completionist.ts";
 import type { PresetCodec } from "./filterPresets.ts";
 import type { RecipeComponent } from "./foundry.ts";
-import type { ModCounts } from "./inventory.ts";
-import { inModGroup, isRivenPlaceholder, modGroup, type CardMeta } from "./items.ts";
+import type { ModCounts, ModRankFilter } from "./inventory.ts";
+import { matchMod } from "./modSearch.ts";
+import { inModGroup, isExilusMod, isIncomplete, modDisplayName, modGroups, type CardMeta } from "./items.ts";
 import type { CatalogItem } from "./relics.ts";
 import { matchesTerms, splitSearchTerms } from "./relics.ts";
 
@@ -253,15 +254,40 @@ export type ModFilters = {
   search: string;
   /** Navigator entry: an id from MOD_GROUPS (domain/items.ts). */
   group: string;
-  owned: "all" | "owned" | "notowned";
+  /** Only what you own. */
+  owned: boolean;
+  /** Only mods you own with no copy at the max rank yet. */
+  incomplete: boolean;
   sort: "qty" | "plat" | "az" | "za";
+  /** Rarities to show (any of them); empty shows every rarity. */
+  rarity: readonly string[];
+  /** Polarities to show, lower case as WFCD writes them; empty shows all. */
+  polarity: readonly string[];
+  /** Augment and exilus mods only (any of them); empty shows every mod. */
+  traits: readonly ModTrait[];
+  /** Owned ranks to show (any of them); empty shows every rank. */
+  ranks: readonly ModRankFilter[];
 };
 
-export const DEFAULT_MOD_FILTERS: ModFilters = { search: "", group: "all", owned: "all", sort: "qty" };
+export type ModTrait = "augment" | "exilus";
+
+export const DEFAULT_MOD_FILTERS: ModFilters = {
+  search: "",
+  group: "all",
+  owned: false,
+  incomplete: false,
+  sort: "qty",
+  rarity: [],
+  polarity: [],
+  traits: [],
+  ranks: [],
+};
+
+/** How many of the popover filters (rarity, polarity, traits, ranks) are set. */
+export const activeModFilterCount = (f: ModFilters) => f.rarity.length + f.polarity.length + f.traits.length + f.ranks.length;
 
 /** A mod or arcane the Mods & Arcanes screen lists. */
-export const isModOrArcane = (i: CatalogItem, meta: Readonly<Record<string, CardMeta>>) =>
-  (i.category === "Mods" || i.category === "Arcanes") && !isRivenPlaceholder(meta[i.unique_name]);
+export const isModOrArcane = (i: CatalogItem) => i.category === "Mods" || i.category === "Arcanes";
 
 /** Owned and total items per navigator entry of Mods & Arcanes. */
 export function modGroupCounts(
@@ -271,10 +297,9 @@ export function modGroupCounts(
   const owned: Record<string, number> = {};
   const total: Record<string, number> = {};
   for (const i of catalog) {
-    if (!isModOrArcane(i, ctx.meta)) continue;
+    if (!isModOrArcane(i)) continue;
     const has = modQty(ctx.own, ctx.mods, i.unique_name) > 0;
-    const keys = ["all", i.category === "Arcanes" ? "arcanes" : "mods", modGroup(i.category, ctx.meta[i.unique_name])];
-    for (const key of keys) {
+    for (const key of modGroups(i, ctx.meta[i.unique_name])) {
       total[key] = (total[key] ?? 0) + 1;
       if (has) owned[key] = (owned[key] ?? 0) + 1;
     }
@@ -298,11 +323,19 @@ export function visibleMods(
   const count = (i: CatalogItem) => modQty(ctx.own, ctx.mods, i.unique_name);
   return catalog
     .filter((i) => {
-      if (!isModOrArcane(i, ctx.meta)) return false;
-      if (!inModGroup(f.group, i.category, ctx.meta[i.unique_name])) return false;
-      if (q && !i.name.toLowerCase().includes(q)) return false;
-      if (f.owned === "owned" && count(i) === 0) return false;
-      if (f.owned === "notowned" && count(i) > 0) return false;
+      if (!isModOrArcane(i)) return false;
+      const meta = ctx.meta[i.unique_name];
+      if (!inModGroup(f.group, i, meta)) return false;
+      if (q && !matchMod(q, modDisplayName(i), meta).matched) return false;
+      if (f.rarity.length > 0 && !f.rarity.includes(meta?.rarity ?? "")) return false;
+      if (f.polarity.length > 0 && !f.polarity.includes(meta?.polarity ?? "")) return false;
+      if (f.traits.length > 0 && !f.traits.some((t) => (t === "exilus" ? isExilusMod(meta) : meta?.augment === true))) return false;
+      if (f.ranks.length > 0) {
+        const byRank = ctx.mods[i.unique_name]?.by_rank ?? {};
+        if (!f.ranks.some((r) => (byRank[r === "unranked" ? "0" : String(r)] ?? 0) > 0)) return false;
+      }
+      if (f.owned && count(i) === 0) return false;
+      if (f.incomplete && !isIncomplete(ctx.mods[i.unique_name]?.by_rank, meta?.max_rank)) return false;
       return true;
     })
     .sort((a, b) => {

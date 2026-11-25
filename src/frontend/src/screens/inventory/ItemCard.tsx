@@ -82,6 +82,8 @@ export type ItemCardProps = {
   baseUrl: string | undefined;
   /** The line under the name: compatibility and polarity, arcane type or category. */
   subline: string;
+  /** Why the item matched a search, when the name does not say. */
+  note?: string | null | undefined;
   /** Mod or arcane rarity, shown as a coloured dot before the subline. */
   rarity?: string | null | undefined;
   /** The big number: owned count, or owned parts of a set ("2/3"). */
@@ -175,6 +177,7 @@ export function ItemCard(props: ItemCardProps) {
           {props.rarity && <span className="sr-only">{props.rarity}, </span>}
           <span className="line-clamp-1">{props.subline}</span>
         </p>
+        {props.note && <p className="line-clamp-2 text-xs text-accent">{props.note}</p>}
         <p className={cn("text-lg font-semibold tabular-nums", missing && "text-muted")} aria-label={props.countLabel}>
           {count}
         </p>

@@ -18,6 +18,7 @@ import {
   sparkline,
   visibleMods,
   modGroupCounts,
+  activeModFilterCount,
   visibleSets,
   whisper,
   type MarketFilters,
@@ -124,9 +125,30 @@ describe("mods", () => {
     lookup: new Map([["arcane_grace", "arcane_grace"]]),
     prices: new Map([["arcane_grace", { sell_median: 30 }]]),
     meta: {
-      "/serration": { rarity: "Uncommon", polarity: "madurai", compat: "Rifle", type_name: "Primary Mod", max_rank: 10, augment: false },
-      "/grace": { rarity: "Legendary", polarity: null, compat: null, type_name: "Warframe Arcane", max_rank: 5, augment: false },
-      "/riven": { rarity: null, polarity: null, compat: null, type_name: "Rifle Riven Mod", max_rank: 8, augment: false },
+      "/serration": {
+        rarity: "Uncommon",
+        polarity: "madurai",
+        compat: "Rifle",
+        type_name: "Primary Mod",
+        max_rank: 10,
+        augment: false,
+        exilus: false,
+        utility: false,
+        damage_types: [],
+        effect: [],
+      },
+      "/grace": {
+        rarity: "Legendary",
+        polarity: null,
+        compat: null,
+        type_name: "Warframe Arcane",
+        max_rank: 5,
+        augment: false,
+        exilus: false,
+        utility: false,
+        damage_types: [],
+        effect: [],
+      },
     },
   };
 
@@ -144,15 +166,29 @@ describe("mods", () => {
     expect(names({ group: "arcanes" })).toEqual(["Arcane Grace"]);
     expect(names({ group: "mod-primary" })).toEqual(["Serration"]);
     expect(names({ group: "mod-warframe" })).toEqual([]);
-    expect(names({ owned: "notowned" })).toEqual(["Arcane Grace"]);
+    expect(names({ owned: true })).toEqual(["Serration"]);
+    expect(names({ incomplete: true })).toEqual([]);
     expect(names({ sort: "plat" })).toEqual(["Arcane Grace", "Serration"]);
   });
 
-  it("leaves riven placeholders out and counts each navigator group", () => {
-    const withRiven = [...catalog, { unique_name: "/riven", name: "Rifle Riven Mod", category: "Mods" }];
-    expect(visibleMods(withRiven, DEFAULT_MOD_FILTERS, ctx).map((i) => i.name)).not.toContain("Rifle Riven Mod");
+  it("filters by rarity, polarity, traits and owned rank", () => {
+    const names = (patch: Partial<typeof DEFAULT_MOD_FILTERS>) => visibleMods(catalog, { ...DEFAULT_MOD_FILTERS, ...patch }, ctx).map((i) => i.name);
+    expect(names({ rarity: ["Legendary"] })).toEqual(["Arcane Grace"]);
+    expect(names({ polarity: ["madurai"] })).toEqual(["Serration"]);
+    expect(names({ traits: ["augment"] })).toEqual([]);
+    expect(names({ ranks: [10] })).toEqual(["Serration"]);
+    expect(names({ ranks: [5] })).toEqual([]);
+    expect(activeModFilterCount({ ...DEFAULT_MOD_FILTERS, rarity: ["Rare"], ranks: [10, "unranked"] })).toBe(3);
+  });
+
+  it("lists rivens in their own group and counts each navigator group", () => {
+    const riven = { unique_name: "/Lotus/Upgrades/Mods/Randomized/RawRifleRandomMod", name: "Rifle Riven Mod", category: "Mods" };
+    const withRiven = [...catalog, riven];
+    const names = (group: string) => visibleMods(withRiven, { ...DEFAULT_MOD_FILTERS, group }, ctx).map((i) => i.name);
+    expect(names("mod-riven")).toEqual(["Rifle Riven Mod"]);
+    expect(names("mod-primary")).toEqual(["Serration"]);
     const counts = modGroupCounts(withRiven, ctx);
-    expect(counts.total).toEqual({ all: 2, mods: 1, "mod-primary": 1, arcanes: 1, "arcane-warframe": 1 });
+    expect(counts.total).toEqual({ all: 3, mods: 2, "mod-primary": 1, "mod-riven": 1, arcanes: 1, "arcane-warframe": 1 });
     expect(counts.owned).toEqual({ all: 1, mods: 1, "mod-primary": 1 });
   });
 });
