@@ -46,11 +46,11 @@ describe("Inventory: Prime Sets and Mods & Arcanes", () => {
     const nova = setCard("Nova Prime");
     await expect.element(nova.getByText("Complete")).toBeVisible();
     await expect.element(nova.getByText("Dupes")).toBeVisible();
-    await expect.element(nova.getByText(/p set$/)).toBeVisible();
+    await expect.element(nova.getByRole("definition").first()).toHaveTextContent("176p");
     await expect.element(setCard("Braton Prime").getByText("1 of 5 parts")).toBeVisible();
     await expect.element(screen.getByText(/10 total · 10 shown$/)).toBeVisible();
     await expect.element(nova.getByText("As set")).toBeVisible();
-    await expect.element(setCard("Braton Prime").getByText("Set when complete")).toBeVisible();
+    await expect.element(setCard("Braton Prime").getByText("Owned parts")).toBeVisible();
     await expect.element(setCard("Braton Prime").getByText(/^1 relic you own drop it: Neo S1 Flawless$/)).toBeInTheDocument();
   });
 

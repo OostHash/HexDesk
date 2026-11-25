@@ -25,6 +25,7 @@ import {
   type SetFilters,
   type SetContext,
 } from "../../src/domain/market.ts";
+import { DEFAULT_SELL_FROM } from "../../src/domain/inventory.ts";
 import type { CatalogItem } from "../../src/domain/relics.ts";
 
 const own = (quantities: Record<string, number> = {}): Ownership => ({ quantities, mastery: {}, subsumed: new Set() });
@@ -75,6 +76,7 @@ describe("prime sets", () => {
   ]);
   const ctx = (quantities: Record<string, number>): SetContext => ({
     own: own(quantities),
+    sellFrom: DEFAULT_SELL_FROM,
     required: requiredCounts(recipes),
     lookup,
     prices: new Map([
@@ -88,6 +90,26 @@ describe("prime sets", () => {
   it("maps Blueprint names to slugs without the suffix", () => {
     expect(lookup.get("ash_prime_chassis_blueprint")).toBe("ash_prime_chassis");
     expect(setParts(ashSet(), ctx({})).find((p) => p.label === "Chassis Blueprint")?.slug).toBe("ash_prime_chassis");
+  });
+
+  it("lists parts in the game's order and marks parts better for ducats", () => {
+    expect(setParts(ashSet(), ctx({})).map((p) => p.label)).toEqual(["Blueprint", "Chassis Blueprint", "Systems Blueprint"]);
+    const aks = sets.find((s) => s.name === "Aksomati Prime");
+    if (!aks) throw new Error("no Aksomati Prime set");
+    const priced: SetContext = {
+      ...ctx({}),
+      prices: new Map([
+        ["aksomati_prime_barrel", { sell_median: 4 }],
+        ["aksomati_prime_blueprint", { sell_median: 50 }],
+      ]),
+    };
+    // A 45-ducat part sells from 5p by default, a 15-ducat part from 2p.
+    expect(setParts(aks, priced).map((p) => [p.label, p.better])).toEqual([
+      ["Blueprint", "plat"],
+      ["Barrel", "ducats"],
+    ]);
+    expect(setParts(aks, { ...priced, sellFrom: { ...DEFAULT_SELL_FROM, 45: 4 } }).map((p) => p.better)).toEqual(["plat", "plat"]);
+    expect(setParts(aks, ctx({})).every((p) => p.better === null)).toBe(true);
   });
 
   it("counts duplicates against the recipe (two barrels are not a dupe)", () => {

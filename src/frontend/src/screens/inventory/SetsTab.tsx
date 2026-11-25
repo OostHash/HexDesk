@@ -3,8 +3,10 @@ import { useMemo, useState, type ReactNode } from "react";
 import { imageSources, useImageBaseUrl } from "../../api/catalog";
 import { useRecipes, useRelicDrops, useRelicNames } from "../../api/foundry";
 import { useCrafting, useOwnership } from "../../api/inventory";
-import { prioritisePrice, useCatalogList, useLivePrices, useQueuePrices, useWfmItems, useWfmLookup } from "../../api/market";
+import { prioritisePrice, useCatalogList, useLivePrices, useQueuePrices, useWfmLookup } from "../../api/market";
+import { useSettings } from "../../api/settings";
 import { ownedRelicsFor } from "../../domain/foundry";
+import { sellFromSetting } from "../../domain/inventory";
 import {
   buildSets,
   DEFAULT_SET_FILTERS,
@@ -30,13 +32,13 @@ import { Pagination, SidebarItem } from "../../primitives/navigation";
 import { cn } from "../../primitives/cn";
 import { Badge, Card, Chip, domainTone, EmptyState, Skeleton } from "../../primitives/display";
 import { SearchInput, Select } from "../../primitives/forms";
-import { DucatBadge, fmt, PlatBadge } from "../../patterns/MarketBadges";
+import { DucatBadge, fmt } from "../../patterns/MarketBadges";
 import type { MarketTarget } from "../../domain/market";
 import { SetFiltersPopover } from "./SetFiltersPopover";
 
 const SORT_LABEL: Readonly<Record<SetFilters["sort"], string>> = {
-  value: "Best value",
-  plat: "Set price",
+  value: "Most platinum",
+  plat: "Highest set price",
   ducats: "Most ducats",
   az: "Name, A–Z",
   za: "Name, Z–A",
@@ -66,24 +68,69 @@ function ValueCell({ label, best, children }: { label: string; best: boolean; ch
   );
 }
 
-/** What one set's worth of owned parts fetches as a set, as parts and in ducats. */
-function SetValueLine({ value, complete, name }: { value: SetValue; complete: boolean; name: string }) {
-  if (value.ducats === 0) return null;
-  const plat = (n: number | null) => (n === null ? <span title="Not every part has a market price">—</span> : `${fmt(n)}p`);
+/**
+ * The set price, and what one set's worth of owned parts fetches as parts and
+ * in ducats once you own any.
+ */
+function SetValueLine({ value, complete, loading, name }: { value: SetValue; complete: boolean; loading: boolean; name: string }) {
+  const plat = (n: number | null, missing: string) => (n === null ? <span title={missing}>{loading ? "…" : "—"}</span> : `${fmt(n)}p`);
   return (
     <dl aria-label={`Selling ${name}`} className="mt-auto grid grid-cols-3 gap-2 border-t border-border pt-2 text-xs">
-      <ValueCell label={complete ? "As set" : "Set when complete"} best={value.best === "set"}>
-        {plat(value.set)}
+      <ValueCell label="As set" best={value.best === "set"}>
+        {plat(value.set, "No market price for the set")}
       </ValueCell>
-      <ValueCell label={complete ? "As parts" : "Owned parts"} best={value.best === "parts"}>
-        {plat(value.parts)}
-      </ValueCell>
-      <ValueCell label="Ducats" best={false}>
-        {fmt(value.ducats)}
-      </ValueCell>
+      {value.ducats > 0 && (
+        <>
+          <ValueCell label={complete ? "As parts" : "Owned parts"} best={value.best === "parts"}>
+            {plat(value.parts, "Not every part has a market price")}
+          </ValueCell>
+          <ValueCell label="Ducats" best={false}>
+            {fmt(value.ducats)}
+          </ValueCell>
+        </>
+      )}
     </dl>
   );
 }
+
+/** A part's ducats; marked when trading it for ducats beats selling it. */
+/**
+ * A part's ducats or price, marked when it is the better way to get rid of a
+ * copy. Marked and plain values take the same box, so the columns stay put.
+ */
+function TradeCell({
+  value,
+  unit,
+  tone,
+  marked,
+  title,
+}: {
+  value: number | null;
+  unit: "ducats" | "platinum";
+  tone: "ducat" | "price-platinum";
+  marked: boolean;
+  title: string | undefined;
+}) {
+  if (value === null) return <span className="justify-self-end px-1.5 text-faint">—</span>;
+  return (
+    <span
+      title={title}
+      className={cn("justify-self-end rounded-sm px-1.5 py-px text-tone tabular-nums", marked && "bg-(--hex-tone)/15 font-medium")}
+      style={domainTone(tone)}
+    >
+      {unit === "platinum" ? `${fmt(value)}p` : fmt(value)}
+      <span className="sr-only">
+        {unit === "ducats" ? " ducats" : ""}
+        {marked ? (unit === "ducats" ? ", better for ducats than selling" : ", better to sell") : ""}
+      </span>
+    </span>
+  );
+}
+
+const tradeTitle = (ducats: number | null, price: number | null, sellFrom: number | null, better: "ducats" | "plat" | null) =>
+  ducats === null || price === null || sellFrom === null
+    ? undefined
+    : `${fmt(ducats)} ducats for ${fmt(price)}p, sell from ${fmt(sellFrom)}p: ${better === "ducats" ? "better for ducats" : "better to sell"}`;
 
 function SetCard({
   set,
@@ -148,11 +195,6 @@ function SetCard({
               {summary.vaulted && <Badge icon={Archive}>Vaulted</Badge>}
             </span>
           </div>
-          {summary.price !== null ? (
-            <PlatBadge value={summary.price} suffix="set" />
-          ) : (
-            <span className="text-xs text-muted">{ctx.prices.size > 0 ? "No price" : "…"}</span>
-          )}
         </header>
         <ul aria-label={`Parts of ${set.name}`} className="flex flex-col divide-y divide-border/60 border-t border-border text-xs">
           {parts.map((p) => {
@@ -165,7 +207,7 @@ function SetCard({
                   onClick={() => {
                     onOpen({ slug: p.slug, name: p.item.name, imageName: p.item.image_name ?? null, rank: null });
                   }}
-                  className="grid w-full grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-sm px-1 py-1 text-start hover:bg-hover"
+                  className="grid w-full grid-cols-[minmax(0,1fr)_3rem_2.5rem_1.75rem] items-center gap-2 rounded-sm px-1 py-1 text-start hover:bg-hover"
                 >
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className={cn("truncate", p.qty === 0 && "text-muted")}>{p.label}</span>
@@ -176,18 +218,37 @@ function SetCard({
                       </Badge>
                     )}
                   </span>
-                  <span className="text-muted tabular-nums">{p.item.ducats ?? "—"} ducats</span>
-                  <span className="w-10 text-end tabular-nums">{p.price !== null ? `${fmt(p.price)}p` : "—"}</span>
-                  <Badge tone={p.qty === 0 ? "neutral" : p.qty > p.required ? "warning" : "success"} variant={p.qty === 0 ? "outline" : "soft"}>
-                    {p.qty}
-                    <span className="sr-only"> owned</span>
-                  </Badge>
+                  <TradeCell
+                    value={p.item.ducats ?? null}
+                    unit="ducats"
+                    tone="ducat"
+                    marked={p.better === "ducats"}
+                    title={tradeTitle(p.item.ducats ?? null, p.price, p.sellFrom, p.better)}
+                  />
+                  <TradeCell
+                    value={p.price}
+                    unit="platinum"
+                    tone="price-platinum"
+                    marked={p.better === "plat"}
+                    title={tradeTitle(p.item.ducats ?? null, p.price, p.sellFrom, p.better)}
+                  />
+                  {p.qty === 0 ? (
+                    <span className="justify-self-center text-faint">
+                      <span aria-hidden="true">—</span>
+                      <span className="sr-only">none owned</span>
+                    </span>
+                  ) : (
+                    <Badge tone={p.qty > p.required ? "warning" : "success"} className="justify-self-center">
+                      {p.qty}
+                      <span className="sr-only"> owned</span>
+                    </Badge>
+                  )}
                 </button>
               </li>
             );
           })}
         </ul>
-        <SetValueLine value={value} complete={summary.complete} name={set.name} />
+        <SetValueLine value={value} complete={summary.complete} loading={ctx.prices.size === 0} name={set.name} />
       </Card>
     </li>
   );
@@ -198,7 +259,6 @@ export function SetsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
   const catalog = useCatalogList();
   const { ownership: own } = useOwnership();
   const crafting = useCrafting();
-  const wfmItems = useWfmItems();
   const lookup = useWfmLookup();
   const { prices } = useLivePrices();
   const baseUrl = useImageBaseUrl();
@@ -211,7 +271,10 @@ export function SetsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
   const parentIds = useMemo(() => sets.flatMap((s) => (s.parent ? [s.parent.unique_name] : [])), [sets]);
   const recipes = useRecipes(parentIds) ?? EMPTY_RECIPES;
   const required = useMemo(() => requiredCounts(recipes.values()), [recipes]);
-  const ctx: SetContext = useMemo(() => ({ own, required, lookup, prices }), [own, required, lookup, prices]);
+  const { data: settings } = useSettings();
+  const storedSellFrom = settings?.sellFrom;
+  const sellFrom = useMemo(() => sellFromSetting(storedSellFrom), [storedSellFrom]);
+  const ctx: SetContext = useMemo(() => ({ own, sellFrom, required, lookup, prices }), [own, sellFrom, required, lookup, prices]);
 
   // Re-queues only when the slug order changes (useQueuePrices compares the joined list).
   const queue = useMemo(() => (lookup.size > 0 ? queueOrder(sets, { own, lookup }) : []), [sets, lookup, own]);
@@ -259,6 +322,20 @@ export function SetsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
               );
             })}
           </ul>
+          <dl aria-label="Ducats" className="mt-auto flex flex-col gap-1 border-t border-border px-3 pt-3 pb-1 text-xs text-muted">
+            <div className="flex items-center justify-between gap-2">
+              <dt>In owned parts</dt>
+              <dd>
+                <DucatBadge value={totals.total} />
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <dt>From dupes</dt>
+              <dd>
+                <DucatBadge value={totals.dupes} />
+              </dd>
+            </div>
+          </dl>
         </nav>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex shrink-0 flex-col gap-2 border-b border-border bg-bg px-4 py-3 lg:px-6">
@@ -330,17 +407,6 @@ export function SetsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
                 onImagesChange={setShowImages}
               />
             </div>
-            <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
-              <DucatBadge value={totals.total} /> in owned parts
-              <DucatBadge value={totals.dupes} /> from dupes
-              <span>
-                {wfmItems.data
-                  ? `· ${fmt(wfmItems.data.length)} items from warframe.market`
-                  : wfmItems.isError
-                    ? "· warframe.market unavailable"
-                    : "· Connecting to warframe.market…"}
-              </span>
-            </p>
             <Pagination
               page={pager.page}
               pageCount={pager.pageCount}

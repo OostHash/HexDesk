@@ -1,6 +1,6 @@
 import type { Ownership } from "./completionist.ts";
 import type { RecipeComponent } from "./foundry.ts";
-import type { ModCounts, ModRankFilter } from "./inventory.ts";
+import { sellFromFor, type ModCounts, type ModRankFilter, type SellFrom } from "./inventory.ts";
 import { matchMod } from "./modSearch.ts";
 import { inModGroup, isExilusMod, isIncomplete, modDisplayName, modGroups, type CardMeta } from "./items.ts";
 import type { CatalogItem } from "./relics.ts";
@@ -158,6 +158,8 @@ export const toggleIn = <T>(list: readonly T[], value: T): T[] => (list.includes
 
 export type SetContext = {
   own: Ownership;
+  /** Per ducat value, the price from which a part is better sold (`sellFromSetting`). */
+  sellFrom: SellFrom;
   required: ReadonlyMap<string, number>;
   lookup: ReadonlyMap<string, string>;
   prices: PriceMap;
@@ -276,21 +278,69 @@ export function setGroupCounts(sets: readonly PrimeSet[], own: Ownership): { wit
   return { withParts, total };
 }
 
-/** Parts sorted by quantity, then name, with what the card shows. */
+/**
+ * Part names in the order the game lists them: the main blueprint, then
+ * warframe, weapon, companion and archwing parts.
+ */
+const PART_ORDER = [
+  "Blueprint",
+  "Neuroptics",
+  "Chassis",
+  "Barrel",
+  "Receiver",
+  "Stock",
+  "Upper Limb",
+  "Lower Limb",
+  "String",
+  "Grip",
+  "Blade",
+  "Handle",
+  "Hilt",
+  "Head",
+  "Guard",
+  "Link",
+  "Chain",
+  "Disc",
+  "Boot",
+  "Gauntlet",
+  "Pouch",
+  "Stars",
+  "Ornament",
+  "Carapace",
+  "Cerebrum",
+  // Last, so warframes read Neuroptics, Chassis, Systems and sentinels Carapace, Cerebrum, Systems.
+  "Systems",
+  "Harness",
+  "Wings",
+];
+
+const partRank = (label: string) => {
+  const base = label === "Blueprint" ? label : label.replace(/ Blueprint$/, "");
+  const i = PART_ORDER.indexOf(base);
+  return i < 0 ? PART_ORDER.length : i;
+};
+
+/** Parts in the game's order, with what the card shows. */
 export function setParts(set: PrimeSet, ctx: SetContext) {
-  return [...set.parts]
-    .sort((a, b) => qty(ctx.own, b.unique_name) - qty(ctx.own, a.unique_name) || a.name.localeCompare(b.name))
+  return set.parts
     .map((item) => {
       const slug = slugFor(ctx.lookup, item.name);
+      const price = priceOf(ctx.prices, slug);
+      const sellFrom = item.ducats != null && item.ducats > 0 ? sellFromFor(item.ducats, ctx.sellFrom) : null;
       return {
         item,
         label: partLabel(item.name, set.name),
         qty: qty(ctx.own, item.unique_name),
         required: need(ctx, item.unique_name),
         slug,
-        price: priceOf(ctx.prices, slug),
+        price,
+        /** Price from which this part is better sold; null without ducats. */
+        sellFrom,
+        /** The better way to get rid of a copy; null when the price or ducats are unknown. */
+        better: price === null || sellFrom === null ? null : price >= sellFrom ? ("plat" as const) : ("ducats" as const),
       };
-    });
+    })
+    .sort((a, b) => partRank(a.label) - partRank(b.label) || a.label.localeCompare(b.label));
 }
 
 /** Ducats of every owned part, and of copies above what the recipes need. */
@@ -308,7 +358,7 @@ export function ducatTotals(sets: readonly PrimeSet[], ctx: SetContext): { total
 }
 
 /** Slugs to queue: owned sets first, each set's slug before its parts. */
-export function queueOrder(sets: readonly PrimeSet[], ctx: Omit<SetContext, "prices" | "required">): string[] {
+export function queueOrder(sets: readonly PrimeSet[], ctx: Pick<SetContext, "own" | "lookup">): string[] {
   const owned: string[] = [];
   const unowned: string[] = [];
   const seen = new Set<string>();
