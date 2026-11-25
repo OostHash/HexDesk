@@ -1,31 +1,10 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { formatChance, formatDrain, type ItemDetails, type ModDetails } from "../../domain/items";
+import { REFINEMENT_LABEL, REFINEMENTS, type RelicSource } from "../../domain/relics";
+import { Badge } from "../../primitives/display";
 import { Button } from "../../primitives/actions";
 import { cn } from "../../primitives/cn";
-import type { ItemInfoTarget } from "../../state/itemInfo";
-
-/** What every section gets to work with. */
-export type SectionContext = {
-  target: ItemInfoTarget;
-  /** Null for items without details (anything but mods and arcanes). */
-  details: ItemDetails | null;
-  rank: number;
-  setRank: (rank: number) => void;
-  /** Copies per rank from the scanner; undefined when none are owned. */
-  copies: Readonly<Record<string, number>> | undefined;
-};
-
-/**
- * One block of the item info window. The window shows every section whose
- * `appliesTo` holds, in the order of SECTIONS, so adding information for a
- * kind of item is a new entry here, not a change to the window.
- */
-export type InfoSection = {
-  id: string;
-  title: string;
-  appliesTo: (ctx: SectionContext) => boolean;
-  render: (ctx: SectionContext) => ReactNode;
-};
+import type { InfoSection } from "../../state/itemInfo";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -51,6 +30,7 @@ function modTraits(mod: ModDetails): string | null {
 const overview: InfoSection = {
   id: "overview",
   title: "Overview",
+  tab: "info",
   appliesTo: ({ details }) => details?.kind === "mod",
   render: ({ details, rank }) => {
     if (details?.kind !== "mod") return null;
@@ -69,6 +49,7 @@ const overview: InfoSection = {
 const stats: InfoSection = {
   id: "stats",
   title: "Stats",
+  tab: "info",
   appliesTo: ({ details }) => (details?.stats_by_rank.length ?? 0) > 0,
   render: ({ details, rank }) => {
     const entry = details?.stats_by_rank[Math.min(rank, details.stats_by_rank.length - 1)];
@@ -91,6 +72,7 @@ const stats: InfoSection = {
 const copies: InfoSection = {
   id: "copies",
   title: "Your copies",
+  tab: "info",
   appliesTo: ({ details, copies }) => details !== null && Object.values(copies ?? {}).some((n) => n > 0),
   render: ({ details, copies, rank, setRank }) => {
     const ranks = Object.entries(copies ?? {})
@@ -160,8 +142,64 @@ function DropList({ details }: { details: ItemDetails }) {
 const drops: InfoSection = {
   id: "drops",
   title: "Where to get it",
+  tab: "drops",
   appliesTo: ({ details }) => (details?.drops.length ?? 0) > 0,
   render: ({ details }) => (details ? <DropList details={details} /> : null),
 };
 
-export const SECTIONS: readonly InfoSection[] = [overview, stats, copies, drops];
+/** Relics shown before "Show all". */
+const RELIC_PREVIEW = 8;
+
+function ownedText(owned: RelicSource["owned"]): string {
+  if (owned.total === 0) return "None owned";
+  return REFINEMENTS.filter((r) => owned[r] > 0)
+    .map((r) => `${fmt(owned[r])} ${REFINEMENT_LABEL[r]}`)
+    .join(" · ");
+}
+
+function RelicList({ sources }: { sources: readonly RelicSource[] }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? sources : sources.slice(0, RELIC_PREVIEW);
+  return (
+    <div className="flex flex-col gap-1">
+      <ul aria-label="Relics that drop it" className="flex flex-col text-sm">
+        {shown.map((s, i) => (
+          <li key={s.relic.fullName} className={cn("flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-0.5", i > 0 && "border-t border-border")}>
+            <span className="min-w-0 flex-1">
+              {s.relic.fullName}
+              {s.vaulted === true && (
+                <Badge className="ms-2" size="sm">
+                  Vaulted
+                </Badge>
+              )}
+            </span>
+            <span className="text-xs text-muted">{s.rarity}</span>
+            <span className={cn("w-56 text-end text-xs tabular-nums", s.owned.total > 0 ? "text-success" : "text-muted")}>{ownedText(s.owned)}</span>
+          </li>
+        ))}
+      </ul>
+      {sources.length > RELIC_PREVIEW && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="self-start"
+          onClick={() => {
+            setAll(!all);
+          }}
+        >
+          {all ? "Show fewer" : `Show all ${fmt(sources.length)}`}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+const relics: InfoSection = {
+  id: "relics",
+  title: "Relics",
+  tab: "relics",
+  appliesTo: ({ relics }) => relics.length > 0,
+  render: ({ relics }) => <RelicList sources={relics} />,
+};
+
+export const SECTIONS: readonly InfoSection[] = [overview, stats, copies, relics, drops];

@@ -14,6 +14,12 @@ type Props = {
   description?: ReactNode;
   footer?: ReactNode;
   size?: keyof typeof SIZE;
+  /**
+   * "center" (default) centres the dialog. "top" keeps its top edge in place,
+   * so a dialog whose content changes height (tabs) grows and shrinks at the
+   * bottom instead of jumping.
+   */
+  placement?: "center" | "top";
   closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
   /** Hide the × in the header (e.g. ConfirmDialog, which has explicit buttons). */
@@ -36,6 +42,7 @@ export function Modal({
   description,
   footer,
   size = "md",
+  placement = "center",
   closeOnBackdrop = true,
   closeOnEscape = true,
   hideCloseButton = false,
@@ -43,6 +50,8 @@ export function Modal({
   children,
 }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
+  // Whether the current press started on the backdrop (see onClick).
+  const pressOnBackdrop = useRef(false);
   const titleId = useId();
   const descriptionId = useId();
 
@@ -77,12 +86,19 @@ export function Modal({
         event.preventDefault();
         if (closeOnEscape) onClose();
       }}
+      onPointerDown={(event) => {
+        pressOnBackdrop.current = event.target === event.currentTarget;
+      }}
       onClick={(event) => {
-        // A click on the <dialog> itself (not its content) is a backdrop click.
-        if (closeOnBackdrop && event.target === event.currentTarget) onClose();
+        // A click on the <dialog> itself (not its content) is a backdrop click,
+        // but only when the press started there too: a press inside that ends
+        // outside (content that shrinks under the pointer, a drag to select
+        // text) reaches the <dialog> as the common ancestor and must not close.
+        if (closeOnBackdrop && pressOnBackdrop.current && event.target === event.currentTarget) onClose();
       }}
       className={cn(
-        "m-auto max-h-[85dvh] w-full overflow-hidden rounded-lg border border-border bg-surface-raised p-0 text-text shadow-3",
+        "mx-auto max-h-[85dvh] w-full overflow-hidden rounded-lg border border-border bg-surface-raised p-0 text-text shadow-3",
+        placement === "top" ? "mt-16 mb-auto" : "my-auto",
         "backdrop:bg-backdrop open:flex open:flex-col",
         SIZE[size],
         className,

@@ -12,6 +12,7 @@ import {
   queueOrder,
   rankCopies,
   requiredCounts,
+  matchSet,
   setGroup,
   setGroupCounts,
   setName,
@@ -149,6 +150,18 @@ describe("prime sets", () => {
     expect(names(visibleSets(sets, f({ sort: "za" }), c))).toEqual(["Ash Prime", "Aksomati Prime"]);
     const full = ctx({ "/aks/barrel": 2, "/aks/bp": 1 });
     expect(names(visibleSets(sets, f({ sort: "value" }), full))).toEqual(["Aksomati Prime", "Ash Prime"]);
+  });
+
+  it("matches a set by name, part, vaulted or category, and says why", () => {
+    const terms = (s: string) => s.split(",").map((t) => t.trim());
+    expect(matchSet(ashSet(), true, terms("ash"))).toEqual({ match: true, reason: null });
+    expect(matchSet(ashSet(), true, terms("chassis"))).toEqual({ match: true, reason: "Part: Chassis Blueprint" });
+    expect(matchSet(ashSet(), true, terms("vaulted"))).toEqual({ match: true, reason: "Vaulted" });
+    expect(matchSet(ashSet(), false, terms("vaulted")).match).toBe(false);
+    expect(matchSet(ashSet(), false, terms("warframe"))).toEqual({ match: true, reason: "Warframes" });
+    expect(matchSet(ashSet(), false, [])).toEqual({ match: true, reason: null });
+    const c = ctx({});
+    expect(visibleSets(sets, f({ search: "barrel" }), c).map((r) => [r.set.name, r.reason])).toEqual([["Aksomati Prime", "Part: Barrel"]]);
   });
 
   it("compares one set's worth of parts with the set price", () => {

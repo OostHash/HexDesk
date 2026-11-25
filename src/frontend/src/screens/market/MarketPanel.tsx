@@ -1,16 +1,13 @@
 import { Clipboard } from "lucide-react";
 import { useEffect, useId, useState } from "react";
-import { imageSources, useImageBaseUrl } from "../../api/catalog";
 import { useCreateOrder, useItemInfo, useItemOrders, useItemStats, useWfmUser } from "../../api/market";
 import { updateOrder, useTradingAction } from "../../api/trading";
 import { median48h, prefillPrice, sparkline, statusLabel, whisper, type WfmItemOrders, type WfmPublicOrder } from "../../domain/market";
-import { ItemImage } from "../../patterns/ItemImage";
 import { Button, IconButton } from "../../primitives/actions";
 import { Table, type TableColumn } from "../../primitives/data";
 import { Alert } from "../../primitives/display";
 import { FormField, Input, RadioGroup } from "../../primitives/forms";
-import { Modal, toast } from "../../primitives/overlay";
-import { closeItemWindow, useItemWindowTarget } from "../../state/itemWindow";
+import { toast } from "../../primitives/overlay";
 import { fmt, type MarketTarget } from "./shared";
 
 type Side = "sell" | "buy";
@@ -350,7 +347,11 @@ function EditListingForm({ edit, onDone }: { edit: NonNullable<MarketTarget["edi
 
 const NO_ORDERS: WfmItemOrders = { sell: [], buy: [] };
 
-function ItemBody({ target, onClose }: { target: MarketTarget; onClose: () => void }) {
+/**
+ * The Market tab of the item window: price history, the order book and
+ * posting or editing an order. `onClose` runs after an edited listing is saved.
+ */
+export function MarketPanel({ target, onClose }: { target: MarketTarget; onClose: () => void }) {
   const user = useWfmUser();
   const info = useItemInfo(target.slug);
   const stats = useItemStats(target.slug);
@@ -469,32 +470,4 @@ function ItemBody({ target, onClose }: { target: MarketTarget; onClose: () => vo
       )}
     </div>
   );
-}
-
-/** Orders, price history and posting an order for one item. */
-export function ItemWindow({ target, onClose }: { target: MarketTarget | null; onClose: () => void }) {
-  const baseUrl = useImageBaseUrl();
-  return (
-    <Modal
-      open={target !== null}
-      onClose={onClose}
-      size="xl"
-      title={
-        target && (
-          <span className="flex items-center gap-2">
-            <ItemImage size="sm" sources={imageSources(target.imageName ?? undefined, baseUrl)} name={target.name} />
-            {target.name}
-          </span>
-        )
-      }
-    >
-      {target && <ItemBody key={`${target.slug}-${String(target.rank)}`} target={target} onClose={onClose} />}
-    </Modal>
-  );
-}
-
-/** The one item window of the app, opened with `openItemWindow` (state/itemWindow). */
-export function ItemWindowHost() {
-  const target = useItemWindowTarget();
-  return <ItemWindow target={target} onClose={closeItemWindow} />;
 }

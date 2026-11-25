@@ -228,15 +228,37 @@ export function setValue(set: PrimeSet, summary: SetSummary, ctx: SetContext): S
   return { set: whole, parts, ducats, best, top };
 }
 
-export type SetRow = { set: PrimeSet; summary: SetSummary; value: SetValue };
+export type SetRow = {
+  set: PrimeSet;
+  summary: SetSummary;
+  value: SetValue;
+  /** Why the set matched the search when its name does not say. */
+  reason: string | null;
+};
+
+/**
+ * Whether a set matches the search terms (any of them): by name, a part name,
+ * "vaulted" for a vaulted set, or its navigator category. `reason` says what
+ * matched when the name did not.
+ */
+export function matchSet(set: PrimeSet, vaulted: boolean, terms: readonly string[]): { match: boolean; reason: string | null } {
+  if (terms.length === 0 || matchesTerms(terms, set.name)) return { match: true, reason: null };
+  const part = set.parts.map((p) => partLabel(p.name, set.name)).find((label) => matchesTerms(terms, label));
+  if (part) return { match: true, reason: `Part: ${part}` };
+  if (vaulted && matchesTerms(terms, "vaulted")) return { match: true, reason: "Vaulted" };
+  const group = SET_GROUPS.find((g) => g.id === setGroup(set))?.label;
+  if (group && matchesTerms(terms, group)) return { match: true, reason: group };
+  return { match: false, reason: null };
+}
 
 export function visibleSets(sets: readonly PrimeSet[], f: SetFilters, ctx: SetContext): SetRow[] {
   const terms = splitSearchTerms(f.search);
   const rows = sets
-    .filter((s) => (f.group === "all" || setGroup(s) === f.group) && matchesTerms(terms, s.name))
-    .map((set) => {
+    .filter((s) => f.group === "all" || setGroup(s) === f.group)
+    .flatMap((set) => {
       const summary = summarizeSet(set, ctx);
-      return { set, summary, value: setValue(set, summary, ctx) };
+      const { match, reason } = matchSet(set, summary.vaulted, terms);
+      return match ? [{ set, summary, value: setValue(set, summary, ctx), reason }] : [];
     })
     .filter(({ set, summary: s }) => {
       if (f.hasParts && s.owned === 0) return false;
