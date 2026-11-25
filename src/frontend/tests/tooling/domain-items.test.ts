@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { cardSubline, formatChance, formatDrain, itemRows, limitRows, rankRows, startRank, type CardMeta } from "../../src/domain/items.ts";
+import {
+  cardSubline,
+  formatChance,
+  formatDrain,
+  inModGroup,
+  itemRows,
+  limitRows,
+  modGroup,
+  rankRows,
+  startRank,
+  type CardMeta,
+} from "../../src/domain/items.ts";
 
 const meta = (patch: Partial<CardMeta>): CardMeta => ({
   rarity: "Rare",
@@ -67,5 +78,25 @@ describe("info window values", () => {
     expect(formatChance(5)).toBe("5%");
     expect(formatDrain(14)).toBe("14");
     expect(formatDrain(-7)).toBe("+7");
+  });
+});
+
+describe("mod groups", () => {
+  it("groups WFCD types into navigator entries", () => {
+    expect(modGroup("Mods", meta({ type_name: "Shotgun Mod" }))).toBe("mod-primary");
+    expect(modGroup("Mods", meta({ type_name: "Stance Mod" }))).toBe("mod-melee");
+    expect(modGroup("Mods", meta({ type_name: "Plexus Mod" }))).toBe("mod-railjack");
+    expect(modGroup("Arcanes", meta({ type_name: "Amp Arcane" }))).toBe("arcane-operator");
+  });
+
+  it("puts unknown types under Other of their kind", () => {
+    expect(modGroup("Mods", meta({ type_name: "Parazon Mod" }))).toBe("mod-other");
+    expect(modGroup("Arcanes", undefined)).toBe("arcane-other");
+  });
+
+  it("matches the all, mods and arcanes entries by kind", () => {
+    expect(inModGroup("all", "Arcanes", undefined)).toBe(true);
+    expect(inModGroup("mods", "Mods", undefined)).toBe(true);
+    expect(inModGroup("mods", "Arcanes", undefined)).toBe(false);
   });
 });

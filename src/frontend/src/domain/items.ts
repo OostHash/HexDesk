@@ -133,3 +133,76 @@ export function formatChance(chance: number): string {
 export function formatDrain(drain: number): string {
   return drain < 0 ? `+${String(-drain)}` : String(drain);
 }
+
+/** A navigator entry of Mods & Arcanes. */
+export type ModGroup = { id: string; label: string; section: "all" | "mods" | "arcanes" };
+
+/**
+ * Navigator entries, grouped from WFCD's mod and arcane types. "mods" and
+ * "arcanes" hold every item of their kind; the others hold one group.
+ */
+export const MOD_GROUPS: readonly ModGroup[] = [
+  { id: "all", label: "All", section: "all" },
+  { id: "mods", label: "All mods", section: "mods" },
+  { id: "mod-warframe", label: "Warframe", section: "mods" },
+  { id: "mod-primary", label: "Primary", section: "mods" },
+  { id: "mod-secondary", label: "Secondary", section: "mods" },
+  { id: "mod-melee", label: "Melee", section: "mods" },
+  { id: "mod-companion", label: "Companion", section: "mods" },
+  { id: "mod-archwing", label: "Archwing & Necramech", section: "mods" },
+  { id: "mod-railjack", label: "Railjack", section: "mods" },
+  { id: "mod-other", label: "Other", section: "mods" },
+  { id: "arcanes", label: "All arcanes", section: "arcanes" },
+  { id: "arcane-warframe", label: "Warframe", section: "arcanes" },
+  { id: "arcane-weapon", label: "Weapon", section: "arcanes" },
+  { id: "arcane-operator", label: "Operator & Amp", section: "arcanes" },
+  { id: "arcane-other", label: "Other", section: "arcanes" },
+];
+
+const MOD_TYPE_GROUP: Readonly<Record<string, string>> = {
+  "Warframe Mod": "mod-warframe",
+  "Primary Mod": "mod-primary",
+  "Shotgun Mod": "mod-primary",
+  "Secondary Mod": "mod-secondary",
+  "Melee Mod": "mod-melee",
+  "Stance Mod": "mod-melee",
+  "Companion Mod": "mod-companion",
+  "Archwing Mod": "mod-archwing",
+  "Arch-Gun Mod": "mod-archwing",
+  "Arch-Melee Mod": "mod-archwing",
+  "Necramech Mod": "mod-archwing",
+  "Plexus Mod": "mod-railjack",
+  "Railjack Mod": "mod-railjack",
+  "Warframe Arcane": "arcane-warframe",
+  "Primary Arcane": "arcane-weapon",
+  "Secondary Arcane": "arcane-weapon",
+  "Melee Arcane": "arcane-weapon",
+  "Shotgun Arcane": "arcane-weapon",
+  "Bow Arcane": "arcane-weapon",
+  "Zaw Arcane": "arcane-weapon",
+  "Kitgun Arcane": "arcane-weapon",
+  "Operator Arcane": "arcane-operator",
+  "Amp Arcane": "arcane-operator",
+};
+
+/** The navigator group of a mod or arcane; an unknown type is "Other" of its kind. */
+export function modGroup(category: string, meta: CardMeta | undefined): string {
+  const group = meta ? MOD_TYPE_GROUP[meta.type_name] : undefined;
+  if (group) return group;
+  return category === "Arcanes" ? "arcane-other" : "mod-other";
+}
+
+/** Whether an item belongs in a navigator entry. */
+export function inModGroup(groupId: string, category: string, meta: CardMeta | undefined): boolean {
+  if (groupId === "all") return true;
+  if (groupId === "mods") return category === "Mods";
+  if (groupId === "arcanes") return category === "Arcanes";
+  return modGroup(category, meta) === groupId;
+}
+
+/**
+ * Riven entries in the catalogue are placeholders for a whole riven type
+ * ("Rifle Riven Mod"), not mods anyone owns as such; rivens have their own
+ * screen.
+ */
+export const isRivenPlaceholder = (meta: CardMeta | undefined): boolean => meta?.type_name.includes("Riven") ?? false;

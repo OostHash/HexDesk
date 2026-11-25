@@ -17,6 +17,7 @@ import {
   setParts,
   sparkline,
   visibleMods,
+  modGroupCounts,
   visibleSets,
   whisper,
   type MarketFilters,
@@ -122,6 +123,11 @@ describe("mods", () => {
     mods,
     lookup: new Map([["arcane_grace", "arcane_grace"]]),
     prices: new Map([["arcane_grace", { sell_median: 30 }]]),
+    meta: {
+      "/serration": { rarity: "Uncommon", polarity: "madurai", compat: "Rifle", type_name: "Primary Mod", max_rank: 10, augment: false },
+      "/grace": { rarity: "Legendary", polarity: null, compat: null, type_name: "Warframe Arcane", max_rank: 5, augment: false },
+      "/riven": { rarity: null, polarity: null, compat: null, type_name: "Rifle Riven Mod", max_rank: 8, augment: false },
+    },
   };
 
   it("counts scanner copies and lists ranks highest first", () => {
@@ -132,12 +138,22 @@ describe("mods", () => {
     ]);
   });
 
-  it("filters by type and ownership and sorts by price", () => {
+  it("filters by navigator group and ownership and sorts by price", () => {
     const names = (patch: Partial<typeof DEFAULT_MOD_FILTERS>) => visibleMods(catalog, { ...DEFAULT_MOD_FILTERS, ...patch }, ctx).map((i) => i.name);
     expect(names({})).toEqual(["Serration", "Arcane Grace"]);
-    expect(names({ type: "arcanes" })).toEqual(["Arcane Grace"]);
+    expect(names({ group: "arcanes" })).toEqual(["Arcane Grace"]);
+    expect(names({ group: "mod-primary" })).toEqual(["Serration"]);
+    expect(names({ group: "mod-warframe" })).toEqual([]);
     expect(names({ owned: "notowned" })).toEqual(["Arcane Grace"]);
     expect(names({ sort: "plat" })).toEqual(["Arcane Grace", "Serration"]);
+  });
+
+  it("leaves riven placeholders out and counts each navigator group", () => {
+    const withRiven = [...catalog, { unique_name: "/riven", name: "Rifle Riven Mod", category: "Mods" }];
+    expect(visibleMods(withRiven, DEFAULT_MOD_FILTERS, ctx).map((i) => i.name)).not.toContain("Rifle Riven Mod");
+    const counts = modGroupCounts(withRiven, ctx);
+    expect(counts.total).toEqual({ all: 2, mods: 1, "mod-primary": 1, arcanes: 1, "arcane-warframe": 1 });
+    expect(counts.owned).toEqual({ all: 1, mods: 1, "mod-primary": 1 });
   });
 });
 

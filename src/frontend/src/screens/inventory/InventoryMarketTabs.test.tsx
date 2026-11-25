@@ -91,9 +91,13 @@ describe("Inventory: Prime Sets and Mods & Arcanes", () => {
   it("shows mods with copies per rank and opens the market from the price", async () => {
     const screen = await renderScreen();
     await userEvent.click(screen.getByRole("tab", { name: "Mods & Arcanes" }));
-    await userEvent.click(screen.getByText("Arcanes", { exact: true }));
+    const nav = screen.getByRole("navigation", { name: "Mod and arcane categories" });
+    await userEvent.click(nav.getByRole("button", { name: /^All arcanes/ }));
     await expect.element(screen.getByText("2 shown", { exact: false })).toBeVisible();
-    await userEvent.click(screen.getByText("All types", { exact: true }));
+    await userEvent.click(nav.getByRole("button", { name: /^All mods/ }));
+    await expect.element(screen.getByText("Blind Rage")).toBeVisible();
+    await expect.element(screen.getByText("Arcane Energize")).not.toBeInTheDocument();
+    await userEvent.click(nav.getByRole("button", { name: /^Primary/ }));
     await expect.element(screen.getByText("Rank 10 (max)").first()).toBeVisible();
     await expect.element(screen.getByText("Rifle · Madurai")).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: /^Serration: .* platinum, open the market$/ }));

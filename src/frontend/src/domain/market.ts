@@ -2,6 +2,7 @@ import type { Ownership } from "./completionist.ts";
 import type { PresetCodec } from "./filterPresets.ts";
 import type { RecipeComponent } from "./foundry.ts";
 import type { ModCounts } from "./inventory.ts";
+import { inModGroup, isRivenPlaceholder, modGroup, type CardMeta } from "./items.ts";
 import type { CatalogItem } from "./relics.ts";
 import { matchesTerms, splitSearchTerms } from "./relics.ts";
 
@@ -250,12 +251,36 @@ export function queueOrder(sets: readonly PrimeSet[], ctx: Omit<SetContext, "pri
 
 export type ModFilters = {
   search: string;
-  type: "all" | "mods" | "arcanes";
+  /** Navigator entry: an id from MOD_GROUPS (domain/items.ts). */
+  group: string;
   owned: "all" | "owned" | "notowned";
   sort: "qty" | "plat" | "az" | "za";
 };
 
-export const DEFAULT_MOD_FILTERS: ModFilters = { search: "", type: "all", owned: "all", sort: "qty" };
+export const DEFAULT_MOD_FILTERS: ModFilters = { search: "", group: "all", owned: "all", sort: "qty" };
+
+/** A mod or arcane the Mods & Arcanes screen lists. */
+export const isModOrArcane = (i: CatalogItem, meta: Readonly<Record<string, CardMeta>>) =>
+  (i.category === "Mods" || i.category === "Arcanes") && !isRivenPlaceholder(meta[i.unique_name]);
+
+/** Owned and total items per navigator entry of Mods & Arcanes. */
+export function modGroupCounts(
+  catalog: readonly CatalogItem[],
+  ctx: { own: Ownership; mods: ModCounts; meta: Readonly<Record<string, CardMeta>> },
+): { owned: Record<string, number>; total: Record<string, number> } {
+  const owned: Record<string, number> = {};
+  const total: Record<string, number> = {};
+  for (const i of catalog) {
+    if (!isModOrArcane(i, ctx.meta)) continue;
+    const has = modQty(ctx.own, ctx.mods, i.unique_name) > 0;
+    const keys = ["all", i.category === "Arcanes" ? "arcanes" : "mods", modGroup(i.category, ctx.meta[i.unique_name])];
+    for (const key of keys) {
+      total[key] = (total[key] ?? 0) + 1;
+      if (has) owned[key] = (owned[key] ?? 0) + 1;
+    }
+  }
+  return { owned, total };
+}
 
 /** Owned copies: the scanner's mod total counts too. */
 export const modQty = (own: Ownership, mods: ModCounts, id: string) => Math.max(own.quantities[id] ?? 0, mods[id]?.total ?? 0);
@@ -263,7 +288,7 @@ export const modQty = (own: Ownership, mods: ModCounts, id: string) => Math.max(
 export function visibleMods(
   catalog: readonly CatalogItem[],
   f: ModFilters,
-  ctx: { own: Ownership; mods: ModCounts; lookup: ReadonlyMap<string, string>; prices: PriceMap },
+  ctx: { own: Ownership; mods: ModCounts; lookup: ReadonlyMap<string, string>; prices: PriceMap; meta: Readonly<Record<string, CardMeta>> },
 ): CatalogItem[] {
   const q = f.search.trim().toLowerCase();
   const price = (i: CatalogItem) => {
@@ -273,12 +298,11 @@ export function visibleMods(
   const count = (i: CatalogItem) => modQty(ctx.own, ctx.mods, i.unique_name);
   return catalog
     .filter((i) => {
-      if (i.category !== "Mods" && i.category !== "Arcanes") return false;
+      if (!isModOrArcane(i, ctx.meta)) return false;
+      if (!inModGroup(f.group, i.category, ctx.meta[i.unique_name])) return false;
       if (q && !i.name.toLowerCase().includes(q)) return false;
       if (f.owned === "owned" && count(i) === 0) return false;
       if (f.owned === "notowned" && count(i) > 0) return false;
-      if (f.type === "mods" && i.category !== "Mods") return false;
-      if (f.type === "arcanes" && i.category !== "Arcanes") return false;
       return true;
     })
     .sort((a, b) => {

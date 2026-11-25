@@ -27,6 +27,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   rank with the max rank marked; weapons and frames show mastery, the required
   mastery rank and Foundry state. Click the price to open the market. The ⋮
   menu is gone; the wiki link is in the item info window.
+- Mods & Arcanes has a navigator like Items: mods by Warframe, Primary,
+  Secondary, Melee, Companion, Archwing & Necramech, Railjack and Other, and
+  arcanes by Warframe, Weapon and Operator & Amp, each with how many you own.
+  Riven placeholders are no longer listed; rivens have their own screen.
 
 - New HexDesk colours: graphite surfaces in the dark theme, warm stone in the
   light theme and a copper-amber accent. The title bar, header, navigation and
