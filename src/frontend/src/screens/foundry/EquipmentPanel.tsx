@@ -10,15 +10,19 @@ import {
   categoryProgress,
   DEFAULT_FOUNDRY_FILTERS,
   filterItems,
+  FOUNDRY_SORTS,
   FOUNDRY_STATUSES,
+  foundrySortFrom,
   foundryPresetCodec,
   mergeComponents,
   patchFilters,
   percent,
+  sortItems,
   statusOf,
   withStatus,
   type FoundryFilters,
   type FoundryItem,
+  type FoundrySort,
   type FoundryStatus,
   type RecipeComponent,
 } from "../../domain/foundry";
@@ -31,7 +35,7 @@ import { Button } from "../../primitives/actions";
 import { cn } from "../../primitives/cn";
 import { Table, type TableColumn } from "../../primitives/data";
 import { Alert, Card, Chip, EmptyState, Skeleton } from "../../primitives/display";
-import { SearchInput } from "../../primitives/forms";
+import { SearchInput, Select } from "../../primitives/forms";
 import { Pagination } from "../../primitives/navigation";
 import { CraftCard, FoundryWikiMenu, RecipeButton, StatusBadges, TrackButton, type CraftInfo } from "./CraftCard";
 import { useCraftInfo } from "./useCraftInfo";
@@ -42,6 +46,7 @@ const readView = (): View => {
   const v = localStorage.getItem(VIEW_KEY);
   return v === "list" || v === "list-compact" ? "list" : "cards";
 };
+const SORT_KEY = "ff-sort-foundry";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 const EMPTY_ITEMS: FoundryItem[] = [];
@@ -90,6 +95,7 @@ export function EquipmentPanel({ filters, onFiltersChange, onOpen }: Props) {
   const [building, setBuilding] = useState(false);
   const [page, setPage] = useState(0);
   const [view, setView] = useState<View>(readView);
+  const [sort, setSort] = useState<FoundrySort>(() => foundrySortFrom(localStorage.getItem(SORT_KEY)));
 
   // Any filter change (including presets and the navigator) starts at page 1; inventory updates do not.
   const [seenFilters, setSeenFilters] = useState(filters);
@@ -124,11 +130,11 @@ export function EquipmentPanel({ filters, onFiltersChange, onOpen }: Props) {
   const candidateIds = useMemo(() => (needsRecipes ? candidates.map((i) => i.unique_name) : []), [candidates, needsRecipes]);
   const allRecipes = useRecipes(candidateIds, needsRecipes);
   const visible = useMemo(() => {
-    if (!needsRecipes) return candidates;
+    if (!needsRecipes) return sortItems(candidates, sort, own);
     if (!allRecipes) return [];
     const ready = applyReadyFilter(candidates, filters, allRecipes, own);
-    return building ? applyBuildingFilter(ready, allRecipes, crafting) : ready;
-  }, [candidates, filters, allRecipes, own, building, crafting, needsRecipes]);
+    return sortItems(building ? applyBuildingFilter(ready, allRecipes, crafting) : ready, sort, own);
+  }, [candidates, filters, allRecipes, own, building, crafting, needsRecipes, sort]);
   const checking = needsRecipes && allRecipes === null;
 
   // Counts on the pills that need no recipes; Ready and Building show theirs once known.
@@ -262,6 +268,26 @@ export function EquipmentPanel({ filters, onFiltersChange, onOpen }: Props) {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <PresetBar model={presets} label="Foundry" />
+            <label className="flex items-center gap-2 text-xs text-muted">
+              Sort
+              <Select
+                size="sm"
+                value={sort}
+                onChange={(e) => {
+                  const next = foundrySortFrom(e.target.value);
+                  setSort(next);
+                  setPage(0);
+                  localStorage.setItem(SORT_KEY, next);
+                }}
+                className="w-40"
+              >
+                {FOUNDRY_SORTS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
             <ViewControls
               screen="foundry"
               view={view}
