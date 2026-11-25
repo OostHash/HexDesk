@@ -8,6 +8,7 @@ import { resetMockRivens } from "../../dev/fixtures/rivens";
 import { resetMockTrading } from "../../dev/fixtures/trading";
 import { installMocks } from "../../dev/installMocks";
 import { ToastRegion } from "../../primitives/overlay";
+import { openRiven, useRivenFocus } from "../../state/navigation";
 import { RivensScreen } from "./RivensScreen";
 
 async function renderScreen({ search = "", loggedIn = true } = {}) {
@@ -38,6 +39,17 @@ describe("RivensScreen", () => {
   });
   beforeEach(() => {
     sessionStorage.removeItem("ff-mock-settings");
+  });
+
+  it("opens on My rivens at a riven another screen asked for, once", async () => {
+    openRiven("riv2");
+    const screen = await renderScreen();
+    await expect.element(screen.getByRole("tab", { name: "My rivens" })).toHaveAttribute("aria-selected", "true");
+    const focused = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: /^Lato/ }) });
+    await expect.element(focused).toHaveAttribute("aria-current", "true");
+    const Probe = () => <span>focus: {useRivenFocus() ?? "none"}</span>;
+    await render(<Probe />);
+    await expect.element(page.getByText("focus: none")).toBeInTheDocument();
   });
 
   it("picks a weapon from the suggestions and analyses the roll", async () => {

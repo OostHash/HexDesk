@@ -1,6 +1,7 @@
-import { useCallback, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useState, type ComponentType } from "react";
 import { useSettings } from "../api/settings";
 import { cn } from "../primitives/cn";
+import { onOpenScreen } from "../state/navigation";
 import { FoundryScreen } from "../screens/foundry/FoundryScreen";
 import { SET_INFO_SECTIONS } from "../screens/inventory/SetParts";
 import { ItemWindowHost } from "./ItemWindowHost";
@@ -48,6 +49,7 @@ export function AppShell() {
   const openInventory = useCallback(() => {
     setScreen("inventory");
   }, []);
+  useEffect(() => onOpenScreen(setScreen), []);
   const openSettings = (tab?: SettingsTab) => {
     if (tab) setSettingsTab(tab);
     setScreen("settings");

@@ -9,6 +9,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- Your own rivens in Mods & Arcanes → Rivens: every riven you own gets a card
+  with its name as the game shows it, its type and polarity, rank and
+  rerolls. Click a card to open it in Rivens → My rivens. Veiled rivens stay
+  listed per type with how many you have.
 - An overlay theme in Settings → Overlays: the in-game overlays can stay dark
   while the app is light, follow the app, or be light. They are dark by
   default.

@@ -6,6 +6,10 @@ import { prioritisePrice, useCatalogList, useLivePrices, useQueuePrices, useWfmL
 import { DEFAULT_MOD_FILTERS, modGroupCounts, modQty, normalizeForWfm, priceOf, slugFor, visibleMods, type ModFilters } from "../../domain/market";
 import { cardSubline, limitRows, MOD_GROUPS, modDisplayName, rankRows } from "../../domain/items";
 import { useCardMeta } from "../../api/items";
+import { useOwnedRivens, useWeaponNames } from "../../api/rivens";
+import { ownRivenCards, rivenGroupCount, rivenRows, veiledCounts, visibleRivens, type RivenEntry } from "../../domain/rivenCards";
+import type { CatalogItem } from "../../domain/relics";
+import { openRiven } from "../../state/navigation";
 import { useSaveSettings, useSettings } from "../../api/settings";
 import { openItemInfo } from "../../state/itemInfo";
 import { ItemCard } from "./ItemCard";
@@ -23,6 +27,11 @@ import { fmt } from "../../patterns/MarketBadges";
 import type { MarketTarget } from "../../domain/market";
 
 const SECTION_LABEL = { all: "All mods and arcanes", mods: "Mods", arcanes: "Arcanes" } as const;
+
+const RIVEN_GROUP = "mod-riven";
+
+/** A card on the page: a catalogue mod or arcane, or an entry of the Rivens group. */
+type Entry = { kind: "mod"; item: CatalogItem } | RivenEntry;
 
 const SORT_LABEL: Readonly<Record<ModFilters["sort"], string>> = {
   qty: "Most owned",
@@ -59,19 +68,45 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
   };
 
   const all = useMemo(() => catalog.data ?? [], [catalog.data]);
+  const ownedRivens = useOwnedRivens();
+  const weaponNames = useWeaponNames();
+  const rivenCards = useMemo(() => ownRivenCards(ownedRivens.data ?? [], weaponNames), [ownedRivens.data, weaponNames]);
+  const veiled = useMemo(() => veiledCounts(ownedRivens.data ?? []), [ownedRivens.data]);
+  const imageOf = useMemo(() => new Map(all.map((i) => [i.unique_name, i.image_name ?? null])), [all]);
+  const rivenCtx = useMemo(
+    () => ({
+      meta: cardMeta,
+      price: (i: CatalogItem) => {
+        const slug = lookup.get(normalizeForWfm(i.name));
+        return slug ? (priceOf(prices, slug) ?? 0) : 0;
+      },
+    }),
+    [cardMeta, prices, lookup],
+  );
+  const isRivens = filters.group === RIVEN_GROUP;
+  // Rivens are listed from the inventory, not the catalogue: see src/frontend/src/domain/rivenCards.ts.
   const rows = useMemo(
-    () => visibleMods(all, filters, { own, mods, lookup, prices, meta: cardMeta }),
-    [all, filters, own, mods, lookup, prices, cardMeta],
+    (): Entry[] =>
+      isRivens
+        ? visibleRivens(all, rivenCards, veiled, filters, rivenCtx)
+        : visibleMods(all, filters, { own, mods, lookup, prices, meta: cardMeta }).map((item) => ({ kind: "mod", item })),
+    [isRivens, all, rivenCards, veiled, filters, rivenCtx, own, mods, lookup, prices, cardMeta],
   );
   const ranks = useMemo(() => availableRanks(mods), [mods]);
-  const counts = useMemo(() => modGroupCounts(all, { own, mods, meta: cardMeta }), [all, own, mods, cardMeta]);
+  const counts = useMemo((): { owned: Record<string, number>; total: Record<string, number> } => {
+    const out = modGroupCounts(all, { own, mods, meta: cardMeta });
+    const rivens = rivenGroupCount(visibleRivens(all, rivenCards, veiled, { ...DEFAULT_MOD_FILTERS, group: RIVEN_GROUP }, rivenCtx));
+    return { owned: { ...out.owned, [RIVEN_GROUP]: rivens.owned }, total: { ...out.total, [RIVEN_GROUP]: rivens.total } };
+  }, [all, own, mods, cardMeta, rivenCards, veiled, rivenCtx]);
   const ownedCount = counts.owned[filters.group] ?? 0;
   const totalCount = counts.total[filters.group] ?? 0;
   const pageCount = Math.ceil(rows.length / pageSize);
   const current = Math.min(page, Math.max(0, pageCount - 1));
   const scroller = useScrollTopOn(current);
   const pageItems = rows.slice(current * pageSize, (current + 1) * pageSize);
-  useQueuePrices(useMemo(() => pageItems.flatMap((i) => lookup.get(normalizeForWfm(i.name)) ?? []), [pageItems, lookup]));
+  useQueuePrices(
+    useMemo(() => pageItems.flatMap((e) => (e.kind === "riven" ? [] : (lookup.get(normalizeForWfm(e.item.name)) ?? []))), [pageItems, lookup]),
+  );
 
   const open = (t: MarketTarget) => {
     prioritisePrice(t.slug);
@@ -190,10 +225,34 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
               <EmptyState icon={PackageOpen} title="No mods or arcanes match." description="Change the search or the filters." />
             ) : (
               <ul className={CARD_GRID} style={cardGridStyle(10, cardScale)}>
-                {pageItems.map((item) => {
+                {pageItems.map((entry) => {
+                  if (entry.kind === "riven") {
+                    const r = entry.riven;
+                    return (
+                      <ItemCard
+                        key={`riven-${r.id}`}
+                        name={r.name}
+                        imageName={imageOf.get(r.itemType) ?? null}
+                        baseUrl={baseUrl}
+                        subline={r.subline}
+                        rarity={cardMeta[r.itemType]?.rarity}
+                        count="1"
+                        countLabel="1 owned"
+                        missing={false}
+                        plat={null}
+                        ducats={null}
+                        onOpen={() => {
+                          openRiven(r.id);
+                        }}
+                        rows={rivenRows(r)}
+                      />
+                    );
+                  }
+                  const item = entry.item;
                   const slug = slugFor(lookup, item.name);
                   const price = priceOf(prices, slug);
-                  const count = modQty(own, mods, item.unique_name);
+                  const count =
+                    entry.kind === "veiled" ? Math.max(entry.count, modQty(own, mods, item.unique_name)) : modQty(own, mods, item.unique_name);
                   const meta = cardMeta[item.unique_name];
                   const imageName = item.image_name ?? null;
                   return (
