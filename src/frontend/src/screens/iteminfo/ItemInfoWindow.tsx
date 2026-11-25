@@ -1,21 +1,23 @@
 import { BookOpen, ShoppingCart } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { imageSources, useImageBaseUrl } from "../../api/catalog";
 import { useModCounts, useOwnership } from "../../api/inventory";
 import { useItemDetails } from "../../api/items";
 import { openExternal } from "../../api/links";
 import { prioritisePrice, useWfmLookup } from "../../api/market";
+import { useCatalogIndex, useDropData } from "../../api/relics";
 import { startRank, type ItemDetails } from "../../domain/items";
 import { modQty, normalizeForWfm } from "../../domain/market";
+import { relicSources } from "../../domain/relics";
 import { wikiUrl } from "../../domain/wiki";
 import { ItemImage } from "../../patterns/ItemImage";
 import { Button } from "../../primitives/actions";
 import { Skeleton } from "../../primitives/display";
 import { FormField, Slider } from "../../primitives/forms";
 import { Modal } from "../../primitives/overlay";
-import { closeItemInfo, useItemInfoTarget, type ItemInfoTarget } from "../../state/itemInfo";
+import { closeItemInfo, useItemInfoTarget, type InfoSection, type ItemInfoTarget, type SectionContext } from "../../state/itemInfo";
 import { openItemWindow } from "../../state/itemWindow";
-import { SECTIONS, type SectionContext } from "./sections";
+import { SECTIONS } from "./sections";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
@@ -26,7 +28,7 @@ function kindLine(target: ItemInfoTarget, details: ItemDetails | null): string {
   return [details.rarity, type].filter(Boolean).join(" · ");
 }
 
-function InfoBody({ target, details }: { target: ItemInfoTarget; details: ItemDetails | null }) {
+function InfoBody({ target, details, sections: all }: { target: ItemInfoTarget; details: ItemDetails | null; sections: readonly InfoSection[] }) {
   const mods = useModCounts();
   const { ownership } = useOwnership();
   const lookup = useWfmLookup();
@@ -36,14 +38,21 @@ function InfoBody({ target, details }: { target: ItemInfoTarget; details: ItemDe
   const owned = modQty(ownership, mods, target.uniqueName);
   const slug = lookup.get(normalizeForWfm(target.name));
   const tradable = details ? details.tradable : true;
-  const ctx: SectionContext = { target, details, rank, setRank, copies };
-  const sections = SECTIONS.filter((s) => s.appliesTo(ctx));
+  const drops = useDropData();
+  const { index } = useCatalogIndex();
+  const relics = useMemo(
+    () => (target.set ? [] : relicSources(target.name, drops.data ?? [], index, ownership)),
+    [target.set, target.name, drops.data, index, ownership],
+  );
+  const ctx: SectionContext = { target, details, rank, setRank, copies, relics };
+  const sections = all.filter((s) => s.appliesTo(ctx));
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         <span className="text-muted">{kindLine(target, details)}</span>
-        <span className="tabular-nums">{owned > 0 ? `${fmt(owned)} owned` : "Not owned"}</span>
+        {/* A set's ownership is per part, in the Parts section. */}
+        {!target.set && <span className="tabular-nums">{owned > 0 ? `${fmt(owned)} owned` : "Not owned"}</span>}
         <span className="ms-auto flex gap-2">
           {slug && tradable && (
             <Button
@@ -58,7 +67,12 @@ function InfoBody({ target, details }: { target: ItemInfoTarget; details: ItemDe
               Market
             </Button>
           )}
-          <Button size="sm" variant="ghost" leadingIcon={BookOpen} onClick={() => void openExternal(details?.wiki_url ?? wikiUrl(target.name))}>
+          <Button
+            size="sm"
+            variant="ghost"
+            leadingIcon={BookOpen}
+            onClick={() => void openExternal(details?.wiki_url ?? wikiUrl(target.set ?? target.name))}
+          >
             Wiki
           </Button>
         </span>
@@ -80,16 +94,30 @@ function InfoBody({ target, details }: { target: ItemInfoTarget; details: ItemDe
   );
 }
 
-function InfoLoader({ target }: { target: ItemInfoTarget }) {
-  const details = useItemDetails(target.uniqueName);
+function InfoLoader({ target, sections }: { target: ItemInfoTarget; sections: readonly InfoSection[] }) {
+  // Sets have no backend details; their window is built from the catalogue.
+  const details = useItemDetails(target.set ? null : target.uniqueName);
+  if (target.set) return <InfoBody target={target} details={null} sections={sections} />;
   if (details.isPending) return <Skeleton lines={5} />;
   // Without details (a failed load or an item that has none) the window still
   // offers owned count, market and wiki.
-  return <InfoBody target={target} details={details.data ?? null} />;
+  return <InfoBody target={target} details={details.data ?? null} sections={sections} />;
 }
 
+const NO_SECTIONS: readonly InfoSection[] = [];
+
 /** What an item is and does: stats per rank, your copies, where it drops. */
-export function ItemInfoWindow({ target, onClose }: { target: ItemInfoTarget | null; onClose: () => void }) {
+export function ItemInfoWindow({
+  target,
+  onClose,
+  extraSections = NO_SECTIONS,
+}: {
+  target: ItemInfoTarget | null;
+  onClose: () => void;
+  /** Sections other screens add, such as a prime set's parts. */
+  extraSections?: readonly InfoSection[] | undefined;
+}) {
+  const sections = useMemo(() => [...SECTIONS, ...extraSections], [extraSections]);
   const baseUrl = useImageBaseUrl();
   return (
     <Modal
@@ -105,13 +133,13 @@ export function ItemInfoWindow({ target, onClose }: { target: ItemInfoTarget | n
         )
       }
     >
-      {target && <InfoLoader key={target.uniqueName} target={target} />}
+      {target && <InfoLoader key={target.uniqueName} target={target} sections={sections} />}
     </Modal>
   );
 }
 
 /** The one item info window of the app, opened with `openItemInfo` (state/itemInfo). */
-export function ItemInfoHost() {
+export function ItemInfoHost({ extraSections }: { extraSections?: readonly InfoSection[] | undefined }) {
   const target = useItemInfoTarget();
-  return <ItemInfoWindow target={target} onClose={closeItemInfo} />;
+  return <ItemInfoWindow target={target} onClose={closeItemInfo} extraSections={extraSections} />;
 }

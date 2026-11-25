@@ -35,7 +35,7 @@ export function InventoryScreen() {
         <ItemsTab />
       </TabPanel>
       <TabPanel id="sets" className="flex min-h-0 flex-1 flex-col">
-        <SetsTab onOpen={openItemWindow} />
+        <SetsTab />
       </TabPanel>
       <TabPanel id="mods" className="flex min-h-0 flex-1 flex-col">
         <ModsTab onOpen={openItemWindow} />

@@ -26,6 +26,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   Parts are listed in the game's order, and each part marks whether its price
   or its ducats is the better deal. In Settings → Filters you set, per ducat
   value (15, 25, 45, 65 and 100), from which price a part is worth selling.
+- The item info window for prime sets and their parts. Click a set for its
+  parts and what selling it is worth; click a part, here or in Items, for
+  every relic that drops it, its rarity there, how many of each relic you own
+  per refinement and whether the relic is vaulted. Both have the market and
+  the wiki one click away.
 
 ### Changed
 
@@ -91,6 +96,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   of. The toolbar has Has parts, Complete and Dupes; the built item and vault
   filters moved to a Filters menu, and vaulted sets have a badge. Prime Sets
   no longer has filter presets.
+- Search in Prime Sets also finds sets by part name, "vaulted" and category,
+  and the card says why it matched.
 
 ### Fixed
 

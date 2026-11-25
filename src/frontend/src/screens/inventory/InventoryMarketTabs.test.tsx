@@ -9,8 +9,9 @@ import { MOD_COUNTS } from "../../dev/fixtures/inventory";
 import { resetMockTrading } from "../../dev/fixtures/trading";
 import { installMocks } from "../../dev/installMocks";
 import { ToastRegion } from "../../primitives/overlay";
+import { closeItemInfo } from "../../state/itemInfo";
 import { closeItemWindow } from "../../state/itemWindow";
-import { ItemWindowHost } from "../../dev/hosts";
+import { ItemInfoHost, ItemWindowHost, SET_INFO_SECTIONS } from "../../dev/hosts";
 import { InventoryScreen } from "./InventoryScreen";
 
 async function renderScreen(search = "") {
@@ -21,6 +22,7 @@ async function renderScreen(search = "") {
   const screen = await render(
     <QueryClientProvider client={client}>
       <InventoryScreen />
+      <ItemInfoHost extraSections={SET_INFO_SECTIONS} />
       <ItemWindowHost />
       <ToastRegion />
     </QueryClientProvider>,
@@ -29,7 +31,7 @@ async function renderScreen(search = "") {
   return screen;
 }
 
-const setCard = (name: string) => page.getByRole("article").filter({ has: page.getByRole("heading", { name: `${name} — show set orders` }) });
+const setCard = (name: string) => page.getByRole("article").filter({ has: page.getByRole("heading", { name, exact: true }) });
 
 describe("Inventory: Prime Sets and Mods & Arcanes", () => {
   beforeEach(() => {
@@ -38,6 +40,7 @@ describe("Inventory: Prime Sets and Mods & Arcanes", () => {
   });
   afterEach(() => {
     closeItemWindow();
+    closeItemInfo();
     clearMocks();
   });
 
@@ -78,21 +81,39 @@ describe("Inventory: Prime Sets and Mods & Arcanes", () => {
     const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
     await renderScreen();
     await userEvent.click(setCard("Nova Prime").getByRole("button", { name: /^Barrel/ }));
-    const dialog = page.getByRole("dialog", { name: /Nova Prime Barrel/ });
-    const sellers = dialog.getByRole("table", { name: "Sellers of Nova Prime Barrel" });
+    await userEvent.click(page.getByRole("dialog", { name: /Nova Prime Barrel/ }).getByRole("button", { name: "Market" }));
+    const sellers = page.getByRole("table", { name: "Sellers of Nova Prime Barrel" });
     await expect.element(sellers.getByRole("row").nth(1)).toBeVisible();
-    await userEvent.click(dialog.getByRole("button", { name: "Copy whisper to Ordis_Fan" }));
+    await userEvent.click(page.getByRole("button", { name: "Copy whisper to Ordis_Fan" }));
     await expect.element(page.getByText("Whisper to Ordis_Fan copied")).toBeVisible();
     expect(write).toHaveBeenCalledWith('/w Ordis_Fan Hi! I want to buy: "Nova Prime Barrel" for 16 platinum. (warframe.market)');
     write.mockRestore();
   });
 
+  it("opens a set's parts and a part's relics in the item info window", async () => {
+    await renderScreen();
+    await userEvent.click(setCard("Braton Prime").getByRole("button", { name: "Braton Prime", exact: true }));
+    const set = page.getByRole("dialog", { name: /Braton Prime Set/ });
+    await expect.element(set.getByRole("heading", { name: "Parts" })).toBeVisible();
+    await expect.element(set.getByText("1 of 5 parts owned", { exact: false })).toBeVisible();
+    await userEvent.click(set.getByRole("button", { name: /^Barrel/ }));
+    const part = page.getByRole("dialog", { name: /Braton Prime Barrel/ });
+    await expect.element(part.getByRole("heading", { name: "Relics" })).toBeVisible();
+    await expect.element(part.getByRole("list", { name: "Relics that drop it" }).getByRole("listitem").first()).toBeVisible();
+  });
+
+  it("finds sets by a part name and says why", async () => {
+    const screen = await renderScreen();
+    await userEvent.fill(screen.getByRole("searchbox", { name: "Search sets" }), "receiver");
+    await expect.element(setCard("Nova Prime").getByText("Part: Receiver")).toBeVisible();
+  });
+
   it("posts an order at a matched price", async () => {
     await renderScreen();
-    await userEvent.click(setCard("Nova Prime").getByRole("button", { name: /^Nova Prime — show set orders/ }));
-    const dialog = page.getByRole("dialog", { name: /Nova Prime Set/ });
-    await userEvent.click(dialog.getByRole("button", { name: /^Match/ }).first());
-    const form = dialog.getByRole("form", { name: "New order" });
+    await userEvent.click(setCard("Nova Prime").getByRole("button", { name: "Nova Prime", exact: true }));
+    await userEvent.click(page.getByRole("dialog", { name: /Nova Prime Set/ }).getByRole("button", { name: "Market" }));
+    await userEvent.click(page.getByRole("button", { name: /^Match/ }).first());
+    const form = page.getByRole("form", { name: "New order" });
     const price = form.getByRole("spinbutton", { name: "Price (platinum)" });
     await expect.element(price).not.toHaveValue(0);
     await userEvent.click(form.getByText("Hidden", { exact: true }));

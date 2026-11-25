@@ -12,6 +12,7 @@ import {
   plannerRows,
   refinementCounts,
   relicComplete,
+  relicSources,
   rewardState,
   splitSearchTerms,
   type CatalogItem,
@@ -72,6 +73,17 @@ describe("ownership", () => {
   it("sums refinements", () => {
     const counts = refinementCounts(lith, index, own({ quantities: { "/r/lithA1i": 2, "/r/lithA1r": 1 } }));
     expect(counts).toMatchObject({ intact: 2, radiant: 1, total: 3 });
+  });
+
+  it("lists the relics that drop an item, owned and unvaulted first", () => {
+    const withMeso = [...drops, { ...lith, tier: "Meso", relicName: "B2", fullName: "Meso B2" }];
+    const sources = relicSources("burston prime barrel", withMeso, index, own({ quantities: { "/r/lithA1r": 1 } }));
+    expect(sources.map((s) => [s.relic.fullName, s.rarity, s.owned.total, s.vaulted])).toEqual([
+      ["Lith A1", "Rare", 1, true],
+      ["Meso B2", "Rare", 0, false],
+    ]);
+    expect(relicSources("Burston Prime Barrel", withMeso, index, own()).map((s) => s.relic.fullName)).toEqual(["Meso B2", "Lith A1"]);
+    expect(relicSources("Nothing", drops, index, own())).toEqual([]);
   });
 
   it("finds reward items with blueprint toggling and borrows the parent image", () => {
