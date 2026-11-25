@@ -35,6 +35,7 @@ lzma-rs = "0.3"
 hexdesk-blob = { path = "crates/blob" }
 hexdesk-capture = { path = "crates/capture" }
 hexdesk-diag = { path = "crates/diag" }
+hexdesk-items = { path = "crates/items" }
 hexdesk-logging = { path = "crates/logging" }
 hexdesk-overlays = { path = "crates/overlays" }
 hexdesk-persist = { path = "crates/persist" }

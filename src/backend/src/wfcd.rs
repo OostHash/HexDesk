@@ -395,6 +395,11 @@ impl DiskStore {
     }
 }
 
+/// The stored body of one catalogue source, such as "Mods", as last downloaded.
+pub fn cached_body(name: &str) -> Option<String> {
+    DiskStore.read(name)
+}
+
 pub fn clear_cached_etags() {
     let _ = std::fs::remove_file(DiskStore::etags_path());
 }

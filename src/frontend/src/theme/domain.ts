@@ -12,6 +12,7 @@ export const domainColors = {
   "rarity-bronze": palette.bronze[500],
   "rarity-silver": palette.silver[400],
   "rarity-gold": palette.gold[400],
+  "rarity-legendary": "#e5e4e2",
   ducat: palette.gold[400],
   "relic-highlight": palette.sky[300],
 

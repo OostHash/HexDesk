@@ -16,8 +16,21 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   welcome screen: amber (the default), teal, violet, rose and steel blue. The
   accent colours buttons, selection and focus in both themes; status and game
   colours stay as they are, and high contrast keeps its own accent.
+- An item info window: click an item card to see what it is and does. For mods
+  and arcanes it shows the stats at any rank, drain and polarity, your copies
+  per rank and where the item drops, with links to the market and the wiki.
 
 ### Changed
+
+- Items and Mods & Arcanes use the same item card. Mods and arcanes show their
+  rarity, what they fit and their polarity, and a table of your copies per
+  rank with the max rank marked; weapons and frames show mastery, the required
+  mastery rank and Foundry state. Click the price to open the market. The ⋮
+  menu is gone; the wiki link is in the item info window.
+- Mods & Arcanes has a navigator like Items: mods by Warframe, Primary,
+  Secondary, Melee, Companion, Archwing & Necramech, Railjack and Other, and
+  arcanes by Warframe, Weapon and Operator & Amp, each with how many you own.
+  Riven placeholders are no longer listed; rivens have their own screen.
 
 - New HexDesk colours: graphite surfaces in the dark theme, warm stone in the
   light theme and a copper-amber accent. The title bar, header, navigation and

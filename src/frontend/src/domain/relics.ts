@@ -17,6 +17,8 @@ export type CatalogItem = {
   ducats?: number | null;
   mastery_req?: number | null;
   max_level_cap?: number | null;
+  /** Whether levelling the item counts towards mastery. */
+  masterable?: boolean | null;
 };
 
 export type CatalogIndex = {

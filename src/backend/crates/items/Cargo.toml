@@ -1,0 +1,18 @@
+[package]
+name = "hexdesk-items"
+version.workspace = true
+description = "HexDesk item details: what a mod or arcane is and does, from the WFCD item data"
+authors = ["HexDesk contributors"]
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/OostHash/HexDesk"
+publish = false
+
+[lib]
+name = "hexdesk_items"
+
+# Same versions and features as the backend crate, so the lock file gains no
+# new packages.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

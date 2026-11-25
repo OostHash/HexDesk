@@ -19,6 +19,7 @@ import { statisticsFixtures } from "./statistics";
 import { tradingFixtures } from "./trading";
 import { bulkPrices, changeLog, INVENTORY_ITEMS, INVENTORY_QUANTITIES, itemListStatus } from "./inventory";
 import { appFixtures } from "./app";
+import { cardMeta, itemDetails } from "./items";
 import { overlayFixtures } from "./overlays";
 import { debugFixtures } from "./debug";
 import { loadSettings, saveSettings, setOcrModels } from "./settings";
@@ -51,6 +52,8 @@ export const fixtures: Fixtures = {
   // No image server in mock mode: images use their fallback, so screenshots never hit the network.
   get_img_cache_dir: { default: () => "" },
   get_all_items: { default: (args) => [...allItems.default(args), ...INVENTORY_ITEMS, ...FOUNDRY_RELICS, ...MARKET_ITEMS], empty: () => [] },
+  get_card_meta: cardMeta,
+  get_item_details: itemDetails,
   get_drop_data: dropData,
   fetch_wfm_items: { default: (args) => [...wfmItems.default(args), ...MARKET_WFM_ITEMS], empty: () => [] },
   wfm_get_cached_prices: { default: (args) => ({ ...wfmPrices.default(args), ...MARKET_PRICES }), empty: () => ({}) },

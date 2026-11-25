@@ -29,6 +29,7 @@ mod diagnostics;
 mod events;
 mod image_cache;
 mod inventory_state;
+mod item_details;
 mod lifecycle;
 mod log_watcher;
 mod logging;
@@ -600,6 +601,8 @@ pub fn run() {
         .setup(setup_app)
         .invoke_handler(tauri::generate_handler![
             catalogue::get_all_items,
+            item_details::get_item_details,
+            item_details::get_card_meta,
             catalogue::get_items_by_paths,
             catalogue::get_current_quantities,
             catalogue::get_player_name,

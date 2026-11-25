@@ -1679,6 +1679,7 @@ dependencies = [
  "hexdesk-blob",
  "hexdesk-capture",
  "hexdesk-diag",
+ "hexdesk-items",
  "hexdesk-logging",
  "hexdesk-overlays",
  "hexdesk-persist",
@@ -1739,6 +1740,14 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "zip",
+]
+
+[[package]]
+name = "hexdesk-items"
+version = "1.1.1"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

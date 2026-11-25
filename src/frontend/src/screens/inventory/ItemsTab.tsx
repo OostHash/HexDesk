@@ -4,6 +4,12 @@ import { imageSources, useImageBaseUrl } from "../../api/catalog";
 import { useBulkPrices, useChangeLog, useCrafting, useItemListStatus, useModCounts, useOwnership } from "../../api/inventory";
 import { useFilterPresets } from "../../api/presets";
 import { useCatalogIndex } from "../../api/relics";
+import { useCardMeta } from "../../api/items";
+import { useWfmLookup } from "../../api/market";
+import { cardSubline, itemRows, limitRows, rankRows } from "../../domain/items";
+import { normalizeForWfm } from "../../domain/market";
+import { openItemInfo } from "../../state/itemInfo";
+import { openItemWindow } from "../../state/itemWindow";
 import { useSaveSettings, useSettings } from "../../api/settings";
 import {
   availableRanks,
@@ -37,7 +43,7 @@ import { useShowImages, ViewControls, type View } from "../../patterns/ViewContr
 import { Popover } from "../../primitives/overlay";
 import { cn } from "../../primitives/cn";
 import { Pagination, SidebarItem } from "../../primitives/navigation";
-import { ChangeBadge, FavoriteButton, ItemCard, ItemMenu, MasteryBadge, PriceBadges, type ItemExtras } from "./ItemCard";
+import { ChangeBadge, FavoriteButton, ItemCard, MasteryBadge, PriceBadges, type ItemCardProps } from "./ItemCard";
 import { useInventoryFilters } from "../../state/inventoryFilters";
 import { useMinuteNow } from "../../state/useNow";
 import { APP_STARTED_AT } from "../../state/session";
@@ -81,6 +87,8 @@ export function ItemsTab() {
   const mods = useModCounts();
   const crafting = useCrafting();
   const baseUrl = useImageBaseUrl();
+  const cardMeta = useCardMeta();
+  const lookup = useWfmLookup();
   const listStatus = useItemListStatus();
   const { data: settings } = useSettings();
   const saveSettings = useSaveSettings();
@@ -121,16 +129,44 @@ export function ItemsTab() {
     const next = favorites.has(id) ? [...favorites].filter((f) => f !== id) : [...favorites, id];
     saveSettings.mutate({ favorites: next });
   };
-  const extrasFor = (row: InventoryRow): ItemExtras => ({
-    favorite: favorites.has(row.item.unique_name),
-    onToggleFavorite: () => {
-      toggleFavorite(row.item.unique_name);
-    },
-    building: buildingByItem.get(row.item.unique_name) ?? null,
-    recent: recentDelta(changes, row.item.unique_name, recentFrom, nowSec),
-    baseUrl,
-    mods,
-  });
+  const openInfo = (item: InventoryCatalogItem) => {
+    openItemInfo({ uniqueName: item.unique_name, name: item.name, imageName: item.image_name ?? null, category: item.category });
+  };
+  const cardFor = (row: InventoryRow): ItemCardProps => {
+    const { item, qty, plat, ducats, mastery } = row;
+    const meta = cardMeta[item.unique_name];
+    const building = buildingByItem.has(item.unique_name);
+    const recent = recentDelta(changes, item.unique_name, recentFrom, nowSec);
+    const slug = lookup.get(normalizeForWfm(item.name));
+    const ranked = item.category === "Mods" || item.category === "Arcanes";
+    return {
+      name: item.name,
+      imageName: item.image_name,
+      baseUrl,
+      subline: cardSubline(item.category, meta),
+      rarity: meta?.rarity,
+      count: fmt(qty),
+      countLabel: `${fmt(qty)} owned`,
+      missing: qty === 0 && !building,
+      plat,
+      ducats,
+      onOpenMarket: slug
+        ? () => {
+            openItemWindow({ slug, name: item.name, imageName: item.image_name ?? null, rank: null });
+          }
+        : undefined,
+      onOpen: () => {
+        openInfo(item);
+      },
+      favorite: favorites.has(item.unique_name),
+      onToggleFavorite: () => {
+        toggleFavorite(item.unique_name);
+      },
+      badges: recent ? <ChangeBadge recent={recent} /> : undefined,
+      recent,
+      rows: limitRows(ranked ? rankRows(mods[item.unique_name]?.by_rank, meta?.max_rank) : itemRows(item, mastery, building)),
+    };
+  };
 
   const waitingForPrices = needsPrices(filters.sortMode) && effectiveSort(filters, prices !== null, fallbackSort) !== filters.sortMode;
   const countLabel = waitingForPrices
@@ -160,7 +196,16 @@ export function ItemsTab() {
       cell: (r) => (
         <span className="flex items-center gap-2">
           <ItemImage size="sm" sources={imageSources(r.item.image_name ?? undefined, baseUrl)} name={r.item.name} />
-          <span className="truncate">{r.item.name}</span>
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            onClick={() => {
+              openInfo(r.item);
+            }}
+            className="truncate rounded-sm hover:text-accent hover:underline"
+          >
+            {r.item.name}
+          </button>
           <MasteryBadge rank={r.mastery} />
           {buildingByItem.has(r.item.unique_name) && (
             <Badge tone="info" icon={Hammer}>
@@ -194,12 +239,6 @@ export function ItemsTab() {
           {fmt(r.qty)}
         </span>
       ),
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      hideHeader: true,
-      cell: (r) => <ItemMenu name={r.item.name} />,
     },
   ];
 
@@ -406,7 +445,7 @@ export function ItemsTab() {
             ) : view === "cards" ? (
               <ul className={CARD_GRID} style={cardGridStyle(11, cardScale)}>
                 {pageRows.map((row) => (
-                  <ItemCard key={row.item.unique_name} row={row} extras={extrasFor(row)} />
+                  <ItemCard key={row.item.unique_name} {...cardFor(row)} />
                 ))}
               </ul>
             ) : (
