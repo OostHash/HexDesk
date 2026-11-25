@@ -9,7 +9,6 @@ import { SettingsGroup, SwitchRow, useSettingsFile } from "./parts";
 const PAGES: ReadonlyArray<{ value: PresetModule; label: string }> = [
   { value: "inventory", label: "Inventory" },
   { value: "foundry", label: "Foundry" },
-  { value: "market", label: "Market Sets" },
   { value: "relics", label: "Relic browser" },
 ];
 

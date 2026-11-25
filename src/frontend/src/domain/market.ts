@@ -1,5 +1,4 @@
 import type { Ownership } from "./completionist.ts";
-import type { PresetCodec } from "./filterPresets.ts";
 import type { RecipeComponent } from "./foundry.ts";
 import type { ModCounts, ModRankFilter } from "./inventory.ts";
 import { matchMod } from "./modSearch.ts";
@@ -109,23 +108,51 @@ export function requiredCounts(recipes: Iterable<readonly RecipeComponent[]>): M
   return out;
 }
 
-export type MarketFilters = {
+/** Navigator groups of Prime Sets, by the category of the built item. */
+export const SET_GROUPS: ReadonlyArray<{ id: string; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "Warframes", label: "Warframes" },
+  { id: "Primary", label: "Primary" },
+  { id: "Secondary", label: "Secondary" },
+  { id: "Melee", label: "Melee" },
+  { id: "Companions", label: "Companions" },
+  { id: "Archwing", label: "Archwing" },
+  { id: "other", label: "Other" },
+];
+
+const NAMED_SET_GROUPS = new Set(SET_GROUPS.map((g) => g.id).filter((id) => id !== "all" && id !== "other"));
+
+/** Navigator group of a set: its built item's category, else Other. */
+export const setGroup = (set: PrimeSet): string => (set.parent && NAMED_SET_GROUPS.has(set.parent.category) ? set.parent.category : "other");
+
+export type SetFilters = {
+  group: string;
   search: string;
-  ownership: Array<"owned" | "notowned">;
-  conditions: Array<"dupes" | "itemowned" | "fullset" | "hasparts">;
+  hasParts: boolean;
+  complete: boolean;
+  dupes: boolean;
+  missingOne: boolean;
+  /** Both or neither selected: no filter. */
+  built: Array<"owned" | "notowned">;
+  /** Both or neither selected: no filter. */
   vault: Array<"vaulted" | "unvaulted">;
-  sortMode: "plat" | "ducats" | "az" | "za";
-  activeMarketTab: "trading" | "sets" | "mods" | "rivens" | "sisters";
+  sort: "value" | "plat" | "ducats" | "az" | "za";
 };
 
-export const DEFAULT_MARKET_FILTERS: MarketFilters = {
+export const DEFAULT_SET_FILTERS: SetFilters = {
+  group: "all",
   search: "",
-  ownership: [],
-  conditions: [],
+  hasParts: false,
+  complete: false,
+  dupes: false,
+  missingOne: false,
+  built: [],
   vault: [],
-  sortMode: "ducats",
-  activeMarketTab: "trading",
+  sort: "value",
 };
+
+/** Filters in the Filters menu that are set; the toolbar chips are not counted. */
+export const activeSetFilterCount = (f: SetFilters) => (f.missingOne ? 1 : 0) + f.built.length + f.vault.length;
 
 export const toggleIn = <T>(list: readonly T[], value: T): T[] => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 
@@ -165,30 +192,64 @@ export function summarizeSet(set: PrimeSet, ctx: SetContext): SetSummary {
   };
 }
 
-export function visibleSets(sets: readonly PrimeSet[], f: MarketFilters, ctx: SetContext): Array<{ set: PrimeSet; summary: SetSummary }> {
+/**
+ * What one set's worth of owned parts fetches: copies above what the recipe
+ * needs are dupes and are left out, so a complete set compares like for like
+ * with the set price.
+ */
+export type SetValue = {
+  /** Market price of the whole set. */
+  set: number | null;
+  /** The owned parts sold one by one; null when an owned part has no price. */
+  parts: number | null;
+  /** Ducats of the same parts. */
+  ducats: number;
+  /** The better way to sell; only for a complete set with both prices known. */
+  best: "set" | "parts" | null;
+  /** Most platinum the owned parts fetch, for sorting; null when unknown. */
+  top: number | null;
+};
+
+export function setValue(set: PrimeSet, summary: SetSummary, ctx: SetContext): SetValue {
+  let parts: number | null = 0;
+  let ducats = 0;
+  for (const p of set.parts) {
+    const copies = Math.min(qty(ctx.own, p.unique_name), need(ctx, p.unique_name));
+    if (copies === 0) continue;
+    ducats += (p.ducats ?? 0) * copies;
+    const price = priceOf(ctx.prices, slugFor(ctx.lookup, p.name));
+    parts = price === null || parts === null ? null : parts + price * copies;
+  }
+  const whole = summary.price;
+  const best = summary.complete && whole !== null && parts !== null ? (whole >= parts ? "set" : "parts") : null;
+  const top = summary.complete ? (best === "set" ? whole : best === "parts" ? parts : (whole ?? parts)) : parts;
+  return { set: whole, parts, ducats, best, top };
+}
+
+export type SetRow = { set: PrimeSet; summary: SetSummary; value: SetValue };
+
+export function visibleSets(sets: readonly PrimeSet[], f: SetFilters, ctx: SetContext): SetRow[] {
   const terms = splitSearchTerms(f.search);
   const rows = sets
-    .filter((s) => matchesTerms(terms, s.name))
-    .map((set) => ({ set, summary: summarizeSet(set, ctx) }))
-    .filter(({ summary: s }) => {
-      if (f.ownership.length === 1) {
-        if (f.ownership[0] === "owned" ? !s.itemOwned : s.itemOwned) return false;
-      }
-      if (f.conditions.length > 0) {
-        const ok = f.conditions.some(
-          (c) =>
-            (c === "hasparts" && s.owned > 0) || (c === "dupes" && s.dupes) || (c === "fullset" && s.complete) || (c === "itemowned" && s.itemOwned),
-        );
-        if (!ok) return false;
-      }
-      if (f.vault.length === 1) {
-        if (f.vault[0] === "vaulted" ? !s.vaulted : s.vaulted) return false;
-      }
+    .filter((s) => (f.group === "all" || setGroup(s) === f.group) && matchesTerms(terms, s.name))
+    .map((set) => {
+      const summary = summarizeSet(set, ctx);
+      return { set, summary, value: setValue(set, summary, ctx) };
+    })
+    .filter(({ set, summary: s }) => {
+      if (f.hasParts && s.owned === 0) return false;
+      if (f.complete && !s.complete) return false;
+      if (f.dupes && !s.dupes) return false;
+      if (f.missingOne && s.owned !== set.parts.length - 1) return false;
+      if (f.built.length === 1 && (f.built[0] === "owned") !== s.itemOwned) return false;
+      if (f.vault.length === 1 && (f.vault[0] === "vaulted") !== s.vaulted) return false;
       return true;
     });
-  const byName = (a: { set: PrimeSet }, b: { set: PrimeSet }) => a.set.name.localeCompare(b.set.name);
+  const byName = (a: SetRow, b: SetRow) => a.set.name.localeCompare(b.set.name);
   return rows.sort((a, b) => {
-    switch (f.sortMode) {
+    switch (f.sort) {
+      case "value":
+        return (b.value.top ?? -1) - (a.value.top ?? -1) || byName(a, b);
       case "ducats":
         return b.summary.ducats - a.summary.ducats || byName(a, b);
       case "plat":
@@ -199,6 +260,20 @@ export function visibleSets(sets: readonly PrimeSet[], f: MarketFilters, ctx: Se
         return byName(a, b);
     }
   });
+}
+
+/** Per navigator group: sets with at least one owned part, and all sets. */
+export function setGroupCounts(sets: readonly PrimeSet[], own: Ownership): { withParts: Record<string, number>; total: Record<string, number> } {
+  const withParts: Record<string, number> = {};
+  const total: Record<string, number> = {};
+  for (const s of sets) {
+    const has = s.parts.some((p) => qty(own, p.unique_name) > 0);
+    for (const g of ["all", setGroup(s)]) {
+      total[g] = (total[g] ?? 0) + 1;
+      if (has) withParts[g] = (withParts[g] ?? 0) + 1;
+    }
+  }
+  return { withParts, total };
 }
 
 /** Parts sorted by quantity, then name, with what the card shows. */
@@ -403,36 +478,6 @@ export function whisper(order: WfmPublicOrder, side: "sell" | "buy", itemName: s
 export function prefillPrice(side: "sell" | "buy", orders: WfmItemOrders | undefined, median: number | null): number {
   const best = side === "sell" ? orders?.sell[0]?.platinum : orders?.buy[0]?.platinum;
   return Math.round(best ?? median ?? 0);
-}
-
-// ── Presets ─────────────────────────────────────────────────────────────────
-
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-const isList = (v: unknown, allowed: readonly string[]) => Array.isArray(v) && v.every((x) => typeof x === "string" && allowed.includes(x));
-
-/** Validates a stored Market preset; the open tab is not part of a preset. */
-export function marketPresetCodec(activeMarketTab: MarketFilters["activeMarketTab"]): PresetCodec<MarketFilters> {
-  return {
-    module: "market",
-    decode: (v) => {
-      if (!isRecord(v) || typeof v.search !== "string") return null;
-      if (!isList(v.ownership, ["owned", "notowned"]) || !isList(v.conditions, ["dupes", "itemowned", "fullset", "hasparts"])) return null;
-      if (!isList(v.vault, ["vaulted", "unvaulted"]) || !["plat", "ducats", "az", "za"].includes(v.sortMode as string)) return null;
-      return {
-        search: v.search,
-        ownership: v.ownership as MarketFilters["ownership"],
-        conditions: v.conditions as MarketFilters["conditions"],
-        vault: v.vault as MarketFilters["vault"],
-        sortMode: v.sortMode as MarketFilters["sortMode"],
-        activeMarketTab,
-      };
-    },
-    encode: (f) => {
-      const stored: Partial<MarketFilters> = { ...f };
-      delete stored.activeMarketTab;
-      return stored;
-    },
-  };
 }
 
 /** What opens the item window: a set, a part, or a mod (optionally at a rank). */
