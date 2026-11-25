@@ -1,4 +1,4 @@
-import { DEFAULT_THEME, densities, themes } from "../theme/tokens";
+import { ACCENTS, DEFAULT_THEME, densities, themes } from "../theme/tokens";
 import {
   CONTRAST_CHOICES,
   DEFAULT_PREFERENCES,
@@ -24,6 +24,7 @@ export function prepaintScript(): string {
     contrastChoices: CONTRAST_CHOICES,
     overlayThemeChoices: OVERLAY_THEME_CHOICES,
     overlayMarkers: OVERLAY_WINDOW_MARKERS,
+    accents: ACCENTS,
     densities: Object.keys(densities),
     themes: Object.keys(themes),
     defaultTheme: DEFAULT_THEME,
@@ -38,6 +39,7 @@ export function prepaintScript(): string {
   var contrast = pick(c.contrastChoices, get(c.keys.contrast), c.defaults.contrast);
   var density = pick(c.densities, get(c.keys.density), c.defaults.density);
   var cvd = get(c.keys.cvd) === "true";
+  var accent = pick(c.accents, get(c.keys.accent), c.defaults.accent);
   var overlayTheme = pick(c.overlayThemeChoices, get(c.keys.overlayTheme), c.defaults.overlayTheme);
   var loc = window.location;
   var params = new URLSearchParams(loc.search);
@@ -50,5 +52,6 @@ export function prepaintScript(): string {
   d.setAttribute("data-resolved-contrast", contrast === "system" ? (mq("(prefers-contrast: more)") ? "high" : "normal") : contrast);
   d.setAttribute("data-cvd", cvd ? "on" : "off");
   d.setAttribute("data-density", density);
+  d.setAttribute("data-accent", accent);
 })(${JSON.stringify(config)});`;
 }

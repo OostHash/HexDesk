@@ -224,6 +224,17 @@ it("stores the colour-blind palette and density as preferences", async () => {
   await expect.element(page.getByText(/System locale: nl-NL/)).toBeVisible();
 });
 
+it("stores the accent colour and marks the chosen swatch", async () => {
+  const { client } = setup();
+  await mount(client);
+  const swatches = page.getByRole("group", { name: "Accent colour" });
+  await expect.element(swatches.getByRole("radio", { name: "Amber" })).toBeChecked();
+  await swatches.getByRole("radio", { name: "Teal" }).click();
+  expect(localStorage.getItem("hex-accent")).toBe("teal");
+  expect(document.documentElement.dataset.accent).toBe("teal");
+  await expect.element(swatches.getByRole("radio", { name: "Teal" })).toBeChecked();
+});
+
 it("clears the inventory cache only after confirming", async () => {
   const { client, calls } = setup();
   client.setQueryData(["mastery"], { "/a": 30 });

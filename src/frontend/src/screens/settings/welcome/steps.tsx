@@ -21,6 +21,7 @@ import { DiscordMark } from "../../../patterns/DiscordMark";
 import { Button } from "../../../primitives/actions";
 import { Icon } from "../../../primitives/display";
 import {
+  AccentRow,
   DensityRow,
   ManualModeRow,
   MemoryScannerBadge,
@@ -54,6 +55,7 @@ function AppearanceStep() {
       <StepHeading title="Make it yours">How HexDesk looks and how it reads the game. Both can be changed later in Settings → General.</StepHeading>
       <SettingsGroup title="Appearance">
         <ThemeRow />
+        <AccentRow />
         <DensityRow />
         <TextSizeRow />
       </SettingsGroup>

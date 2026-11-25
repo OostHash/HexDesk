@@ -167,6 +167,55 @@
   --hex-info: #6b1f50;
 }
 
+[data-resolved-theme="dark"][data-resolved-contrast="normal"][data-accent="teal"] {
+  --hex-accent: #5fa8a0;
+}
+
+[data-resolved-theme="light"][data-resolved-contrast="normal"][data-accent="teal"] {
+  --hex-accent: #2f6f69;
+}
+
+[data-resolved-theme="dark"][data-resolved-contrast="normal"][data-accent="violet"] {
+  --hex-accent: #a68fd6;
+}
+
+[data-resolved-theme="light"][data-resolved-contrast="normal"][data-accent="violet"] {
+  --hex-accent: #6a55a8;
+}
+
+[data-resolved-theme="dark"][data-resolved-contrast="normal"][data-accent="rose"] {
+  --hex-accent: #d08aa6;
+}
+
+[data-resolved-theme="light"][data-resolved-contrast="normal"][data-accent="rose"] {
+  --hex-accent: #9c4a6b;
+}
+
+[data-resolved-theme="dark"][data-resolved-contrast="normal"][data-accent="steel"] {
+  --hex-accent: #7d9fd9;
+}
+
+[data-resolved-theme="light"][data-resolved-contrast="normal"][data-accent="steel"] {
+  --hex-accent: #3f63a6;
+}
+
+:root,
+[data-resolved-theme="dark"] {
+  --hex-swatch-amber: #c1874a;
+  --hex-swatch-teal: #5fa8a0;
+  --hex-swatch-violet: #a68fd6;
+  --hex-swatch-rose: #d08aa6;
+  --hex-swatch-steel: #7d9fd9;
+}
+
+[data-resolved-theme="light"] {
+  --hex-swatch-amber: #8f5c27;
+  --hex-swatch-teal: #2f6f69;
+  --hex-swatch-violet: #6a55a8;
+  --hex-swatch-rose: #9c4a6b;
+  --hex-swatch-steel: #3f63a6;
+}
+
 :root,
 [data-resolved-theme="dark"] {
   color-scheme: dark;

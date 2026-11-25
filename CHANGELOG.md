@@ -12,6 +12,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - An overlay theme in Settings → Overlays: the in-game overlays can stay dark
   while the app is light, follow the app, or be light. They are dark by
   default.
+- Accent colour presets in Settings → General → Appearance and on the
+  welcome screen: amber (the default), teal, violet, rose and steel blue. The
+  accent colours buttons, selection and focus in both themes; status and game
+  colours stay as they are, and high contrast keeps its own accent.
 
 ### Changed
 

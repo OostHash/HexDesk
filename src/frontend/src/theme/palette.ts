@@ -37,6 +37,11 @@ export const palette = {
   sage: { 400: "#7fae86", 700: "#357544" },
   brick: { 400: "#d0807a", 700: "#ae4c4b" },
   steel: { 400: "#7fa6cc", 700: "#3d6a94" },
+  /** Accent presets besides amber (Settings → Appearance), muted so they stay apart from domain colours. */
+  teal: { 400: "#5fa8a0", 700: "#2f6f69" },
+  iris: { 400: "#a68fd6", 700: "#6a55a8" },
+  rose: { 400: "#d08aa6", 700: "#9c4a6b" },
+  azure: { 400: "#7d9fd9", 700: "#3f63a6" },
 
   /** Domain hues, shared by aliases in domain.ts that mean the same kind of thing. */
   bronze: { 500: "#cd7f32" },
