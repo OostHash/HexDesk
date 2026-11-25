@@ -7,6 +7,7 @@ import {
   defaultExpanded,
   filterItems,
   foundryPresetCodec,
+  foundrySortFrom,
   foundryWikiUrl,
   isBuilding,
   isMastered,
@@ -18,6 +19,7 @@ import {
   patchFilters,
   recipeTree,
   shoppingList,
+  sortItems,
   type FoundryItem,
   type RecipeComponent,
 } from "../../src/domain/foundry.ts";
@@ -90,6 +92,39 @@ describe("foundry filters", () => {
     expect(pageSizeFrom(60)).toBe(60);
     expect(pageSizeFrom("60")).toBe(30);
     expect(pageSizeFrom(undefined)).toBe(30);
+  });
+});
+
+describe("foundry sorting", () => {
+  const o = own({ "/braton": 1, "/forma": 2 }, { "/braton": 30, "/bramma": 10 });
+
+  it("sorts by name both ways", () => {
+    expect(names(sortItems([...items].reverse(), "name-asc", o))).toEqual(["Ash Prime", "Braton", "Forma", "Kuva Bramma", "Rhino"]);
+    expect(names(sortItems(items, "name-desc", o))).toEqual(["Rhino", "Kuva Bramma", "Forma", "Braton", "Ash Prime"]);
+  });
+
+  it("puts unmastered items first and items without mastery last", () => {
+    expect(names(sortItems(items, "unmastered", o))).toEqual(["Ash Prime", "Kuva Bramma", "Rhino", "Braton", "Forma"]);
+  });
+
+  it("puts missing items first", () => {
+    expect(names(sortItems(items, "missing", o))).toEqual(["Ash Prime", "Kuva Bramma", "Rhino", "Braton", "Forma"]);
+  });
+
+  it("sorts by the navigator's category order", () => {
+    expect(names(sortItems(items, "category", o))).toEqual(["Ash Prime", "Rhino", "Braton", "Kuva Bramma", "Forma"]);
+  });
+
+  it("does not change the input", () => {
+    const input = [...items];
+    sortItems(input, "name-desc", o);
+    expect(input).toEqual(items);
+  });
+
+  it("reads the stored sort", () => {
+    expect(foundrySortFrom("missing")).toBe("missing");
+    expect(foundrySortFrom("qty-desc")).toBe("name-asc");
+    expect(foundrySortFrom(null)).toBe("name-asc");
   });
 });
 

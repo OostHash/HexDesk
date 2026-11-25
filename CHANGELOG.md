@@ -13,6 +13,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   with its name as the game shows it, its type and polarity, rank and
   rerolls. Click a card to open it in Rivens → My rivens. Veiled rivens stay
   listed per type with how many you have.
+- Sorting in the Foundry: by name (A–Z or Z–A), unmastered first, missing
+  first, or by category. The app remembers the order you pick.
 - An overlay theme in Settings → Overlays: the in-game overlays can stay dark
   while the app is light, follow the app, or be light. They are dark by
   default.

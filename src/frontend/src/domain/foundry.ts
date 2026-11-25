@@ -192,6 +192,48 @@ export function withStatus(f: FoundryFilters, status: FoundryStatus): FoundryFil
   };
 }
 
+// ── Sorting (Foundry screen) ─────────────────────────────────────────────────
+
+/** Sort orders of the Foundry list. Not part of the filters, so saved presets keep their shape. */
+export type FoundrySort = "name-asc" | "name-desc" | "unmastered" | "missing" | "category";
+
+export const FOUNDRY_SORTS: ReadonlyArray<{ id: FoundrySort; label: string }> = [
+  { id: "name-asc", label: "Name, A–Z" },
+  { id: "name-desc", label: "Name, Z–A" },
+  { id: "unmastered", label: "Unmastered first" },
+  { id: "missing", label: "Missing first" },
+  { id: "category", label: "Category" },
+];
+
+export const DEFAULT_FOUNDRY_SORT: FoundrySort = "name-asc";
+
+export const foundrySortFrom = (v: unknown): FoundrySort => (FOUNDRY_SORTS.some((s) => s.id === v) ? (v as FoundrySort) : DEFAULT_FOUNDRY_SORT);
+
+const byName = (a: FoundryItem, b: FoundryItem) => a.name.localeCompare(b.name, "en");
+
+/** Unmastered masterable items, then mastered ones, then items without mastery. */
+const masteryRankOf = (item: FoundryItem, own: Ownership) => (!item.masterable ? 2 : isMastered(item, own) ? 1 : 0);
+
+/** A sorted copy; ties are broken by name so the order is stable across inventory updates. */
+export function sortItems(items: readonly FoundryItem[], sort: FoundrySort, own: Ownership): FoundryItem[] {
+  const key = (item: FoundryItem): number => {
+    switch (sort) {
+      case "unmastered":
+        return masteryRankOf(item, own);
+      case "missing":
+        return ownedQty(own, item.unique_name) > 0 ? 1 : 0;
+      case "category": {
+        const index = (FOUNDRY_CATEGORIES as readonly string[]).indexOf(item.category);
+        return index === -1 ? FOUNDRY_CATEGORIES.length : index;
+      }
+      default:
+        return 0;
+    }
+  };
+  const sorted = [...items].sort((a, b) => key(a) - key(b) || byName(a, b));
+  return sort === "name-desc" ? sorted.reverse() : sorted;
+}
+
 /** Items being built: the job is the item or its blueprint. */
 export function applyBuildingFilter(
   items: readonly FoundryItem[],
