@@ -51,7 +51,8 @@ describe("Inventory: Prime Sets and Mods & Arcanes", () => {
     await expect.element(screen.getByText(/10 total · 10 shown$/)).toBeVisible();
     await expect.element(nova.getByText("As set")).toBeVisible();
     await expect.element(setCard("Braton Prime").getByText("Owned parts")).toBeVisible();
-    await expect.element(setCard("Braton Prime").getByText(/^1 relic you own drop it: Neo S1 Flawless$/)).toBeInTheDocument();
+    await expect.element(setCard("Braton Prime").getByText("None owned. Your relics: Neo S1 Flawless")).toBeInTheDocument();
+    await expect.element(setCard("Braton Prime").getByText("None owned. Drops from Axi S2; you own none of them")).toBeInTheDocument();
   });
 
   it("filters sets by category, the built item and search", async () => {

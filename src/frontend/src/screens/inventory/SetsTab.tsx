@@ -5,6 +5,7 @@ import { useRecipes, useRelicDrops, useRelicNames } from "../../api/foundry";
 import { useCrafting, useOwnership } from "../../api/inventory";
 import { prioritisePrice, useCatalogList, useLivePrices, useQueuePrices, useWfmLookup } from "../../api/market";
 import { useSettings } from "../../api/settings";
+import { NAV_ICONS } from "../../patterns/navIcons";
 import { ownedRelicsFor } from "../../domain/foundry";
 import { sellFromSetting } from "../../domain/inventory";
 import {
@@ -30,7 +31,7 @@ import { useShowImages, ViewControls } from "../../patterns/ViewControls";
 import { pageAfterResize, usePage, usePageSize, useScrollTopOn } from "../../patterns/PageSize";
 import { Pagination, SidebarItem } from "../../primitives/navigation";
 import { cn } from "../../primitives/cn";
-import { Badge, Card, Chip, domainTone, EmptyState, Skeleton } from "../../primitives/display";
+import { Badge, Card, Chip, domainTone, EmptyState, Icon, Skeleton } from "../../primitives/display";
 import { SearchInput, Select } from "../../primitives/forms";
 import { DucatBadge, fmt } from "../../patterns/MarketBadges";
 import type { MarketTarget } from "../../domain/market";
@@ -132,6 +133,40 @@ const tradeTitle = (ducats: number | null, price: number | null, sellFrom: numbe
     ? undefined
     : `${fmt(ducats)} ducats for ${fmt(price)}p, sell from ${fmt(sellFrom)}p: ${better === "ducats" ? "better for ducats" : "better to sell"}`;
 
+/** "Lith S19 Intact" → "Lith S19". */
+const relicLabel = (name: string) => name.replace(/ (Intact|Exceptional|Flawless|Radiant)$/, "");
+
+const RELICS_IN_TITLE = 6;
+
+const nameList = (names: readonly string[]) =>
+  names.length <= RELICS_IN_TITLE
+    ? names.join(", ")
+    : `${names.slice(0, RELICS_IN_TITLE).join(", ")} and ${String(names.length - RELICS_IN_TITLE)} more`;
+
+/**
+ * Stands in for the count of a part you do not own: a relic in green when a
+ * relic you own drops it, in grey when it drops only from relics you lack.
+ */
+function MissingPart({ id, own, relics }: { id: string; own: SetContext["own"]; relics: RelicLookup }) {
+  const all = [...new Set((relics.drops[id] ?? []).map((r) => relicLabel(relics.names.get(r) ?? r.split("/").pop() ?? r)))].sort();
+  if (all.length === 0) {
+    return (
+      <span className="justify-self-center text-faint">
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">none owned</span>
+      </span>
+    );
+  }
+  const owned = ownedRelicsFor(id, relics.drops, relics.names, own);
+  const title = owned.length > 0 ? `Your relics: ${nameList(owned)}` : `Drops from ${nameList(all)}; you own none of them`;
+  return (
+    <span title={title} className={cn("justify-self-center", owned.length > 0 ? "text-success" : "text-faint")}>
+      <Icon icon={NAV_ICONS.relics} size="sm" />
+      <span className="sr-only">None owned. {title}</span>
+    </span>
+  );
+}
+
 function SetCard({
   set,
   summary,
@@ -198,7 +233,6 @@ function SetCard({
         </header>
         <ul aria-label={`Parts of ${set.name}`} className="flex flex-col divide-y divide-border/60 border-t border-border text-xs">
           {parts.map((p) => {
-            const relicNames = p.qty === 0 ? ownedRelicsFor(p.item.unique_name, relics.drops, relics.names, ctx.own) : [];
             return (
               <li key={p.item.unique_name}>
                 <button
@@ -209,15 +243,7 @@ function SetCard({
                   }}
                   className="grid w-full grid-cols-[minmax(0,1fr)_3rem_2.5rem_1.75rem] items-center gap-2 rounded-sm px-1 py-1 text-start hover:bg-hover"
                 >
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <span className={cn("truncate", p.qty === 0 && "text-muted")}>{p.label}</span>
-                    {relicNames.length > 0 && (
-                      <Badge size="sm" tone="domain" style={domainTone("relic-highlight")} title={relicNames.join("\n")}>
-                        {relicNames.length === 1 ? "1 relic" : `${String(relicNames.length)} relics`}
-                        <span className="sr-only"> you own drop it: {relicNames.join(", ")}</span>
-                      </Badge>
-                    )}
-                  </span>
+                  <span className={cn("truncate", p.qty === 0 && "text-muted")}>{p.label}</span>
                   <TradeCell
                     value={p.item.ducats ?? null}
                     unit="ducats"
@@ -233,10 +259,7 @@ function SetCard({
                     title={tradeTitle(p.item.ducats ?? null, p.price, p.sellFrom, p.better)}
                   />
                   {p.qty === 0 ? (
-                    <span className="justify-self-center text-faint">
-                      <span aria-hidden="true">—</span>
-                      <span className="sr-only">none owned</span>
-                    </span>
+                    <MissingPart id={p.item.unique_name} own={ctx.own} relics={relics} />
                   ) : (
                     <Badge tone={p.qty > p.required ? "warning" : "success"} className="justify-self-center">
                       {p.qty}
