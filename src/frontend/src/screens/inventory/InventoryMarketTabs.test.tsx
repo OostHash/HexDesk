@@ -10,6 +10,7 @@ import { resetMockTrading } from "../../dev/fixtures/trading";
 import { installMocks } from "../../dev/installMocks";
 import { ToastRegion } from "../../primitives/overlay";
 import { closeItemWindow } from "../../state/itemWindow";
+import { clearRivenFocus, onOpenScreen } from "../../state/navigation";
 import { ItemWindowHost, SET_INFO_SECTIONS } from "../../dev/hosts";
 import { InventoryScreen } from "./InventoryScreen";
 
@@ -136,6 +137,27 @@ describe("Inventory: Prime Sets and Mods & Arcanes", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Serration: .* platinum, open the market$/ }));
     const dialog = page.getByRole("dialog", { name: /Serration/ });
     await expect.element(dialog.getByRole("spinbutton", { name: "Showing rank" })).toHaveValue(0);
+  });
+
+  it("shows your own rivens and the veiled ones, and opens a riven in Rivens", async () => {
+    const screen = await renderScreen();
+    await userEvent.click(screen.getByRole("tab", { name: "Mods & Arcanes" }));
+    const nav = screen.getByRole("navigation", { name: "Mod and arcane categories" });
+    await userEvent.click(nav.getByRole("button", { name: /^Rivens/ }));
+    const lato = setCard("Lato Visi-crita-tis");
+    await expect.element(lato.getByText("Pistol riven · Naramon")).toBeVisible();
+    await expect.element(lato.getByRole("definition").first()).toHaveTextContent("8/8");
+    await expect.element(setCard("Melee Riven Mod").getByText("Challenge to complete")).toBeVisible();
+    await expect.element(setCard("Shotgun Riven Mod (Veiled)").getByLabelText("3 owned")).toBeVisible();
+    await expect.element(setCard("Rifle Riven Mod (Veiled)").getByLabelText("Not owned")).toBeVisible();
+    await expect.element(setCard("Rifle Riven Mod")).not.toBeInTheDocument();
+
+    const opened = vi.fn();
+    const stop = onOpenScreen(opened);
+    await userEvent.click(lato.getByRole("button", { name: "Lato Visi-crita-tis" }));
+    stop();
+    clearRivenFocus();
+    expect(opened).toHaveBeenCalledWith("rivens");
   });
 
   it("shows the empty state", async () => {

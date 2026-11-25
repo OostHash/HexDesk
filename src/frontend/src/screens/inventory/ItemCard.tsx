@@ -96,10 +96,11 @@ export type ItemCardProps = {
   ducats: number | null;
   /** Makes the platinum price a button that opens the market window. */
   onOpenMarket?: (() => void) | undefined;
-  /** What a click on the card opens: the item info window. */
+  /** What a click on the card opens: the item info window, or for a riven the Rivens screen. */
   onOpen?: (() => void) | undefined;
-  favorite: boolean;
-  onToggleFavorite: () => void;
+  /** Whether the item is in the modular window; without `onToggleFavorite` the star is left out. */
+  favorite?: boolean | undefined;
+  onToggleFavorite?: (() => void) | undefined;
   /** Badges under the count: recent change, building. */
   badges?: ReactNode | undefined;
   recent?: RecentChange | undefined;
@@ -110,7 +111,7 @@ export type ItemCardProps = {
 /**
  * One item as a card, the same for every kind of item. Three things react to
  * a click: the star (favourite), the price (market window) and the rest of
- * the card (item info window).
+ * the card (`onOpen`, usually the item info window).
  */
 export function ItemCard(props: ItemCardProps) {
   const { name, count, missing, plat, ducats, onOpenMarket, onOpen, rows, recent } = props;
@@ -128,9 +129,11 @@ export function ItemCard(props: ItemCardProps) {
         )}
       >
         <header className="flex w-full items-start gap-1">
-          <span className="relative z-10">
-            <FavoriteButton name={name} favorite={props.favorite} onToggle={props.onToggleFavorite} />
-          </span>
+          {props.onToggleFavorite && (
+            <span className="relative z-10">
+              <FavoriteButton name={name} favorite={props.favorite ?? false} onToggle={props.onToggleFavorite} />
+            </span>
+          )}
           <span className="relative z-10 ms-auto flex flex-wrap justify-end gap-1">
             {ducats !== null && ducats > 0 && (
               <Badge tone="domain" style={domainTone("ducat")} title={`${fmt(ducats)} ducats`}>

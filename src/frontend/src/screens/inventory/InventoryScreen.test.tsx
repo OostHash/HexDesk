@@ -51,15 +51,15 @@ describe("InventoryScreen", () => {
 
   it("pages long lists, remembers the page size and starts over on new filters", async () => {
     const screen = await renderScreen();
-    await expect.element(screen.getByText("Page 1 of 2 · 237 items")).toBeVisible();
+    await expect.element(screen.getByText("Page 1 of 2 · 239 items")).toBeVisible();
     const cards = screen.getByRole("article");
     await expect.element(cards).toHaveLength(120);
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    await expect.poll(() => cards.elements().length).toBe(117);
+    await expect.poll(() => cards.elements().length).toBe(119);
     // A bigger page keeps the first item you were on in view and is remembered.
     await userEvent.click(screen.getByRole("button", { name: "View settings" }));
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Per page" }), "240");
-    await expect.poll(() => cards.elements().length).toBe(237);
+    await expect.poll(() => cards.elements().length).toBe(239);
     expect(localStorage.getItem("ff-page-size-inventory")).toBe("240");
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Per page" }), "60");
     await expect.element(screen.getByText(/Page 1 of 4/)).toBeVisible();

@@ -135,7 +135,7 @@ export const OWNED_RIVENS: OwnedRiven[] = [
   },
   {
     item_id: "",
-    item_type: "/Lotus/Upgrades/Mods/Randomized/LotusShotgunRandomModRare",
+    item_type: "/Lotus/Upgrades/Mods/Randomized/RawShotgunRandomMod",
     mod_name: "",
     riven_state: "unrevealed",
     compat: null,
