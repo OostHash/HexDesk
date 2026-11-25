@@ -5,11 +5,11 @@ import { domainTone, type Tone } from "../../primitives/display";
 export type StateTone = { tone: Tone; style?: CSSProperties };
 
 const DOMAIN: Record<string, Parameters<typeof domainTone>[0]> = {
-  Day: "ducat",
+  Day: "state-day",
   Night: "state-cool",
   Warm: "state-warm",
   Cold: "state-cool",
-  Joy: "ducat",
+  Joy: "state-joy",
   Anger: "state-anger",
   Envy: "state-envy",
   Sorrow: "state-sorrow",

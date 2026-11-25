@@ -52,7 +52,7 @@ export function ChangeLogPopoutPage() {
   }, []);
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-surface">
+    <main className="flex h-full min-h-0 flex-col bg-panel">
       <h1 className="sr-only">Changelog</h1>
       <div className="flex min-h-control-md shrink-0 items-center gap-3 border-b border-border px-3">
         <span className="text-xs font-semibold tracking-wide text-muted uppercase">Changelog</span>

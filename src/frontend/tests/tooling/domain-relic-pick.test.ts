@@ -4,9 +4,10 @@ import {
   pickLinesFrom,
   pickPriorityFrom,
   PREVIEW_PICK,
-  recommendedRefinement,
+  dropChance,
+  rarityLabel,
   refinementLabel,
-  scoreLabel,
+  scoreHeadline,
   shownRewards,
   topRelics,
 } from "../../src/domain/relicPick";
@@ -33,9 +34,9 @@ describe("ranking", () => {
     expect(topRelics(pick, "ducat").map((r) => r.base_name)).toEqual(["Axi R4", "Lith S1"]);
   });
   it("labels the score", () => {
-    expect(scoreLabel(axi, "unowned")).toBe("38% new");
-    expect(scoreLabel(meso, "ducat")).toBe("26 ducats EV");
-    expect(scoreLabel(lith, "platinum")).toBe("3p EV");
+    expect(scoreHeadline(axi, "unowned")).toEqual({ value: "38%", caption: "chance of something new" });
+    expect(scoreHeadline(meso, "ducat")).toEqual({ value: "26", caption: "ducats per run, on average" });
+    expect(scoreHeadline(lith, "platinum")).toEqual({ value: "3p", caption: "platinum per run, on average" });
   });
 });
 
@@ -54,10 +55,14 @@ describe("shown rewards", () => {
   });
 });
 
-it("recommends a refinement by rarity", () => {
-  expect(recommendedRefinement("Gold")).toBe("Radiant");
-  expect(recommendedRefinement("Silver")).toBe("Exceptional");
-  expect(recommendedRefinement("Bronze")).toBe("Intact");
+it("names rarities and drop chances the way the game does", () => {
+  expect(rarityLabel("Gold")).toBe("Rare");
+  expect(rarityLabel("Silver")).toBe("Uncommon");
+  expect(rarityLabel("Bronze")).toBe("Common");
+  expect(dropChance(0.2533)).toBe("25%");
+  expect(dropChance(0.11)).toBe("11%");
+  expect(dropChance(0.02)).toBe("2%");
+  expect(dropChance(0.0233)).toBe("2.3%");
 });
 
 it("reads settings and labels eras and refinements", () => {

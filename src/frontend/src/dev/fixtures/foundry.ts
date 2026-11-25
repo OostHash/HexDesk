@@ -141,6 +141,9 @@ export const FOUNDRY_FORMA: Record<string, number> = { "/Foundry/Volt": 3 };
 export const RELIC_DROPS: Record<string, string[]> = {
   "/Foundry/ExcaliburPrimeSystemsBlueprint": ["/Relics/NeoS1Bronze", "/Relics/AxiS2Bronze"],
   "/Foundry/ExcaliburPrimeSystems": ["/Relics/NeoS1Bronze"],
+  // Missing Prime Sets parts: one an owned relic drops, one only a relic you lack.
+  "/Prime/Braton/Barrel": ["/Relics/NeoS1Bronze"],
+  "/Prime/Braton/Receiver": ["/Relics/AxiS2Bronze"],
 };
 
 export const craftableItems: Fixture<FoundryItem[]> = { default: () => FOUNDRY_ITEMS, empty: () => [] };

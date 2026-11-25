@@ -429,8 +429,8 @@ pub fn detect_quantity_changes(
 
 pub fn detect_mod_rank_changes(
     conn: &Connection,
-    prev_mods: &std::collections::HashMap<String, crate::memory_scanner::ModCount>,
-    known_mods: &std::collections::HashMap<String, crate::memory_scanner::ModCount>,
+    prev_mods: &std::collections::HashMap<String, hexdesk_blob::ModCount>,
+    known_mods: &std::collections::HashMap<String, hexdesk_blob::ModCount>,
     ignored_paths: &std::collections::HashSet<String>,
     path_to_name: &std::collections::HashMap<String, String>,
 ) -> Vec<QuantityChange> {

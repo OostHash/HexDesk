@@ -1,0 +1,38 @@
+name: Dependency review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Dependency review
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate dependency exceptions
+        run: bash .github/scripts/dependency-exceptions.sh check
+
+      - name: Read allowed advisories
+        id: exceptions
+        run: |
+          ghsas="$(bash .github/scripts/dependency-exceptions.sh list ghsa | paste -sd, -)"
+          echo "ghsas=$ghsas" >> "$GITHUB_OUTPUT"
+
+      # Only blocks advisories introduced by this pull request. Existing
+      # advisories are reported by the scheduled dependency audit instead.
+      - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
+        with:
+          fail-on-severity: high
+          fail-on-scopes: runtime, development, unknown
+          license-check: false
+          show-openssf-scorecard: false
+          retry-on-snapshot-warnings: true
+          allow-ghsas: ${{ steps.exceptions.outputs.ghsas }}

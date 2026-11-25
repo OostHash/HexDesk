@@ -1,8 +1,10 @@
-import { useCallback, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useState, type ComponentType } from "react";
 import { useSettings } from "../api/settings";
 import { cn } from "../primitives/cn";
+import { onOpenScreen } from "../state/navigation";
 import { FoundryScreen } from "../screens/foundry/FoundryScreen";
-import { ItemWindowHost } from "../screens/market/ItemWindow";
+import { SET_INFO_SECTIONS } from "../screens/inventory/SetParts";
+import { ItemWindowHost } from "./ItemWindowHost";
 import { MarketScreen } from "../screens/market/MarketScreen";
 import { RivensScreen } from "../screens/rivens/RivensScreen";
 import { SettingsScreen, type SettingsTab } from "../screens/settings/SettingsScreen";
@@ -16,7 +18,7 @@ import { FissureAlerts } from "./FissureAlerts";
 import { Header } from "./Header";
 import { MainNav, type NavScreen } from "./MainNav";
 import { ModularDock } from "./ModularDock";
-import { NAV_ICONS } from "./navIcons";
+import { NAV_ICONS } from "../patterns/navIcons";
 import { RelicOverlayController } from "./RelicOverlayController";
 import { TestReportNotices } from "./TestReportNotices";
 import { ScreenBoundary } from "./ScreenBoundary";
@@ -47,6 +49,7 @@ export function AppShell() {
   const openInventory = useCallback(() => {
     setScreen("inventory");
   }, []);
+  useEffect(() => onOpenScreen(setScreen), []);
   const openSettings = (tab?: SettingsTab) => {
     if (tab) setSettingsTab(tab);
     setScreen("settings");
@@ -119,7 +122,7 @@ export function AppShell() {
         </div>
       </div>
       {/* Outside the screens: React Aria renders Tabs children in a detached collection pass, where showModal() fails. */}
-      <ItemWindowHost />
+      <ItemWindowHost extraSections={SET_INFO_SECTIONS} />
     </div>
   );
 }

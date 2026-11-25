@@ -20,7 +20,7 @@ function Swatch({ name, cssVar }: { name: string; cssVar: string }) {
 
 function ShadowSwatch({ level }: { level: 1 | 2 | 3 }) {
   const cls = { 1: "shadow-1", 2: "shadow-2", 3: "shadow-3" }[level];
-  return <li className={`rounded-md bg-surface-raised p-4 text-sm text-text ${cls}`}>--ff-shadow-{level}</li>;
+  return <li className={`rounded-md bg-surface-raised p-4 text-sm text-text ${cls}`}>--hex-shadow-{level}</li>;
 }
 
 export function TokensPage() {
@@ -35,7 +35,7 @@ export function TokensPage() {
         </h2>
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-2">
           {colorRoles.map((token) => (
-            <Swatch key={token} name={token} cssVar={`--ff-${token}`} />
+            <Swatch key={token} name={token} cssVar={`--hex-${token}`} />
           ))}
         </ul>
       </section>
@@ -46,10 +46,10 @@ export function TokensPage() {
         </h2>
         <div className="grid grid-cols-3 gap-2">
           {(["bg", "surface", "surface-raised"] as const).map((surface) => (
-            <div key={surface} className="flex flex-col gap-1 rounded-md border border-border p-3" style={{ background: `var(--ff-${surface})` }}>
+            <div key={surface} className="flex flex-col gap-1 rounded-md border border-border p-3" style={{ background: `var(--hex-${surface})` }}>
               <span className="text-xs text-muted">{surface}</span>
               {[...TEXT_ROLES].map((role) => (
-                <span key={role} className="text-sm" style={{ color: `var(--ff-${role})` }}>
+                <span key={role} className="text-sm" style={{ color: `var(--hex-${role})` }}>
                   {role}
                 </span>
               ))}
@@ -89,11 +89,11 @@ export function TokensPage() {
 
       <section aria-labelledby="tok-domain" className="flex flex-col gap-3">
         <h2 id="tok-domain" className="text-base font-semibold">
-          Domain colors (only through --ff-tone)
+          Domain colors (only through --hex-tone)
         </h2>
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-2">
           {(Object.keys(domainColors) as DomainColor[]).map((name) => (
-            <Swatch key={name} name={name} cssVar={`--ff-${name}`} />
+            <Swatch key={name} name={name} cssVar={`--hex-${name}`} />
           ))}
         </ul>
       </section>

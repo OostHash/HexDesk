@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import { cn } from "../cn";
-import { FIELD_FOCUS } from "./fieldStyles";
+import { FIELD_DISABLED, FIELD_FOCUS } from "./fieldStyles";
 import { useFieldControl } from "./FormField";
 
 type Props = ComponentProps<"textarea"> & { invalid?: boolean };
@@ -12,9 +12,10 @@ export function Textarea({ invalid, id, required, rows = 3, className, ...rest }
     <textarea
       rows={rows}
       className={cn(
-        "w-full min-w-0 rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm text-text placeholder:text-faint",
-        "hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger",
+        "w-full min-w-0 rounded-md border border-border bg-field px-3 py-2 text-sm text-text placeholder:text-faint",
+        "hover:border-border-strong aria-invalid:border-danger",
         FIELD_FOCUS,
+        FIELD_DISABLED,
         className,
       )}
       {...field}

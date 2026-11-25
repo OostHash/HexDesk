@@ -6,9 +6,12 @@ import { palette } from "./palette.ts";
  */
 export const semanticTokens = [
   "bg",
+  "panel",
+  "nav",
   "surface",
   "surface-raised",
   "surface-sunken",
+  "field",
   "border",
   "border-strong",
   "text",
@@ -30,6 +33,7 @@ export const semanticTokens = [
   "shadow-1",
   "shadow-2",
   "shadow-3",
+  "shadow-dock",
   "tone-ink",
 ] as const;
 
@@ -42,63 +46,95 @@ export type ThemeTokens = Readonly<Record<SemanticToken, string>>;
  * those from contrast); never for readable content.
  */
 const derived = {
-  "border-strong": "color-mix(in oklab, var(--ff-text) 28%, transparent)",
-  "text-faint": "color-mix(in oklab, var(--ff-text-muted) 70%, transparent)",
-  "accent-soft": "color-mix(in oklab, var(--ff-accent) 14%, transparent)",
-  "focus-ring": "var(--ff-accent)",
-  hover: "color-mix(in oklab, var(--ff-text) 6%, transparent)",
-  active: "color-mix(in oklab, var(--ff-text) 10%, transparent)",
-  selected: "color-mix(in oklab, var(--ff-accent) 14%, transparent)",
+  "border-strong": "color-mix(in oklab, var(--hex-text) 28%, transparent)",
+  "text-faint": "color-mix(in oklab, var(--hex-text-muted) 70%, transparent)",
+  "accent-soft": "color-mix(in oklab, var(--hex-accent) 14%, transparent)",
+  "focus-ring": "var(--hex-accent)",
+  hover: "color-mix(in oklab, var(--hex-text) 6%, transparent)",
+  active: "color-mix(in oklab, var(--hex-text) 10%, transparent)",
+  selected: "color-mix(in oklab, var(--hex-accent) 14%, transparent)",
 } as const satisfies Partial<ThemeTokens>;
 
-const n = palette.neutral;
+/** Accent presets the player can pick in Settings → Appearance; amber is the default. */
+export const ACCENTS = ["amber", "teal", "violet", "rose", "steel"] as const;
+export type AccentName = (typeof ACCENTS)[number];
+export const DEFAULT_ACCENT: AccentName = "amber";
+
+/**
+ * The accent of each preset per theme. Every value meets the accent pairs in
+ * contrastPairs on its theme; high contrast keeps its own accent.
+ */
+export const accentPresets = {
+  amber: { dark: palette.amber[400], light: palette.amber[700] },
+  teal: { dark: palette.teal[400], light: palette.teal[700] },
+  violet: { dark: palette.iris[400], light: palette.iris[700] },
+  rose: { dark: palette.rose[400], light: palette.rose[700] },
+  steel: { dark: palette.azure[400], light: palette.azure[700] },
+} as const satisfies Record<AccentName, Record<"dark" | "light", string>>;
+
+/**
+ * Surfaces from back to front: bg is the page, panel the window chrome (title
+ * bar, header, docks), nav the main navigation, surface the cards and controls
+ * on a page, surface-raised popovers and dialogs. surface-sunken is a well
+ * inside a card; field is the inside of an input.
+ */
+const g = palette.graphite;
 
 export const dark = {
   ...derived,
-  bg: n[950],
-  surface: n[900],
-  "surface-raised": n[850],
-  "surface-sunken": n[950],
-  border: n[700],
-  text: n[100],
-  "text-muted": n[400],
-  accent: palette.blue[500],
-  "on-accent": palette.ink.onAccent,
-  "on-danger": palette.ink.onAccent,
-  success: palette.green[500],
-  danger: palette.red[500],
-  warning: palette.amber[500],
-  info: palette.blue[400],
+  bg: g[950],
+  panel: g[900],
+  nav: g[1000],
+  surface: g[800],
+  "surface-raised": g[750],
+  "surface-sunken": g[925],
+  field: g[925],
+  border: g[700],
+  text: g[100],
+  "text-muted": g[400],
+  accent: accentPresets[DEFAULT_ACCENT].dark,
+  "on-accent": g[950],
+  "on-danger": g[950],
+  success: palette.sage[400],
+  danger: palette.brick[400],
+  warning: palette.ochre[400],
+  info: palette.steel[400],
   backdrop: "rgb(0 0 0 / 0.6)",
   "shadow-1": "0 1px 2px rgb(0 0 0 / 0.3)",
   "shadow-2": "0 8px 24px rgb(0 0 0 / 0.45)",
   "shadow-3": "0 20px 60px rgb(0 0 0 / 0.6)",
+  /** The open changelog dock lifts above the screen it covers. */
+  "shadow-dock": "0 -8px 24px rgb(0 0 0 / 0.4)",
   /** How much of its own colour a tinted badge keeps; the rest is text colour (contrast). */
   "tone-ink": "65%",
 } as const satisfies ThemeTokens;
 
-const l = palette.light;
+const s = palette.stone;
 
 export const light = {
   ...derived,
-  bg: l.bg,
-  surface: l.surface,
-  "surface-raised": l.surface,
-  "surface-sunken": l.sunken,
-  border: l.border,
-  text: l.text,
-  "text-muted": l.muted,
-  accent: l.blue,
-  "on-accent": "#ffffff",
-  "on-danger": "#ffffff",
-  success: l.green,
-  danger: l.red,
-  warning: l.amber,
-  info: l.blueText,
+  bg: s[50],
+  panel: s[0],
+  nav: s[150],
+  surface: s[0],
+  "surface-raised": s[75],
+  "surface-sunken": s[100],
+  field: s[100],
+  border: s[200],
+  text: s[900],
+  "text-muted": s[600],
+  accent: accentPresets[DEFAULT_ACCENT].light,
+  "on-accent": s[0],
+  "on-danger": s[0],
+  success: palette.sage[700],
+  danger: palette.brick[700],
+  warning: palette.ochre[700],
+  info: palette.steel[700],
   backdrop: "rgb(31 35 40 / 0.4)",
   "shadow-1": "0 1px 2px rgb(31 35 40 / 0.12)",
   "shadow-2": "0 8px 24px rgb(31 35 40 / 0.16)",
   "shadow-3": "0 20px 60px rgb(31 35 40 / 0.24)",
+  "shadow-dock": "0 -8px 24px rgb(31 35 40 / 0.14)",
   // Domain colours are tuned for dark pages: on light they need more ink.
   "tone-ink": "35%",
 } as const satisfies ThemeTokens;
@@ -119,9 +155,12 @@ export const highContrastThemes = {
     ...derived,
     "border-strong": hd.text,
     bg: hd.bg,
+    panel: hd.surface,
+    nav: hd.bg,
     surface: hd.surface,
     "surface-raised": hd.raised,
     "surface-sunken": hd.bg,
+    field: hd.bg,
     border: hd.border,
     text: hd.text,
     "text-muted": hd.muted,
@@ -136,15 +175,19 @@ export const highContrastThemes = {
     "shadow-1": "none",
     "shadow-2": "0 0 0 1px #ffffff",
     "shadow-3": "0 0 0 2px #ffffff",
+    "shadow-dock": "none",
     "tone-ink": "40%",
   },
   light: {
     ...derived,
     "border-strong": hl.text,
     bg: hl.bg,
+    panel: hl.bg,
+    nav: hl.sunken,
     surface: hl.bg,
     "surface-raised": hl.bg,
     "surface-sunken": hl.sunken,
+    field: hl.bg,
     border: hl.border,
     text: hl.text,
     "text-muted": hl.muted,
@@ -159,6 +202,7 @@ export const highContrastThemes = {
     "shadow-1": "none",
     "shadow-2": "0 0 0 1px #0e1116",
     "shadow-3": "0 0 0 2px #0e1116",
+    "shadow-dock": "none",
     "tone-ink": "20%",
   },
 } as const satisfies Record<ThemeName, ThemeTokens>;
@@ -206,19 +250,30 @@ export const contrastPairs: ReadonlyArray<{
   why: string;
 }> = [
   { fg: "text", bg: "bg", min: 4.5, why: "body text" },
-  { fg: "text", bg: "surface", min: 4.5, why: "body text on panels" },
+  { fg: "text", bg: "surface", min: 4.5, why: "body text on cards" },
   { fg: "text", bg: "surface-raised", min: 4.5, why: "text in popovers" },
   { fg: "text-muted", bg: "bg", min: 4.5, why: "secondary text" },
-  { fg: "text-muted", bg: "surface", min: 4.5, why: "secondary text on panels" },
+  { fg: "text-muted", bg: "surface", min: 4.5, why: "secondary text on cards" },
+  { fg: "text", bg: "panel", min: 4.5, why: "text in the window chrome" },
+  { fg: "text", bg: "nav", min: 4.5, why: "navigation labels" },
+  { fg: "text", bg: "field", min: 4.5, why: "input text" },
+  { fg: "text-muted", bg: "panel", min: 4.5, why: "secondary text in the window chrome" },
+  { fg: "text-muted", bg: "nav", min: 4.5, why: "inactive navigation labels" },
+  { fg: "text-muted", bg: "field", min: 4.5, why: "secondary text in inputs" },
+  { fg: "text-muted", bg: "surface-raised", min: 4.5, why: "secondary text in popovers" },
   { fg: "on-accent", bg: "accent", min: 4.5, why: "primary button label" },
   { fg: "on-danger", bg: "danger", min: 4.5, why: "danger button label" },
   { fg: "accent", bg: "surface", min: 4.5, why: "links and accent text" },
+  { fg: "accent", bg: "panel", min: 4.5, why: "accent text in the window chrome" },
+  { fg: "accent", bg: "nav", min: 4.5, why: "the active navigation item" },
   { fg: "danger", bg: "surface", min: 4.5, why: "error text" },
+  { fg: "danger", bg: "surface-raised", min: 4.5, why: "error text in dialogs" },
   { fg: "success", bg: "surface", min: 4.5, why: "success text" },
   { fg: "warning", bg: "surface", min: 4.5, why: "warning text" },
   { fg: "info", bg: "surface", min: 4.5, why: "info text" },
   { fg: "focus-ring", bg: "bg", min: 3, why: "focus indicator (WCAG 1.4.11)" },
-  { fg: "focus-ring", bg: "surface", min: 3, why: "focus indicator on panels" },
+  { fg: "focus-ring", bg: "surface", min: 3, why: "focus indicator on cards" },
+  { fg: "focus-ring", bg: "field", min: 3, why: "focus indicator in inputs" },
 ];
 
 /** Theme-independent tokens. */

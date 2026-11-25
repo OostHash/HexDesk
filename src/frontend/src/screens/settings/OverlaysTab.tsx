@@ -17,12 +17,37 @@ import { STATUS_DURATION_RANGE } from "../../domain/overlayStatus";
 import { PICK_LINES, PICK_LINES_LABEL, PICK_PRIORITIES, PICK_PRIORITY_LABEL } from "../../domain/relicPick";
 import { OVERLAY_PRIORITIES, OVERLAY_PRIORITY_LABEL } from "../../domain/relicReward";
 import { Button } from "../../primitives/actions";
-import { FormField, Input, Select, Slider } from "../../primitives/forms";
-import { getPreferences } from "../../state/preferences";
+import { FormField, Input, RadioGroup, Select, Slider } from "../../primitives/forms";
+import { getPreferences, OVERLAY_THEME_CHOICES, OVERLAY_THEME_LABEL, setPreferences, usePreferences } from "../../state/preferences";
 import { ManualModeRow, OverlayKeyRow } from "./controls";
 import { SettingRow, SettingsGroup, SwitchRow, useSettingsFile } from "./parts";
 
 type Overlay = "reward" | "pick" | "riven";
+
+const OVERLAY_THEME_OPTIONS = OVERLAY_THEME_CHOICES.map((value) => ({ value, label: OVERLAY_THEME_LABEL[value] }));
+
+/** Theme of the in-game overlays, apart from the app's own theme. */
+function OverlayThemeRow() {
+  const ui = usePreferences();
+  return (
+    <SettingRow
+      group={false}
+      label="Overlay theme"
+      description="Colours of the overlays over the game. Contrast and the colour-blind palette follow the app."
+    >
+      <RadioGroup
+        legend="Overlay theme"
+        hideLegend
+        appearance="segmented"
+        value={ui.overlayTheme}
+        options={OVERLAY_THEME_OPTIONS}
+        onValueChange={(overlayTheme) => {
+          setPreferences({ overlayTheme });
+        }}
+      />
+    </SettingRow>
+  );
+}
 const OVERLAYS: readonly Overlay[] = ["reward", "pick", "riven"];
 const TARGET: Readonly<Record<Overlay, OffsetTarget>> = { reward: "relic", pick: "relicPick", riven: "riven" };
 const show: Readonly<Record<Overlay, () => Promise<void>>> = {
@@ -188,6 +213,7 @@ export function OverlaysTab() {
             if (!on) previews.set(OVERLAYS, false);
           }}
         />
+        <OverlayThemeRow />
         <OverlayKeyRow />
         <ManualModeRow />
         <PreviewButton

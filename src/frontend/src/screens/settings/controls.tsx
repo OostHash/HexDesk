@@ -4,9 +4,13 @@ import { useOcrModels } from "../../api/settings";
 import { keyFromCode, keyLabel, NO_KEY, testingKeysSet, type OverlayKey } from "../../domain/overlayKey";
 import { ocrModelsFrom } from "../../domain/settings";
 import { FEEDBACK_FREQUENCIES, feedbackFrequencyFrom, LOG_RETENTION_DAYS, logRetentionDaysFrom, retentionLabel } from "../../domain/testing";
-import { Badge } from "../../primitives/display";
+import { Check } from "lucide-react";
+import { cn } from "../../primitives/cn";
+import { Badge, Icon } from "../../primitives/display";
 import { FormField, KeyInput, RadioGroup, Select, Slider } from "../../primitives/forms";
 import {
+  ACCENT_CHOICES,
+  ACCENT_LABEL,
   availableChoices,
   clampTextScale,
   DENSITY_CHOICES,
@@ -43,6 +47,55 @@ export function ThemeRow() {
           setPreferences({ theme });
         }}
       />
+    </SettingRow>
+  );
+}
+
+/**
+ * Accent colour as round swatches. They are native radio buttons, so arrow
+ * keys move between them; the chosen one has a check and a ring, not only
+ * its colour. Windows High Contrast would drop their fill, so they keep it
+ * (forced-color-adjust). The app's high contrast keeps its own accent.
+ */
+export function AccentRow() {
+  const prefs = usePreferences();
+  return (
+    <SettingRow
+      group={false}
+      label="Accent colour"
+      description="Buttons, selection and focus. Status and game colours stay as they are; high contrast keeps its own."
+    >
+      <fieldset className="flex items-center gap-2">
+        <legend className="sr-only">Accent colour</legend>
+        {ACCENT_CHOICES.map((accent) => {
+          const checked = prefs.accent === accent;
+          return (
+            <label
+              key={accent}
+              title={ACCENT_LABEL[accent]}
+              className={cn(
+                "inline-flex size-5 items-center justify-center rounded-full text-on-accent forced-color-adjust-none",
+                "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus",
+                checked && "ring-2 ring-text ring-offset-2 ring-offset-surface",
+              )}
+              style={{ background: `var(--hex-swatch-${accent})` }}
+            >
+              <input
+                type="radio"
+                name="accent"
+                value={accent}
+                checked={checked}
+                aria-label={ACCENT_LABEL[accent]}
+                className="sr-only"
+                onChange={() => {
+                  setPreferences({ accent });
+                }}
+              />
+              {checked && <Icon icon={Check} size="xs" />}
+            </label>
+          );
+        })}
+      </fieldset>
     </SettingRow>
   );
 }

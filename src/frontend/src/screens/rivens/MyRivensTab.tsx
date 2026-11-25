@@ -1,5 +1,5 @@
 import { Gem } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispositions, useOwnedRivens, usePostAuction, usePostVeiled, useWeaponNames } from "../../api/rivens";
 import { useSession } from "../../api/trading";
 import {
@@ -321,7 +321,8 @@ function Section({ title, count, children }: { title: string; count: number; chi
 }
 
 /** Rivens in the inventory, with selling on warframe.market. */
-export function MyRivensTab() {
+/** The rivens you own. `focusId` is the item id of a riven to scroll to and mark. */
+export function MyRivensTab({ focusId = null }: { focusId?: string | null }) {
   const owned = useOwnedRivens();
   const dispositions = useDispositions();
   const names = useWeaponNames();
@@ -329,6 +330,13 @@ export function MyRivensTab() {
   const loggedIn = Boolean(session.data);
   const [auction, setAuction] = useState<Named | null>(null);
   const [veiled, setVeiled] = useState<OwnedRiven | null>(null);
+  const focusRef = useRef<HTMLLIElement>(null);
+  const hasFocus = focusId !== null && (owned.data ?? []).some((r) => r.item_id === focusId);
+  useEffect(() => {
+    if (hasFocus) focusRef.current?.scrollIntoView({ block: "center" });
+  }, [hasFocus, focusId]);
+  const focusProps = (r: OwnedRiven) =>
+    hasFocus && r.item_id === focusId ? { ref: focusRef, "aria-current": true as const, className: "rounded-md ring-2 ring-accent" } : {};
 
   if (owned.isPending) return <Skeleton lines={6} />;
   const { unlocked, revealed, unrevealed } = groupRivens(owned.data ?? []);
@@ -350,7 +358,7 @@ export function MyRivensTab() {
           {unlocked.map((r) => {
             const item = named(r);
             return (
-              <li key={r.item_id || item.weapon}>
+              <li key={r.item_id || item.weapon} {...focusProps(r)}>
                 <Card as="article" padding="sm" className="flex flex-col gap-1.5">
                   <header className="flex items-center gap-2">
                     <h4 className="flex-1 text-sm font-semibold">
@@ -378,7 +386,7 @@ export function MyRivensTab() {
       {revealed.length > 0 && (
         <Section title="Revealed rivens" count={revealed.length}>
           {revealed.map((r, i) => (
-            <li key={r.item_id || String(i)}>
+            <li key={r.item_id || String(i)} {...focusProps(r)}>
               <Card as="article" padding="sm">
                 <h4 className="text-sm font-semibold">{rivenCategory(r.item_type)} Riven Mod</h4>
                 <p className="text-xs text-muted italic">Challenge: {challengeText(r.challenge_type, r.challenge_complication)}</p>

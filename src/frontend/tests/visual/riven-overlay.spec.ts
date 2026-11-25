@@ -62,6 +62,37 @@ test("comparison", async ({ page }) => {
   await expect(page).toHaveScreenshot("riven-comparison.png");
 });
 
+const result = PREVIEW_VIEW as Extract<RivenView, { kind: "result" }>;
+const combos: RivenView = {
+  ...result,
+  analysis: result.analysis && {
+    ...result.analysis,
+    alternatives: [
+      {
+        label: "Option 1",
+        matched: ["Critical Chance"],
+        missing: ["Base Damage / Status Chance / Toxicity"],
+        score: 0.5,
+        verdict: "MEDIOCRE — Keep rolling",
+      },
+      {
+        label: "Option 2",
+        matched: ["Critical Chance", "Damage to Grineer"],
+        missing: ["Multishot"],
+        score: 0.67,
+        verdict: "GOOD ROLL — Decent for selling",
+      },
+    ],
+  },
+};
+
+test("several good combinations", async ({ page }) => {
+  await open(page, combos);
+  await expect(page.getByRole("list", { name: "Other good combinations" }).getByRole("listitem")).toHaveCount(1);
+  await axe(page);
+  await expect(page).toHaveScreenshot("riven-combos.png");
+});
+
 test("close by keyboard", async ({ page }) => {
   await open(page, PREVIEW_VIEW);
   await page.getByRole("button", { name: "Close riven check" }).focus();

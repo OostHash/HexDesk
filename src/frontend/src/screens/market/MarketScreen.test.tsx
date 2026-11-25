@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { clearMocks } from "@tauri-apps/api/mocks";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-react";
 import "../../theme/index.css";
@@ -25,11 +25,16 @@ async function renderScreen(search = "") {
 
 describe("MarketScreen statistics", () => {
   beforeEach(() => {
+    // The fixtures sit on 2026-11-12; the item report filters snapshots against
+    // the wall clock. Only Date is faked so the async matchers keep their timers.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-12T12:00:00Z"));
     localStorage.removeItem("ff-item-report-order");
   });
   afterEach(async () => {
     await cleanup();
     clearMocks();
+    vi.useRealTimers();
   });
 
   it("shows totals and the top lists for all time", async () => {

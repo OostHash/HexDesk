@@ -9,7 +9,7 @@ import { resetMockTrading } from "../../../dev/fixtures/trading";
 import { installMocks } from "../../../dev/installMocks";
 import { ToastRegion } from "../../../primitives/overlay";
 import { closeItemWindow } from "../../../state/itemWindow";
-import { ItemWindowHost } from "../ItemWindow";
+import { ItemWindowHost } from "../../../dev/hosts";
 import { MarketScreen } from "../MarketScreen";
 
 let client: QueryClient;

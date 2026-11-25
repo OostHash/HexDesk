@@ -3,6 +3,7 @@ import { isTauri } from "../../api/env";
 import { onEvent, type RelicRewards } from "../../api/events";
 import { invoke } from "../../api/invoke";
 import { hideRewardStrip, logRelic, takePendingRewards, useItemPrices, useOverlayPrefs, useRewardCards } from "../../api/overlays";
+import { Circle, CircleCheck, CircleDashed } from "lucide-react";
 import {
   cardsFrom,
   bestPick,
@@ -12,10 +13,13 @@ import {
   PREVIEW_CARDS,
   priceNames,
   rewardSummary,
+  shortName,
   type RewardCard,
+  type RewardComponent,
 } from "../../domain/relicReward";
 import { cn } from "../../primitives/cn";
-import { Badge, domainTone } from "../../primitives/display";
+import { Badge, domainTone, Icon } from "../../primitives/display";
+import { OVERLAY_DIVIDER, OVERLAY_HEADING, OVERLAY_PANEL, OVERLAY_PANEL_HIGHLIGHT } from "./overlayStyles";
 
 type Source = "idle" | "preview" | "live";
 type Session = { source: Source; paths: string[]; uncertain: boolean[] };
@@ -41,70 +45,97 @@ function Plat({ value }: { value: number | undefined }) {
   );
 }
 
+/** One set part: owned of needed, with an icon so complete does not rest on colour. */
+function PartRow({ part, setName, isReward }: { part: RewardComponent; setName: string; isReward: boolean }) {
+  const have = part.owned >= part.needed;
+  const label = cellLabel(part.name, setName);
+  return (
+    <li
+      className={cn("flex items-center gap-1.5 rounded-sm px-1 py-px", isReward && "bg-selected font-semibold", !have && !isReward && "text-muted")}
+    >
+      <Icon
+        icon={have ? CircleCheck : part.owned > 0 ? CircleDashed : Circle}
+        size="xs"
+        className={cn("shrink-0", have ? "text-success" : isReward ? "text-accent" : "text-faint")}
+      />
+      <span className="min-w-0 flex-1 truncate">
+        {label}
+        {part.needed > 1 && <span className="text-muted"> ×{part.needed}</span>}
+        {isReward && <span className="sr-only">, this reward</span>}
+      </span>
+      <span className="tabular-nums">
+        <span className="sr-only">{have ? "complete, " : "missing, "}</span>
+        {part.owned}/{part.needed}
+      </span>
+    </li>
+  );
+}
+
 function Card({ card, left, width, best }: { card: RewardCard; left: number; width: number; best: boolean }) {
-  const hasSet = card.components !== undefined && card.setName !== undefined;
+  const setName = card.setName;
+  const parts = card.components;
   const ownedFull = (card.completeSets ?? 0) >= 1;
+  const doubtful = card.unknown || card.uncertain === true;
+  const rewardPart = setName !== undefined ? shortName(card.name, setName) : undefined;
+  const complete = parts?.filter((p) => p.owned >= p.needed).length ?? 0;
+  const facts = [
+    card.ducats !== undefined && card.ducats > 0 ? `${fmt(card.ducats)} ducats` : undefined,
+    card.vaulted ? "Vaulted" : undefined,
+  ].filter((f): f is string => f !== undefined);
   return (
     <article
       aria-label={[card.name, card.uncertain ? "uncertain" : "", best ? "best pick" : ""].filter(Boolean).join(", ")}
-      className={cn(
-        "absolute top-7 flex flex-col gap-1 rounded-lg border bg-surface/95 p-2 text-xs text-text shadow-2",
-        card.unknown || card.uncertain ? "border-warning/60" : best ? "border-accent" : "border-border",
-      )}
+      className={cn("absolute top-7 flex flex-col gap-1.5 p-2.5", OVERLAY_PANEL, doubtful ? "border-warning" : best && OVERLAY_PANEL_HIGHLIGHT)}
       style={{ left, width }}
     >
-      <h2 className="line-clamp-2 text-sm leading-tight font-semibold">
-        {card.unknown ? "? " : ""}
-        {card.name}
-      </h2>
+      <header className="flex items-start justify-between gap-2">
+        <h2 className="line-clamp-2 leading-tight font-semibold">
+          {card.unknown ? "? " : ""}
+          {card.name}
+        </h2>
+        {best && (
+          <Badge tone="accent" variant="solid">
+            Best pick
+          </Badge>
+        )}
+      </header>
       {card.uncertain && (
         <Badge tone="warning" variant="outline" title="Read differently between reads, or only part of the name was read">
           Uncertain
         </Badge>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-1">
-        <Plat value={card.plat} />
-        {card.vaulted && <Badge variant="outline">Vaulted</Badge>}
-        {card.ducats !== undefined && card.ducats > 0 ? (
-          <Badge tone="domain" style={domainTone("ducat")}>
-            {fmt(card.ducats)} ducats
-          </Badge>
-        ) : (
-          <span className="text-muted">—</span>
-        )}
-      </div>
-      {hasSet && (
-        <>
-          <Badge tone={ownedFull ? "success" : "neutral"} variant="outline" className="justify-center">
-            {ownedFull ? "Full item owned" : "Full item not owned"}
-          </Badge>
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-muted">Set</span>
+      {!card.unknown && (
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          {card.plat !== undefined ? (
+            <span
+              className="text-lg leading-tight font-semibold text-tone tabular-nums"
+              style={domainTone("price-platinum")}
+              title={`${fmt(card.plat)} platinum`}
+            >
+              {fmt(card.plat)}p
+            </span>
+          ) : (
+            <span className="text-lg leading-tight text-muted">—</span>
+          )}
+          {facts.length > 0 && <span className="text-xs text-muted">{facts.join(" · ")}</span>}
+        </div>
+      )}
+      {parts && setName !== undefined && (
+        <section className={cn("flex flex-col gap-1 border-t pt-1.5", OVERLAY_DIVIDER)}>
+          <div className="flex items-center justify-between gap-1 text-xs">
+            <span className={ownedFull ? "text-success" : "text-muted"}>
+              {ownedFull ? "Full item owned" : `${String(complete)} of ${String(parts.length)} parts`}
+            </span>
             <Plat value={(card.totalPlat ?? 0) > 0 ? card.totalPlat : undefined} />
           </div>
-          <ul aria-label={`${card.setName ?? ""} parts`} className="grid grid-cols-2 gap-1">
-            {(card.components ?? []).slice(0, 4).map((c) => {
-              const have = c.owned >= c.needed;
-              return (
-                <li
-                  key={c.unique_name}
-                  className={cn(
-                    "flex items-center justify-between gap-1 rounded-sm border px-1 py-0.5",
-                    have ? "border-success/40 text-text" : "border-border text-muted",
-                  )}
-                >
-                  <span className="truncate">{cellLabel(c.name, card.setName ?? "")}</span>
-                  <span className="tabular-nums">
-                    <span className="sr-only">{have ? "owned " : "missing, owned "}</span>
-                    {c.owned}
-                  </span>
-                </li>
-              );
-            })}
+          <ul aria-label={`${setName} parts`} className="flex flex-col text-xs">
+            {parts.map((p) => (
+              <PartRow key={p.unique_name} part={p} setName={setName} isReward={shortName(p.name, setName) === rewardPart} />
+            ))}
           </ul>
-        </>
+        </section>
       )}
-      {card.category && <p className="text-muted uppercase">{card.category}</p>}
+      {card.category && <p className={OVERLAY_HEADING}>{card.category}</p>}
     </article>
   );
 }

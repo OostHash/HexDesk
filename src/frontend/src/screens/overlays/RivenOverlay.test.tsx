@@ -55,7 +55,7 @@ const comparison: RivenView = {
     { name: "Zoom", value: "-25%", positive: false },
   ],
   originalStats: [
-    { name: "Multi-shot", value: "+90%", positive: true },
+    { name: "Toxin", value: "+90%", positive: true },
     { name: "Damage to Corpus", value: "-15%", positive: false },
   ],
 };
@@ -84,19 +84,46 @@ it("shows the Settings preview only while no live check is shown", async () => {
   });
 });
 
-it("shows verdict, score, negatives and the rolled stats", async () => {
+it("shows the score, the verdict and each rolled stat once", async () => {
   const { client } = setup();
   await mount(client);
   await show(PREVIEW_VIEW);
   await expect.element(page.getByRole("heading", { name: "Tenora Prime" })).toBeVisible();
-  await expect.element(page.getByText("GOOD — usable")).toBeVisible();
+  await expect.element(page.getByText("78%")).toBeVisible();
+  await expect.element(page.getByText("Good — usable")).toBeVisible();
   await expect.element(page.getByRole("progressbar", { name: "Score" })).toBeVisible();
-  await expect.element(page.getByRole("list", { name: "Negatives" }).getByRole("listitem")).toHaveLength(2);
-  await expect.element(page.getByText("Multi-shot", { exact: true }).last()).toBeVisible();
+  // The stats that make a good roll: on the roll or still missing.
+  await expect.element(page.getByText("Good roll for Tenora Prime")).toBeVisible();
+  const wantedList = page.getByRole("list", { name: "Good stats" }).getByRole("listitem");
+  await expect.element(wantedList).toHaveLength(3);
+  await expect.element(wantedList.first()).toHaveTextContent("Critical Chance, on this roll");
+  await expect.element(wantedList.last()).toHaveTextContent("Toxin, missing");
   const rolled = page.getByRole("region", { name: "Rolled stats" }).getByRole("listitem");
   await expect.element(rolled).toHaveLength(4);
-  await expect.element(rolled.first()).toHaveTextContent("WantedCritical Chance+180%");
-  await expect.element(rolled.last()).toHaveTextContent("HarmfulDamage to Corpus-20%");
+  await expect.element(rolled.first()).toHaveTextContent("Critical Chance+180%good");
+  await expect.element(rolled.nth(2)).toHaveTextContent("Multi-shot+85%not needed");
+  await expect.element(rolled.last()).toHaveTextContent("Damage to Corpus-20%harmful");
+});
+
+it("leads with the combination the roll fits best and lists the others under or instead", async () => {
+  const { client } = setup();
+  await mount(client);
+  if (PREVIEW_VIEW.kind !== "result" || !PREVIEW_VIEW.analysis) throw new Error("the preview has an analysis");
+  const analysis = {
+    ...PREVIEW_VIEW.analysis,
+    alternatives: [
+      { label: "Option 1", matched: ["Critical Chance"], missing: ["Toxin"], score: 0.5, verdict: "MEDIOCRE — Keep rolling" },
+      { label: "Option 2", matched: ["Critical Chance", "Damage to Grineer"], missing: [], score: 1, verdict: "GREAT ROLL — Consider keeping" },
+    ],
+  };
+  await show({ ...PREVIEW_VIEW, analysis });
+  await expect.element(page.getByText("2 of 2 good stats")).toBeVisible();
+  await expect.element(page.getByText("100%")).toBeVisible();
+  await expect.element(page.getByText("Great roll — Consider keeping")).toBeVisible();
+  await expect.element(page.getByText("Or instead")).toBeVisible();
+  const others = page.getByRole("list", { name: "Other good combinations" }).getByRole("listitem");
+  await expect.element(others).toHaveLength(1);
+  await expect.element(others.first()).toHaveTextContent("Critical Chance + Toxin1 of 2");
 });
 
 it("shows the new and the original roll of a comparison", async () => {
@@ -105,10 +132,12 @@ it("shows the new and the original roll of a comparison", async () => {
   await show(comparison);
   await expect.element(page.getByRole("button", { name: "Refresh" })).toBeVisible();
   const fresh = page.getByRole("region", { name: "New roll" }).getByRole("listitem");
-  await expect.element(fresh.last()).toHaveTextContent("SafeZoom-25%");
+  await expect.element(fresh.last()).toHaveTextContent("Zoom-25%harmless");
   const original = page.getByRole("region", { name: "Original roll" }).getByRole("listitem");
-  await expect.element(original.first()).toHaveTextContent("WantedMulti-shot+90%");
-  await expect.element(original.last()).toHaveTextContent("NeutralDamage to Corpus-15%");
+  await expect.element(original.first()).toHaveTextContent("Toxin+90%good");
+  await expect.element(original.last()).toHaveTextContent("Damage to Corpus-15%not needed");
+  // One good stat on each side.
+  await expect.element(page.getByText("Both rolls are even")).toBeVisible();
 });
 
 it("says so when the card could not be read", async () => {

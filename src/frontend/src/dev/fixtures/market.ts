@@ -14,6 +14,9 @@ export const MARKET_ITEMS: CatalogItem[] = [
   { unique_name: "/Mods/BlindRage", name: "Blind Rage", category: "Mods" },
   { unique_name: "/Mods/PrimedContinuity", name: "Primed Continuity", category: "Mods" },
   { unique_name: "/Arcanes/Grace", name: "Arcane Grace", category: "Arcanes" },
+  { unique_name: "/Lotus/Upgrades/Mods/Randomized/LotusRifleRandomModRare", name: "Rifle Riven Mod", category: "Mods" },
+  { unique_name: "/Lotus/Upgrades/Mods/Randomized/RawRifleRandomMod", name: "Rifle Riven Mod", category: "Mods" },
+  { unique_name: "/Lotus/Upgrades/Mods/Randomized/RawShotgunRandomMod", name: "Shotgun Riven Mod", category: "Mods" },
 ];
 
 export const MARKET_QUANTITIES: Record<string, number> = {

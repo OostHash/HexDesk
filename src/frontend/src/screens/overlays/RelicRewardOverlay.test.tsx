@@ -15,7 +15,23 @@ afterEach(async () => {
 function backendCard(path: string) {
   const none = { vaulted: null, ducats: null, set_name: null, parts: null, built: null, complete_sets: null };
   if (path.startsWith("?:")) return { path, name: path.slice(2), unknown: true, category: null, ...none };
-  if (path.endsWith("GlaivePrimeDisc")) return { path, name: "Glaive Prime Disc", unknown: false, ...none, category: "Parts", ducats: 45 };
+  if (path.endsWith("GlaivePrimeDisc"))
+    return {
+      path,
+      name: "Glaive Prime Disc",
+      unknown: false,
+      ...none,
+      category: "Parts",
+      ducats: 45,
+      set_name: "Glaive Prime",
+      // The set needs two discs; one owned copy is not enough.
+      parts: [
+        { path: "/Lotus/Recipes/GlaivePrimeBlueprint", name: "Glaive Prime Blueprint", needed: 1, owned: { total: 1 }, ducats: 15 },
+        { path: "/Lotus/Parts/GlaivePrimeDisc", name: "Glaive Prime Disc", needed: 2, owned: { total: 1 }, ducats: 45 },
+      ],
+      built: { total: 0 },
+      complete_sets: 0,
+    };
   return {
     path,
     name: "Rhino Prime Chassis Blueprint",
@@ -92,10 +108,17 @@ it("shows a card per reward with prices and set parts, and marks the best pick",
   // Price and set value: only the chassis has a price here, so both read 9p.
   await expect.element(rhino.getByText("9p").first()).toBeVisible();
   expect(rhino.getByText("9p").elements()).toHaveLength(2);
-  await expect.element(rhino.getByText("Vaulted")).toBeVisible();
+  await expect.element(rhino.getByText("45 ducats · Vaulted")).toBeVisible();
   await expect.element(rhino.getByRole("list", { name: "Rhino Prime parts" })).toBeVisible();
   // Glaive Prime Disc is worth most on platinum priority.
-  await expect.element(page.getByRole("article", { name: "Glaive Prime Disc, best pick" })).toBeVisible();
+  const glaive = page.getByRole("article", { name: "Glaive Prime Disc, best pick" });
+  await expect.element(glaive).toBeVisible();
+  await expect.element(glaive.getByText("Best pick")).toBeVisible();
+  // Owned of needed: a part the set needs twice shows 1/2, and the part this
+  // reward gives is marked.
+  const disc = glaive.getByRole("listitem").filter({ hasText: "Disc" });
+  await expect.element(disc).toHaveTextContent("Disc ×2, this rewardmissing, 1/2");
+  await expect.element(glaive.getByText("1 of 2 parts")).toBeVisible();
   // Unrecognised OCR text keeps its words, marked with "?".
   await expect.element(page.getByRole("heading", { name: "? Mystery" })).toBeVisible();
 });

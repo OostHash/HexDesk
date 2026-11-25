@@ -1,2 +1,3 @@
 // App-level hosts for screen tests: a screen test may import dev/, not another screen.
-export { ItemWindowHost } from "../screens/market/ItemWindow";
+export { SET_INFO_SECTIONS } from "../screens/inventory/SetParts";
+export { ItemWindowHost } from "../app/ItemWindowHost";

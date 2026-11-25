@@ -3,7 +3,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { generatedFiles } from "../../src/theme/build.ts";
 import {
+  accentPresets,
   contrastPairs,
+  DEFAULT_THEME,
   cvdHighContrastThemes,
   cvdThemes,
   highContrastThemes,
@@ -13,13 +15,13 @@ import {
   type ThemeTokens,
 } from "../../src/theme/tokens.ts";
 
-/** Resolves a token to a hex colour, following var(--ff-x) references within the theme. */
+/** Resolves a token to a hex colour, following var(--hex-x) references within the theme. */
 function resolveHex(theme: ThemeTokens, token: string, seen = new Set<string>()): string {
   if (seen.has(token)) throw new Error(`token cycle at ${token}`);
   seen.add(token);
   const value = (theme as Record<string, string | undefined>)[token];
   if (value === undefined) throw new Error(`unknown token ${token}`);
-  const ref = /^var\(--ff-([a-z0-9-]+)\)$/.exec(value);
+  const ref = /^var\(--hex-([a-z0-9-]+)\)$/.exec(value);
   if (ref?.[1] !== undefined) return resolveHex(theme, ref[1], seen);
   if (!/^#[0-9a-f]{6}$/i.test(value)) throw new Error(`${token} is not a plain hex colour: ${value}`);
   return value;
@@ -51,6 +53,12 @@ describe("contrast", () => {
     { name: `${name} + colour-blind palette`, high: false, theme: { ...themes[name], ...cvdThemes[name] } },
     { name: `${name} high contrast`, high: true, theme: highContrastThemes[name] },
     { name: `${name} high contrast + colour-blind palette`, high: true, theme: { ...highContrastThemes[name], ...cvdHighContrastThemes[name] } },
+    // Every accent preset on normal contrast; high contrast keeps its own accent.
+    ...Object.entries(accentPresets).map(([accent, perTheme]) => ({
+      name: `${name} with the ${accent} accent`,
+      high: false,
+      theme: { ...themes[name], accent: perTheme[name] },
+    })),
   ]);
   // High contrast: 7:1 for text, and borders that read as edges (WCAG 1.4.11).
   const pairsFor = (high: boolean) =>
@@ -78,6 +86,32 @@ describe("themes", () => {
     for (const theme of [...Object.values(themes), ...Object.values(highContrastThemes)]) {
       expect(Object.keys(theme).sort()).toEqual([...semanticTokens].sort());
     }
+  });
+});
+
+describe("main window", () => {
+  it("paints the default theme's bg before the page loads", async () => {
+    const conf = JSON.parse(await readFile(fileURLToPath(new URL("../../../backend/tauri.conf.json", import.meta.url)), "utf8")) as {
+      app: { windows: { label: string; backgroundColor?: string }[] };
+    };
+    const main = conf.app.windows.find((w) => w.label === "main");
+    expect(main?.backgroundColor?.toLowerCase()).toBe(themes[DEFAULT_THEME].bg.toLowerCase());
+  });
+});
+
+describe("accent presets", () => {
+  const css = generatedFiles["semantic.css"]();
+  it("change only the accent, and only on normal contrast", () => {
+    const blocks = [...css.matchAll(/^(\[[^{]*data-accent="([a-z]+)"[^{]*) \{\n([^}]*)\}/gm)];
+    expect(blocks.length).toBe((Object.keys(accentPresets).length - 1) * Object.keys(themes).length);
+    for (const [, selector, , body] of blocks) {
+      expect(selector).toContain('[data-resolved-contrast="normal"]');
+      expect(body?.trim()).toMatch(/^--hex-accent: #[0-9a-f]{6};$/);
+    }
+  });
+  it("give every theme a swatch per preset", () => {
+    for (const accent of Object.keys(accentPresets))
+      expect(css.match(new RegExp(`--hex-swatch-${accent}:`, "g"))?.length).toBe(Object.keys(themes).length);
   });
 });
 

@@ -72,7 +72,7 @@ export const SYNDICATE_GROUPS: ReadonlyArray<{ id: SyndicateGroup; label: string
 export type SyndicateMeta = {
   short: string;
   group: SyndicateGroup;
-  /** Domain colour name (theme/domain.ts), used as --ff-tone. */
+  /** Domain colour name (theme/domain.ts), used as --hex-tone. */
   tone: string;
   tierOrder: readonly string[];
   /** Tiers the catalogue gets wrong, mapped to the real rank. */

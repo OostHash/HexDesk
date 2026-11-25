@@ -6,7 +6,7 @@ import "../theme/index.css";
 import { appKeys } from "../api/app";
 import { MainNav, type NavScreen } from "./MainNav";
 import { NAV_COLLAPSED_KEY } from "./navCollapsed";
-import { NAV_ICONS } from "./navIcons";
+import { NAV_ICONS } from "../patterns/navIcons";
 
 const SCREENS: NavScreen[] = [
   { id: "inventory", label: "Inventory", icon: NAV_ICONS.inventory },

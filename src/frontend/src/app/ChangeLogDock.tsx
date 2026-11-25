@@ -306,7 +306,7 @@ export function ChangeLogDock({ onOpenInventory }: Props) {
   return (
     <section
       aria-label="Changelog"
-      className={cn("relative flex shrink-0 flex-col border-t border-border bg-surface", expanded && "shadow-dock-up")}
+      className={cn("relative flex shrink-0 flex-col border-t border-border bg-panel", expanded && "shadow-dock-up")}
       style={expanded ? { height: shownHeight } : undefined}
     >
       {expanded && (
@@ -318,7 +318,7 @@ export function ChangeLogDock({ onOpenInventory }: Props) {
           min={LOG_HEIGHT.min}
           max={maxHeight}
           onValueChange={setHeight}
-          className="absolute inset-x-0 top-0 z-(--ff-z-sticky) h-1.5"
+          className="absolute inset-x-0 top-0 z-(--hex-z-sticky) h-1.5"
         />
       )}
       <div
@@ -333,7 +333,7 @@ export function ChangeLogDock({ onOpenInventory }: Props) {
           aria-label="Changelog"
           aria-expanded={expanded}
           aria-controls={listId}
-          className="absolute inset-0 cursor-pointer"
+          className="absolute inset-0"
           onClick={() => {
             setExpanded((v) => !v);
             setFeed(null);

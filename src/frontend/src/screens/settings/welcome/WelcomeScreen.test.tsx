@@ -49,6 +49,8 @@ it("opens on the welcome page, then walks through appearance, overlays, testing 
 
   await expect.element(page.getByRole("heading", { name: "Make it yours" })).toBeVisible();
   await page.getByRole("group", { name: "Theme" }).getByText("Light", { exact: true }).click();
+  await page.getByRole("group", { name: "Accent colour" }).getByRole("radio", { name: "Violet" }).click();
+  expect(localStorage.getItem("hex-accent")).toBe("violet");
   expect(localStorage.getItem("ff-theme")).toBe("light");
 
   await page.getByRole("button", { name: "Continue" }).click();

@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { prepaintScript } from "../../src/state/prepaint.ts";
-import { PREFERENCE_KEYS, parsePreferences, resolveAttributes, type MediaState } from "../../src/state/preferenceSchema.ts";
+import { PREFERENCE_KEYS, isOverlayLocation, parsePreferences, resolveAttributes, type MediaState } from "../../src/state/preferenceSchema.ts";
 
 /** Runs the inline script against a fake window and returns the attributes it set. */
-function runPrepaint(stored: Record<string, string>, media: MediaState): Record<string, string> {
+function runPrepaint(stored: Record<string, string>, media: MediaState, location = { search: "", hash: "" }): Record<string, string> {
   const attrs: Record<string, string> = {};
   const fakeWindow = {
+    location,
     matchMedia: (query: string) => ({
       matches: query.includes("prefers-color-scheme: dark") ? media.prefersDark : media.prefersMoreContrast,
     }),
@@ -32,6 +33,8 @@ const STORED: Array<Record<string, string>> = [
   { [PREFERENCE_KEYS.theme]: "light", [PREFERENCE_KEYS.density]: "compact" },
   { [PREFERENCE_KEYS.theme]: "dark", [PREFERENCE_KEYS.contrast]: "high", [PREFERENCE_KEYS.cvd]: "true" },
   { [PREFERENCE_KEYS.theme]: "bogus", [PREFERENCE_KEYS.density]: "huge", [PREFERENCE_KEYS.contrast]: "x" },
+  { [PREFERENCE_KEYS.accent]: "teal" },
+  { [PREFERENCE_KEYS.theme]: "light", [PREFERENCE_KEYS.accent]: "neon" },
 ];
 
 describe("pre-paint script", () => {
@@ -46,6 +49,38 @@ describe("pre-paint script", () => {
       });
     }
   }
+
+  const LOCATIONS = [
+    { search: "?overlay", hash: "" },
+    { search: "", hash: "#rivenoverlay" },
+    { search: "", hash: "#modular" },
+  ];
+  for (const location of LOCATIONS) {
+    for (const overlayTheme of ["app", "dark", "light", "bogus"]) {
+      it(`matches resolveAttributes in ${location.search || location.hash} with overlay theme ${overlayTheme}`, () => {
+        const stored: Record<string, string> = { [PREFERENCE_KEYS.theme]: "light", [PREFERENCE_KEYS.overlayTheme]: overlayTheme };
+        const media = MEDIA[0] as MediaState;
+        const expected = resolveAttributes(
+          parsePreferences((k) => stored[k] ?? null),
+          media,
+          isOverlayLocation(location),
+        );
+        expect(runPrepaint(stored, media, location)).toEqual(expected);
+      });
+    }
+  }
+
+  it("keeps overlays dark by default while the app is light", () => {
+    const stored = { [PREFERENCE_KEYS.theme]: "light" };
+    expect(runPrepaint(stored, MEDIA[0] as MediaState, { search: "", hash: "#relicpickoverlay" })["data-resolved-theme"]).toBe("dark");
+    expect(runPrepaint(stored, MEDIA[0] as MediaState)["data-resolved-theme"]).toBe("light");
+  });
+
+  it("restores the chosen accent and falls back to amber", () => {
+    expect(runPrepaint({ [PREFERENCE_KEYS.accent]: "rose" }, MEDIA[0] as MediaState)["data-accent"]).toBe("rose");
+    expect(runPrepaint({ [PREFERENCE_KEYS.accent]: "neon" }, MEDIA[0] as MediaState)["data-accent"]).toBe("amber");
+    expect(runPrepaint({}, MEDIA[0] as MediaState)["data-accent"]).toBe("amber");
+  });
 
   it("renders light when chosen", () => {
     const attrs = runPrepaint({ [PREFERENCE_KEYS.theme]: "light" }, MEDIA[0] as MediaState);

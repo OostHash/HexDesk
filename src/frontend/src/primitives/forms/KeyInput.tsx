@@ -43,7 +43,7 @@ export function KeyInput({ value, onKey, onClear, hasKey = true, clearLabel = "R
         aria-pressed={capturing}
         className={cn(
           fieldVariants({ size }),
-          "flex cursor-pointer items-center justify-between gap-2 border-border pe-8 text-start disabled:cursor-not-allowed",
+          "flex items-center justify-between gap-2 border-border pe-8 text-start",
           capturing && "border-accent text-muted",
         )}
         onClick={() => {
@@ -72,7 +72,7 @@ export function KeyInput({ value, onKey, onClear, hasKey = true, clearLabel = "R
           type="button"
           aria-label={clearLabel}
           disabled={disabled}
-          className="absolute end-1.5 inline-flex size-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-text disabled:cursor-not-allowed disabled:opacity-50"
+          className="absolute end-1.5 inline-flex size-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-text disabled:opacity-50"
           onClick={onClear}
         >
           <Icon icon={X} size="sm" />

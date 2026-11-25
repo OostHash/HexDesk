@@ -54,12 +54,12 @@ export function Slider({ value, onValueChange, onValueCommit, min, max, step = 1
         onChange={(event) => {
           onValueChange(Number(event.target.value));
         }}
-        className="h-control-sm min-w-0 flex-1 cursor-pointer accent-accent disabled:cursor-not-allowed"
+        className="h-control-sm min-w-0 flex-1 accent-accent"
         {...field}
         {...rest}
       />
       {text !== undefined && (
-        <output htmlFor={field.id} className="w-12 shrink-0 text-end text-sm text-muted tabular-nums">
+        <output htmlFor={field.id} className="min-w-12 shrink-0 whitespace-nowrap text-end text-sm text-muted tabular-nums">
           {text}
         </output>
       )}

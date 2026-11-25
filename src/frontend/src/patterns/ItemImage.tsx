@@ -6,14 +6,14 @@ type Props = {
   sources: readonly string[];
   /** Used for the fallback letter. The image itself is decorative (alt=""). */
   name: string;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   className?: string;
 };
 
 /** False hides item images (the screen's Images setting); the item name stays. */
 export const ItemImagesContext = createContext(true);
 
-const SIZE = { sm: "size-6 text-xs", md: "size-8 text-sm" } as const;
+const SIZE = { sm: "size-6 text-xs", md: "size-8 text-sm", lg: "size-16 text-xl" } as const;
 
 /**
  * Item icon: tries each source in turn and falls back to the item's first

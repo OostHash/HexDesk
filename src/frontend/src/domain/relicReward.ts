@@ -212,7 +212,25 @@ export const PREVIEW_CARDS: readonly RewardCard[] = [
       { unique_name: "nx-sy", name: "Nyx Prime Systems Blueprint", needed: 1, owned: 1, plat: 8, ducats: 45 },
     ],
   },
-  { key: "preview-2", name: "Glaive Prime Disc", unknown: false, category: "Parts", vaulted: true, plat: 9, ducats: 45 },
+  {
+    key: "preview-2",
+    name: "Glaive Prime Disc",
+    unknown: false,
+    category: "Parts",
+    vaulted: true,
+    plat: 9,
+    ducats: 45,
+    setName: "Glaive Prime",
+    completeSets: 0,
+    totalPlat: 36,
+    missingPlat: 21,
+    // A part the set needs twice: one copy is not enough.
+    components: [
+      { unique_name: "gp-bp", name: "Glaive Prime Blueprint", needed: 1, owned: 1, plat: 6, ducats: 15 },
+      { unique_name: "gp-bl", name: "Glaive Prime Blade", needed: 1, owned: 0, plat: 12, ducats: 45 },
+      { unique_name: "gp-di", name: "Glaive Prime Disc", needed: 2, owned: 1, plat: 9, ducats: 45 },
+    ],
+  },
   { key: "preview-3", name: "Spira Prime Pouch", unknown: false, category: "Parts", vaulted: true, plat: 35, ducats: 100 },
 ];
 

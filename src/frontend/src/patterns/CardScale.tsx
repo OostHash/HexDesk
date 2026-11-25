@@ -39,14 +39,14 @@ export function useCardScale(screen: PageSizeScreen) {
 }
 
 /** Grid of cards whose minimum width is `baseRem` at 100%; use with `cardGridStyle`. */
-export const CARD_GRID = "grid grid-cols-[repeat(auto-fill,minmax(var(--ff-card-min),1fr))] gap-3";
+export const CARD_GRID = "grid grid-cols-[repeat(auto-fill,minmax(var(--hex-card-min),1fr))] gap-3";
 
 export const cardGridStyle = (baseRem: number, scale: number): CSSProperties =>
-  ({ "--ff-card-min": `min(${String((baseRem * scale) / 100)}rem,100%)` }) as CSSProperties;
+  ({ "--hex-card-min": `min(${String((baseRem * scale) / 100)}rem,100%)` }) as CSSProperties;
 
 const stepButton =
   "inline-flex h-full w-7 items-center justify-center text-muted transition-colors motion-reduce:transition-none hover:bg-hover hover:text-text " +
-  "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent";
+  "disabled:opacity-50 disabled:hover:bg-transparent";
 
 /** "− 100% +" stepper for a screen's toolbar, next to Per page. */
 export function CardScaleStepper({ value, onChange }: { value: number; onChange: (scale: number) => void }) {

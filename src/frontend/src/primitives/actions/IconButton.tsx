@@ -5,13 +5,12 @@ import { cn } from "../cn";
 import { Icon } from "../display/Icon";
 
 const iconButtonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center rounded-md transition-colors motion-reduce:transition-none " +
-    "disabled:cursor-not-allowed disabled:opacity-50",
+  "inline-flex shrink-0 items-center justify-center rounded-md transition-colors motion-reduce:transition-none " + "disabled:opacity-50",
   {
     variants: {
       variant: {
         ghost: "text-muted hover:bg-hover hover:text-text aria-pressed:text-accent",
-        solid: "border border-border bg-surface text-text hover:bg-hover aria-pressed:bg-selected",
+        solid: "border border-border bg-surface text-text hover:bg-hover aria-pressed:border-accent aria-pressed:bg-selected",
         danger: "text-muted hover:bg-danger/10 hover:text-danger",
       },
       // sm stays at 24px: the WCAG 2.2 minimum target size (2.5.8).

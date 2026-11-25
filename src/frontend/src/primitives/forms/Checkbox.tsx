@@ -27,7 +27,7 @@ export function Checkbox({ checked, onCheckedChange, indeterminate = false, id, 
         onChange={(event) => {
           onCheckedChange(event.target.checked);
         }}
-        className="size-4 shrink-0 accent-accent disabled:cursor-not-allowed"
+        className="size-4 shrink-0 accent-accent"
         {...rest}
       />
       {children}

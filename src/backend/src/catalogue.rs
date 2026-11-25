@@ -6,7 +6,6 @@ use tracing::info;
 use crate::app_state::AppState;
 use crate::events;
 use crate::inventory_state::{persist_inventory_state_cache, CachedItem};
-use crate::memory_scanner;
 use crate::wfcd::{RecipeComponent, WfcdItem};
 use crate::{cache, wfcd};
 
@@ -746,6 +745,7 @@ pub(crate) async fn fetch_item_list(
 
 fn apply_catalogue(state: &AppState, result: wfcd::FetchResult) -> Result<usize, String> {
     let count = result.items.len();
+    crate::item_details::invalidate();
 
     // Persist items cache
     if let Ok(json) = serde_json::to_string(
@@ -1201,12 +1201,12 @@ fn patch_item_category(name: &str, category: &str, unique_name: &str) -> String 
 }
 
 /// Bump this whenever a parsing-logic change (not an upstream data change) makes
-/// previously-cached `ducats` values wrong, so upgrading users get a forced
-/// one-time recompute instead of carrying stale values forever (the normal
-/// refresh only refetches on an upstream ETag change, which a local logic fix
-/// never triggers). v2: rarity is derived from relic reward chance-grouping
-/// instead of WFCD's `rarity` string, which never labels the Common tier.
-const DUCAT_SCHEMA_VERSION: u32 = 2;
+/// a cached catalogue wrong or incomplete (its items, their `ducats`, or the
+/// relic drops built with them), so upgrading users get a forced one-time
+/// rebuild instead of carrying stale data forever (the normal refresh only
+/// refetches on an upstream ETag change, which a local logic fix never
+/// triggers).
+const DUCAT_SCHEMA_VERSION: u32 = 3;
 
 pub(crate) fn load_items_cache(path: &PathBuf) -> Option<Vec<WfcdItem>> {
     let s = std::fs::read_to_string(path).ok()?;
@@ -1329,7 +1329,7 @@ const UNMATCHED_EXAMPLES: usize = 10;
 /// at all, or an entry that falls back to Miscellaneous. Paths are game data,
 /// not personal data.
 pub(crate) fn log_unmatched_paths(
-    blob: &memory_scanner::BlobInventory,
+    blob: &hexdesk_blob::BlobInventory,
     path_to_name: &HashMap<String, String>,
     path_to_category: &HashMap<String, String>,
     ignored_paths: &std::collections::HashSet<String>,
@@ -1387,7 +1387,7 @@ pub(crate) fn log_unmatched_paths(
 #[cfg(test)]
 mod unmatched_paths_tests {
     use super::log_unmatched_paths;
-    use crate::memory_scanner::{BlobInventory, BlobStackableEntry};
+    use hexdesk_blob::{BlobInventory, BlobStackableEntry};
     use std::collections::{HashMap, HashSet};
     use std::sync::Arc;
     use tracing_subscriber::layer::SubscriberExt;

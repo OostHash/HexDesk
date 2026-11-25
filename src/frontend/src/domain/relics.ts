@@ -17,6 +17,8 @@ export type CatalogItem = {
   ducats?: number | null;
   mastery_req?: number | null;
   max_level_cap?: number | null;
+  /** Whether levelling the item counts towards mastery. */
+  masterable?: boolean | null;
 };
 
 export type CatalogIndex = {
@@ -111,6 +113,36 @@ export function refinementCounts(drop: RelicDrop, index: CatalogIndex, own: Owne
 
 export function intactRelic(drop: RelicDrop, index: CatalogIndex): CatalogItem | undefined {
   return index.relics.get(`${drop.fullName.toLowerCase()} intact`);
+}
+
+/** One relic that drops an item, with how many of that relic you own. */
+export type RelicSource = {
+  relic: RelicDrop;
+  /** The item's rarity in this relic. */
+  rarity: Rarity;
+  owned: Record<Refinement, number> & { total: number };
+  /** Null when the catalogue does not know the relic's vault status. */
+  vaulted: boolean | null;
+};
+
+/**
+ * Every relic that drops the item named `itemName`: relics you own first, then
+ * unvaulted before vaulted, then by name.
+ */
+export function relicSources(itemName: string, drops: readonly RelicDrop[], index: CatalogIndex, own: Ownership): RelicSource[] {
+  const name = itemName.toLowerCase();
+  const sources: RelicSource[] = [];
+  for (const relic of drops) {
+    const reward = relic.rewards.find((r) => r.itemName.toLowerCase() === name);
+    if (!reward) continue;
+    sources.push({ relic, rarity: reward.rarity, owned: refinementCounts(relic, index, own), vaulted: intactRelic(relic, index)?.vaulted ?? null });
+  }
+  return sources.sort(
+    (a, b) =>
+      Number(b.owned.total > 0) - Number(a.owned.total > 0) ||
+      Number(a.vaulted === true) - Number(b.vaulted === true) ||
+      a.relic.fullName.localeCompare(b.relic.fullName),
+  );
 }
 
 /** "Burston Prime Barrel" → "Burston Prime". */

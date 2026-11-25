@@ -61,8 +61,7 @@ type Props = {
   onRecipesChange?: (show: boolean) => void;
 };
 
-const segment =
-  "inline-flex h-control-sm w-8 cursor-pointer items-center justify-center rounded-md border border-border text-muted hover:bg-hover hover:text-text";
+const segment = "inline-flex h-control-sm w-8 items-center justify-center rounded-md border border-border text-muted hover:bg-hover hover:text-text";
 
 /**
  * End of a screen's toolbar: Cards/List as icons and a settings popover with
@@ -99,7 +98,7 @@ export function ViewControls({
               title={label}
               className={cn(
                 segment,
-                "has-checked:border-accent has-checked:bg-accent-soft has-checked:text-text has-focus-visible:outline-2 has-focus-visible:outline-focus",
+                "has-checked:border-accent has-checked:bg-selected has-checked:text-text has-focus-visible:outline-2 has-focus-visible:outline-focus",
               )}
             >
               <input

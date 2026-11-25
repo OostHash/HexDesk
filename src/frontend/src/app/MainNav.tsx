@@ -75,7 +75,7 @@ export function MainNav({ screens, current, onSelect, settingsOpen, onOpenSettin
     <nav
       aria-label="Main"
       data-collapsed={collapsed || undefined}
-      className={cn("flex w-20 shrink-0 flex-col gap-4 border-e border-border bg-surface p-2", !collapsed && "md:w-64")}
+      className={cn("flex w-20 shrink-0 flex-col gap-4 border-e border-border bg-nav p-2", !collapsed && "md:w-64")}
     >
       <div className={cn("flex items-center justify-center gap-2.5 pt-1 text-xl font-semibold", !collapsed && "md:justify-start md:px-2")}>
         <HexDeskMark className="size-12 text-accent" />

@@ -4,7 +4,7 @@ import { Button } from "../../primitives/actions";
 import { clockFormatFrom, type ClockFormat } from "../../domain/statistics";
 import { RadioGroup } from "../../primitives/forms";
 import { availableChoices, CONTRAST_LABEL, setPreferences, usePreferences } from "../../state/preferences";
-import { DensityRow, MemoryScannerBadge, MemoryScannerRow, OcrModelsRow, TestingRows, TextSizeRow, ThemeRow } from "./controls";
+import { AccentRow, DensityRow, MemoryScannerBadge, MemoryScannerRow, OcrModelsRow, TestingRows, TextSizeRow, ThemeRow } from "./controls";
 import { NotificationsGroup } from "./NotificationsGroup";
 import { ResultText, SettingRow, SettingsGroup, SwitchRow, useSettingsFile } from "./parts";
 
@@ -48,6 +48,7 @@ function AppearanceGroup() {
   return (
     <SettingsGroup title="Appearance">
       <ThemeRow />
+      <AccentRow />
       {choices.contrasts.length > 1 && (
         <SettingRow group={false} label="Contrast">
           <RadioGroup

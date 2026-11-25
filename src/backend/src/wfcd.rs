@@ -254,6 +254,90 @@ fn ducat_value_from_rarities(rarities: &HashSet<&str>) -> Option<u32> {
     None
 }
 
+/// Relic refinements as they end a relic's unique name, Intact first.
+const RELIC_REFINEMENTS: [&str; 4] = ["Bronze", "Silver", "Gold", "Platinum"];
+
+/// Reward item unique name → the relics that drop it, from Relics.json. Each
+/// relic is listed once, by its Intact (Bronze) path, whichever refinements
+/// Relics.json lists it under.
+fn parse_relic_drops(json: Option<&serde_json::Value>) -> HashMap<String, Vec<String>> {
+    let mut out: HashMap<String, Vec<String>> = HashMap::new();
+    let Some(relics) = json.and_then(|v| v.as_array()) else {
+        return out;
+    };
+    for relic in relics {
+        let Some(path) = relic.get("uniqueName").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let Some(base) = RELIC_REFINEMENTS.iter().find_map(|r| path.strip_suffix(r)) else {
+            continue;
+        };
+        let intact = format!("{base}{}", RELIC_REFINEMENTS[0]);
+        let rewards = relic.get("rewards").and_then(|v| v.as_array());
+        for reward in rewards.into_iter().flatten() {
+            let item = reward
+                .get("item")
+                .and_then(|i| i.get("uniqueName"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            if item.is_empty() {
+                continue;
+            }
+            let list = out.entry(item.to_string()).or_default();
+            if !list.contains(&intact) {
+                list.push(intact.clone());
+            }
+        }
+    }
+    out
+}
+
+/// Adds the relics in `from` to `into`, without listing a relic twice per item.
+fn merge_relic_drops(into: &mut HashMap<String, Vec<String>>, from: HashMap<String, Vec<String>>) {
+    for (item, relics) in from {
+        let list = into.entry(item).or_default();
+        for relic in relics {
+            if !list.contains(&relic) {
+                list.push(relic);
+            }
+        }
+    }
+}
+
+/// Catalogues relic rewards that no item in `items` has yet, as Blueprints like
+/// every other relic reward. Returns how many were added.
+fn add_missing_relic_rewards(
+    items: &mut Vec<WfcdItem>,
+    relic_rewards: &HashMap<String, Vec<RelicReward>>,
+) -> usize {
+    let mut known: HashSet<String> = items.iter().map(|i| i.unique_name.clone()).collect();
+    let mut missing: Vec<&RelicReward> = relic_rewards
+        .values()
+        .flatten()
+        .filter(|r| !r.unique_name.is_empty() && !r.name.is_empty())
+        .filter(|r| known.insert(r.unique_name.clone()))
+        .collect();
+    missing.sort_by(|a, b| a.unique_name.cmp(&b.unique_name));
+    let added = missing.len();
+    items.extend(missing.into_iter().map(|r| WfcdItem {
+        name: r.name.clone(),
+        unique_name: r.unique_name.clone(),
+        category: "Blueprints".to_string(),
+        item_type: String::new(),
+        product_category: String::new(),
+        image_name: r.image_name.clone(),
+        vaulted: None,
+        ducats: None,
+        mastery_req: None,
+        omega_attenuation: None,
+        fusion_limit: None,
+        max_level_cap: None,
+        tradable: None,
+        masterable: None,
+    }));
+    added
+}
+
 // ==============================================================================
 // Upstream sources
 // ==============================================================================
@@ -393,6 +477,11 @@ impl DiskStore {
             warn!("cannot store catalogue ETags: {e}");
         }
     }
+}
+
+/// The stored body of one catalogue source, such as "Mods", as last downloaded.
+pub fn cached_body(name: &str) -> Option<String> {
+    DiskStore.read(name)
 }
 
 pub fn clear_cached_etags() {
@@ -2063,9 +2152,23 @@ fn fetch_from_wfcd(
             }
         }
     }
+    // WFCD's item components carry no drops[], so raw_drop_entries can be empty;
+    // Relics.json lists every relic's rewards and fills the map.
+    merge_relic_drops(&mut relic_drops, parse_relic_drops(relics_json));
 
     // Build relic_rewards from pre-fetched Relics.json.
     let relic_rewards = parse_relics_rewards(relics_json, &image_by_name);
+
+    // A new prime's parts can be in Relics.json before the public export names
+    // them; catalogue them so the set lists every part. The ducat backfill below
+    // gives them their ducats from the relic rarities.
+    let catalogued = add_missing_relic_rewards(&mut items, &relic_rewards);
+    if catalogued > 0 {
+        info!(
+            catalogued,
+            "relic rewards the name tables did not know were catalogued from Relics.json"
+        );
+    }
 
     // Backfill ducat values that WFCD's components[] do not carry (the same
     // upstream schema change that dropped `name`/`imageName` from every component
@@ -2727,5 +2830,100 @@ mod tests {
             .expect("relic should be keyed by name");
         // Falls back to the (mislabeled) string, matching old behavior for this shape.
         assert!(rewards.iter().all(|r| r.rarity == "Silver"));
+    }
+
+    #[test]
+    fn relic_drops_list_each_relic_once_by_its_intact_path() {
+        let relics = serde_json::json!([
+            { "uniqueName": "/Lotus/Types/Game/Projections/T1VoidProjectionS19Bronze", "rewards": [
+                { "item": { "uniqueName": "/Recipes/CitrinePrimeSystemsBlueprint" } },
+                { "item": { "uniqueName": "/Recipes/FormaBlueprint" } }
+            ] },
+            { "uniqueName": "/Lotus/Types/Game/Projections/T1VoidProjectionS19Platinum", "rewards": [
+                { "item": { "uniqueName": "/Recipes/CitrinePrimeSystemsBlueprint" } }
+            ] },
+            { "uniqueName": "/Lotus/Types/Game/Projections/T4VoidProjectionC12Gold", "rewards": [
+                { "item": { "uniqueName": "/Recipes/CitrinePrimeSystemsBlueprint" } },
+                { "item": { "name": "No unique name" } }
+            ] },
+            { "uniqueName": "/Lotus/Types/Game/Projections/NotARelic", "rewards": [
+                { "item": { "uniqueName": "/Recipes/Other" } }
+            ] }
+        ]);
+        let drops = parse_relic_drops(Some(&relics));
+        assert_eq!(
+            drops.get("/Recipes/CitrinePrimeSystemsBlueprint"),
+            Some(&vec![
+                "/Lotus/Types/Game/Projections/T1VoidProjectionS19Bronze".to_string(),
+                "/Lotus/Types/Game/Projections/T4VoidProjectionC12Bronze".to_string(),
+            ])
+        );
+        assert_eq!(
+            drops.len(),
+            2,
+            "rewards without a unique name or relic are skipped"
+        );
+
+        let mut merged = HashMap::from([(
+            "/Recipes/FormaBlueprint".to_string(),
+            vec!["/Lotus/Types/Game/Projections/T1VoidProjectionS19Bronze".to_string()],
+        )]);
+        merge_relic_drops(&mut merged, drops);
+        assert_eq!(merged["/Recipes/FormaBlueprint"].len(), 1);
+        assert!(parse_relic_drops(None).is_empty());
+    }
+
+    #[test]
+    fn relic_rewards_missing_from_the_catalogue_are_added_once() {
+        let known = WfcdItem {
+            name: "Citrine Prime Blueprint".into(),
+            unique_name: "/Recipes/CitrinePrimeBlueprint".into(),
+            category: "Blueprints".into(),
+            item_type: String::new(),
+            product_category: String::new(),
+            image_name: None,
+            vaulted: None,
+            ducats: Some(100),
+            mastery_req: None,
+            omega_attenuation: None,
+            fusion_limit: None,
+            max_level_cap: None,
+            tradable: None,
+            masterable: None,
+        };
+        let reward = |unique: &str, name: &str| RelicReward {
+            unique_name: unique.into(),
+            name: name.into(),
+            rarity: "Silver".into(),
+            image_name: None,
+        };
+        let rewards = HashMap::from([
+            (
+                "Lith S19 Intact".to_string(),
+                vec![
+                    reward("/Recipes/CitrinePrimeBlueprint", "Citrine Prime Blueprint"),
+                    reward(
+                        "/Recipes/CitrinePrimeSystemsBlueprint",
+                        "Citrine Prime Systems Blueprint",
+                    ),
+                ],
+            ),
+            (
+                "Lith S19 Radiant".to_string(),
+                vec![
+                    reward(
+                        "/Recipes/CitrinePrimeSystemsBlueprint",
+                        "Citrine Prime Systems Blueprint",
+                    ),
+                    reward("", "Nameless path"),
+                ],
+            ),
+        ]);
+        let mut items = vec![known];
+        assert_eq!(add_missing_relic_rewards(&mut items, &rewards), 1);
+        let added = items.last().expect("one item was added");
+        assert_eq!(added.name, "Citrine Prime Systems Blueprint");
+        assert_eq!(added.category, "Blueprints");
+        assert_eq!(added.ducats, None, "the rarity backfill sets ducats later");
     }
 }

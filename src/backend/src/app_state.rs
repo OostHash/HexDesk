@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-use crate::memory_scanner;
 use crate::wfcd::{RecipeComponent, RelicReward, SyndicateOffer, WfcdItem};
 use crate::wfm::Wfm;
 
@@ -82,7 +81,7 @@ pub struct AppState {
     pub unique_quantities: Arc<Mutex<HashMap<String, i64>>>,
     /// Mod/arcane inventory: unique_name → {total, by_rank}. Shared with monitor thread.
     /// API data is merged in when available; falls back to scanner-only totals.
-    pub current_mods: Arc<Mutex<HashMap<String, memory_scanner::ModCount>>>,
+    pub current_mods: Arc<Mutex<HashMap<String, hexdesk_blob::ModCount>>>,
     /// Last-known crafting jobs from memory scans. Shared with monitor thread.
     pub current_crafting: Arc<Mutex<Vec<CraftingJob>>>,
     pub monitor_active: Arc<AtomicBool>,

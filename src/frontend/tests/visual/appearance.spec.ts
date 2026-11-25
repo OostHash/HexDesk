@@ -23,13 +23,13 @@ async function axe(page: Page) {
   expect(results.violations).toEqual([]);
 }
 
-test("colour-blind palette swaps status and gain/loss colours before the first paint", async ({ page }) => {
+test("colour-blind palette swaps status and owned/vaulted colours before the first paint", async ({ page }) => {
   await open(page, { "ff-colorblind": "true" });
   await expect(page.locator("html")).toHaveAttribute("data-cvd", "on");
-  expect(await cssVar(page, "--ff-success")).toBe("#56b4e9");
-  expect(await cssVar(page, "--ff-danger")).toBe("#e69f00");
-  expect(await cssVar(page, "--ff-txn-sale")).toBe("#56b4e9");
-  expect(await cssVar(page, "--ff-vaulted")).toBe("#e69f00");
+  expect(await cssVar(page, "--hex-success")).toBe("#56b4e9");
+  expect(await cssVar(page, "--hex-danger")).toBe("#e69f00");
+  expect(await cssVar(page, "--hex-owned")).toBe("#56b4e9");
+  expect(await cssVar(page, "--hex-vaulted")).toBe("#e69f00");
   await page.getByRole("button", { name: "Inventory", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Inventory" })).toBeVisible();
   await axe(page);

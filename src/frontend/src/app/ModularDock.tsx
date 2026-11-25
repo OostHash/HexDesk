@@ -53,7 +53,7 @@ export function ModularDock() {
   if (popout) return null;
   if (windowWidth < NARROW_WINDOW_WIDTH) {
     return (
-      <aside aria-label="Narrow modular window" className="flex w-12 shrink-0 justify-center border-s border-border bg-surface py-1.5">
+      <aside aria-label="Narrow modular window" className="flex w-12 shrink-0 justify-center border-s border-border bg-panel py-1.5">
         <IconButton
           size="sm"
           icon={ExternalLink}
@@ -67,7 +67,7 @@ export function ModularDock() {
   }
   if (prefs.collapsed) {
     return (
-      <aside aria-label="Collapsed modular window" className="flex w-12 shrink-0 border-s border-border bg-surface">
+      <aside aria-label="Collapsed modular window" className="flex w-12 shrink-0 border-s border-border bg-panel">
         {/* The whole rail is the target and the vertical title says what it opens. The icon sits in a
             bottom strip as high as the open panel's collapse strip, so it stays in the same place. */}
         <button
@@ -106,7 +106,7 @@ export function ModularDock() {
             if (widthCommit.current === commit) setDragWidth(null);
           });
         }}
-        className="absolute inset-y-0 start-0 z-(--ff-z-sticky) w-1.5"
+        className="absolute inset-y-0 start-0 z-(--hex-z-sticky) w-1.5"
       />
       <ModularWindow
         className="flex-1"

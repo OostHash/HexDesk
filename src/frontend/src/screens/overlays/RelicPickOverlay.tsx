@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Check, Lock, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isTauri } from "../../api/env";
 import { onEvent } from "../../api/events";
@@ -8,18 +8,21 @@ import {
   eraLabel,
   pickSummary,
   PREVIEW_PICK,
-  recommendedRefinement,
+  dropChance,
+  rarityLabel,
   refinementLabel,
-  scoreLabel,
+  scoreHeadline,
   shownRewards,
   topRelics,
+  type PickPriority,
   type PickReward,
   type RelicPick,
 } from "../../domain/relicPick";
 import { IconButton } from "../../primitives/actions";
 import { cn } from "../../primitives/cn";
-import { Badge, domainTone } from "../../primitives/display";
+import { Badge, domainTone, Icon } from "../../primitives/display";
 import { usePreferences } from "../../state/preferences";
+import { OVERLAY_DIVIDER, OVERLAY_HEADING, OVERLAY_INSET, OVERLAY_PANEL } from "./overlayStyles";
 
 type Source = "idle" | "preview" | "live";
 
@@ -29,30 +32,62 @@ const RARITY_TONE: Readonly<Record<string, "rarity-bronze" | "rarity-silver" | "
   Gold: "rarity-gold",
 };
 
-function RewardRow({ reward }: { reward: PickReward }) {
+const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
+
+/** Name, chance, plat, ducats, new: shared by the rows and the column legend. */
+const REWARD_GRID = "grid grid-cols-[1fr_3.25rem_2.75rem_3rem_3rem] items-center gap-2 px-2";
+
+/** The column names above the rewards, so the numbers need no unit letters. */
+function RewardLegend() {
+  return (
+    <div aria-hidden="true" className={cn(REWARD_GRID, "text-xs text-muted")}>
+      <span className="inline-flex items-center gap-1">
+        <Icon icon={Lock} size="xs" /> vaulted
+      </span>
+      <span className="text-center">Chance</span>
+      <span className="text-end">Plat</span>
+      <span className="text-end">Ducats</span>
+      <span />
+    </div>
+  );
+}
+
+/**
+ * One reward: name, drop chance (tinted by rarity, which the chance already
+ * tells in numbers), platinum, ducats and whether it is new. The value the
+ * ranking is about is bold.
+ */
+function RewardRow({ reward, priority }: { reward: PickReward; priority: PickPriority }) {
   const tone = RARITY_TONE[reward.rarity];
   return (
-    <li className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-1.5 border-b border-border/25 px-2 py-0.5 text-xs last:border-b-0">
-      <span className={cn("w-12 text-center", reward.owned ? "text-success" : "text-muted")}>{reward.owned ? "Owned" : "New"}</span>
-      <span className="truncate">
-        <span className={cn("font-medium", tone && "text-(--ff-tone)")} style={tone ? domainTone(tone) : undefined}>
-          {reward.name}
-        </span>
-        <span className="sr-only">
-          , {reward.rarity}
-          {reward.vaulted ? ", vaulted" : ""}
-        </span>
-        {reward.vaulted && (
-          <span aria-hidden="true" title="Vaulted" className="ms-1 text-muted">
-            V
-          </span>
-        )}
+    <li className={cn(REWARD_GRID, "border-b border-border py-1.5 text-sm last:border-b-0")}>
+      <span className="flex min-w-0 items-center gap-1">
+        <span className={cn("truncate", reward.owned ? "text-muted" : "font-medium")}>{reward.name}</span>
+        {reward.vaulted && <Icon icon={Lock} size="xs" label="vaulted" className="text-muted" />}
       </span>
-      <span className="tabular-nums">{reward.plat > 0 ? `${String(reward.plat)}p` : ""}</span>
-      <span className="tabular-nums">{reward.ducats > 0 ? `${String(reward.ducats)}d` : ""}</span>
-      <Badge variant="outline" title="Refinement worth running for this reward">
-        {recommendedRefinement(reward.rarity)}
+      <Badge
+        tone="domain"
+        style={tone ? domainTone(tone) : undefined}
+        title={`${rarityLabel(reward.rarity)} drop`}
+        className={cn("justify-center tabular-nums", priority === "unowned" && "font-semibold")}
+      >
+        {dropChance(reward.drop_rate)}
+        <span className="sr-only"> drop chance, {rarityLabel(reward.rarity)}</span>
       </Badge>
+      <span className={cn("text-end tabular-nums", priority === "platinum" && "font-semibold")}>
+        {reward.plat > 0 ? `${fmt(reward.plat)}p` : "—"}
+      </span>
+      <span className={cn("text-end tabular-nums", priority === "ducat" && "font-semibold")}>
+        {reward.ducats > 0 ? fmt(reward.ducats) : "—"}
+        {reward.ducats > 0 && <span className="sr-only"> ducats</span>}
+      </span>
+      {reward.owned ? (
+        <Icon icon={Check} size="xs" label="owned" className="justify-self-center text-muted" />
+      ) : (
+        <Badge tone="accent" className="justify-center">
+          New
+        </Badge>
+      )}
     </li>
   );
 }
@@ -148,13 +183,9 @@ export function RelicPickOverlay() {
   const era = eraLabel(data.era);
 
   return (
-    <main
-      ref={measure}
-      aria-label="Relic pick"
-      className="flex flex-col gap-1 rounded-lg border border-accent/40 bg-bg/95 px-2 py-1.5 text-xs text-text"
-    >
+    <main ref={measure} aria-label="Relic pick" className={cn("flex flex-col gap-1 px-2 py-1.5", OVERLAY_PANEL)}>
       <header className="flex items-center gap-1.5">
-        <h1 className="flex-1 text-xs font-semibold tracking-wide text-info uppercase">{era} Fissure</h1>
+        <h1 className={cn("flex-1", OVERLAY_HEADING)}>{era} Fissure</h1>
         <IconButton
           size="sm"
           icon={X}
@@ -172,42 +203,52 @@ export function RelicPickOverlay() {
           {data.relics.length === 0 ? `No ${era} relics in inventory` : `No ${era} relics confirmed on screen`}
         </p>
       ) : (
-        <ol aria-label="Recommended relics" className="flex flex-col gap-1">
-          {relics.map((relic, i) => {
-            const rewards = shownRewards(relic, pickLines, pickPriority);
-            return (
-              <li
-                key={relic.name}
-                className={cn("overflow-hidden rounded-md border", i === 0 ? "border-accent/50 bg-accent/5" : "border-border/60 bg-surface/60")}
-              >
-                <h2 className="flex items-center gap-1.5 border-b border-border/50 px-2 py-1 text-xs">
-                  <span className={cn("min-w-5 font-semibold", i === 0 ? "text-info" : "text-muted")}>#{i + 1}</span>
-                  <span className="flex-1 truncate text-sm font-semibold">{relic.base_name}</span>
-                  <Badge variant="outline">{refinementLabel(relic.refinement)}</Badge>
-                  {relic.on_screen === false && (
-                    <Badge tone="warning" variant="outline" title="Not found on the relic list on screen">
-                      not on screen
-                    </Badge>
+        <>
+          {pickLines !== "estimated" && <RewardLegend />}
+          <ol aria-label="Recommended relics" className="flex flex-col gap-1">
+            {relics.map((relic, i) => {
+              const rewards = shownRewards(relic, pickLines, pickPriority);
+              const headline = scoreHeadline(relic, pickPriority);
+              return (
+                <li key={relic.name} className={cn("overflow-hidden", OVERLAY_INSET, i === 0 && "border-accent")}>
+                  <header className={cn("flex flex-col gap-0.5 border-b px-2 py-1.5", OVERLAY_DIVIDER)}>
+                    <div className="flex items-center gap-1.5">
+                      <h2 className="flex-1 truncate font-semibold">
+                        {relic.count}× {relic.base_name} <span className="text-xs font-normal text-muted">{refinementLabel(relic.refinement)}</span>
+                      </h2>
+                      {i === 0 && (
+                        <Badge tone="accent" variant="solid">
+                          Best
+                        </Badge>
+                      )}
+                      {relic.on_screen === false && (
+                        <Badge tone="warning" variant="outline" title="Not found on the relic list on screen">
+                          not on screen
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="flex items-baseline gap-1.5">
+                      <span className="text-lg leading-tight font-semibold tabular-nums">{headline.value}</span>
+                      <span className="text-xs text-muted">{headline.caption}</span>
+                    </p>
+                  </header>
+                  {pickLines === "estimated" ? (
+                    <p className="px-2 py-1 text-muted">
+                      {relic.plat_score.toFixed(0)}p · {relic.ducat_score.toFixed(0)} ducats · {relic.rewards.filter((r) => !r.owned).length}/
+                      {relic.rewards.length} new
+                    </p>
+                  ) : (
+                    <ul aria-label={`${relic.base_name} rewards`}>
+                      {rewards.map((r) => (
+                        <RewardRow key={r.name} reward={r} priority={pickPriority} />
+                      ))}
+                    </ul>
                   )}
-                  <span className="text-muted">×{relic.count}</span>
-                  <span className="font-semibold whitespace-nowrap text-info">{scoreLabel(relic, pickPriority)}</span>
-                </h2>
-                {pickLines === "estimated" ? (
-                  <p className="px-2 py-1 text-muted">
-                    {relic.plat_score.toFixed(0)}p · {relic.ducat_score.toFixed(0)} ducats · {relic.rewards.filter((r) => !r.owned).length}/
-                    {relic.rewards.length} new
-                  </p>
-                ) : (
-                  <ul aria-label={`${relic.base_name} rewards`}>
-                    {rewards.map((r) => (
-                      <RewardRow key={r.name} reward={r} />
-                    ))}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
-        </ol>
+                </li>
+              );
+            })}
+          </ol>
+        </>
       )}
     </main>
   );

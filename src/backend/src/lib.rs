@@ -29,6 +29,7 @@ mod diagnostics;
 mod events;
 mod image_cache;
 mod inventory_state;
+mod item_details;
 mod lifecycle;
 mod log_watcher;
 mod logging;
@@ -64,7 +65,7 @@ mod worldstate;
 // ─── Structs ──────────────────────────────────────────────────────────────────
 
 pub struct BlobBuildParams<'a> {
-    blob: &'a memory_scanner::BlobInventory,
+    blob: &'a hexdesk_blob::BlobInventory,
     path_to_name: &'a HashMap<String, String>,
     path_to_category: &'a HashMap<String, String>,
     path_to_ducat: &'a HashMap<String, u32>,
@@ -87,7 +88,7 @@ struct InitialState {
     relic_rewards: HashMap<String, Vec<wfcd::RelicReward>>,
     quantities: HashMap<String, i64>,
     unique: HashMap<String, i64>,
-    mods: HashMap<String, memory_scanner::ModCount>,
+    mods: HashMap<String, hexdesk_blob::ModCount>,
     syndicate_catalog: HashMap<String, Vec<SyndicateOffer>>,
     auction_ids: Vec<String>,
     relics_run_prices: HashMap<String, u32>,
@@ -207,12 +208,12 @@ fn load_initial_state(paths: InitialCachePaths<'_>) -> InitialState {
         .map(|(k, _)| (k.clone(), 1i64))
         .collect();
 
-    let mods: HashMap<String, memory_scanner::ModCount> = inv_state
+    let mods: HashMap<String, hexdesk_blob::ModCount> = inv_state
         .items
         .iter()
         .filter(|(_, v)| v.mod_ranks.is_some())
         .map(|(k, v)| {
-            let mc = memory_scanner::ModCount {
+            let mc = hexdesk_blob::ModCount {
                 total: v.amount,
                 by_rank: v
                     .mod_ranks
@@ -421,7 +422,7 @@ async fn start_monitor(app: tauri::AppHandle, state: State<'_, AppState>) -> Res
 
     let flag = state.monitor_active.clone();
 
-    let (blob_tx, blob_rx) = std::sync::mpsc::channel::<memory_scanner::BlobInventory>();
+    let (blob_tx, blob_rx) = std::sync::mpsc::channel::<hexdesk_blob::BlobRead>();
 
     blob_capture::spawn_blob_capture_thread(
         blob_capture::BlobCaptureDeps {
@@ -600,6 +601,8 @@ pub fn run() {
         .setup(setup_app)
         .invoke_handler(tauri::generate_handler![
             catalogue::get_all_items,
+            item_details::get_item_details,
+            item_details::get_card_meta,
             catalogue::get_items_by_paths,
             catalogue::get_current_quantities,
             catalogue::get_player_name,
