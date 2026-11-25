@@ -745,6 +745,7 @@ pub(crate) async fn fetch_item_list(
 
 fn apply_catalogue(state: &AppState, result: wfcd::FetchResult) -> Result<usize, String> {
     let count = result.items.len();
+    crate::item_details::invalidate();
 
     // Persist items cache
     if let Ok(json) = serde_json::to_string(
