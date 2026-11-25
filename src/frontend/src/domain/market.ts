@@ -1,7 +1,8 @@
 import type { Ownership } from "./completionist.ts";
 import type { PresetCodec } from "./filterPresets.ts";
 import type { RecipeComponent } from "./foundry.ts";
-import type { ModCounts } from "./inventory.ts";
+import type { ModCounts, ModRankFilter } from "./inventory.ts";
+import { matchMod } from "./modSearch.ts";
 import { inModGroup, isRivenPlaceholder, modGroup, type CardMeta } from "./items.ts";
 import type { CatalogItem } from "./relics.ts";
 import { matchesTerms, splitSearchTerms } from "./relics.ts";
@@ -255,9 +256,31 @@ export type ModFilters = {
   group: string;
   owned: "all" | "owned" | "notowned";
   sort: "qty" | "plat" | "az" | "za";
+  /** Rarities to show (any of them); empty shows every rarity. */
+  rarity: readonly string[];
+  /** Polarities to show, lower case as WFCD writes them; empty shows all. */
+  polarity: readonly string[];
+  /** Augment and exilus mods only (any of them); empty shows every mod. */
+  traits: readonly ModTrait[];
+  /** Owned ranks to show (any of them); empty shows every rank. */
+  ranks: readonly ModRankFilter[];
 };
 
-export const DEFAULT_MOD_FILTERS: ModFilters = { search: "", group: "all", owned: "all", sort: "qty" };
+export type ModTrait = "augment" | "exilus";
+
+export const DEFAULT_MOD_FILTERS: ModFilters = {
+  search: "",
+  group: "all",
+  owned: "all",
+  sort: "qty",
+  rarity: [],
+  polarity: [],
+  traits: [],
+  ranks: [],
+};
+
+/** How many of the popover filters (rarity, polarity, traits, ranks) are set. */
+export const activeModFilterCount = (f: ModFilters) => f.rarity.length + f.polarity.length + f.traits.length + f.ranks.length;
 
 /** A mod or arcane the Mods & Arcanes screen lists. */
 export const isModOrArcane = (i: CatalogItem, meta: Readonly<Record<string, CardMeta>>) =>
@@ -299,8 +322,16 @@ export function visibleMods(
   return catalog
     .filter((i) => {
       if (!isModOrArcane(i, ctx.meta)) return false;
-      if (!inModGroup(f.group, i.category, ctx.meta[i.unique_name])) return false;
-      if (q && !i.name.toLowerCase().includes(q)) return false;
+      const meta = ctx.meta[i.unique_name];
+      if (!inModGroup(f.group, i.category, meta)) return false;
+      if (q && !matchMod(q, i.name, meta).matched) return false;
+      if (f.rarity.length > 0 && !f.rarity.includes(meta?.rarity ?? "")) return false;
+      if (f.polarity.length > 0 && !f.polarity.includes(meta?.polarity ?? "")) return false;
+      if (f.traits.length > 0 && !f.traits.some((t) => meta?.[t] === true)) return false;
+      if (f.ranks.length > 0) {
+        const byRank = ctx.mods[i.unique_name]?.by_rank ?? {};
+        if (!f.ranks.some((r) => (byRank[r === "unranked" ? "0" : String(r)] ?? 0) > 0)) return false;
+      }
       if (f.owned === "owned" && count(i) === 0) return false;
       if (f.owned === "notowned" && count(i) > 0) return false;
       return true;

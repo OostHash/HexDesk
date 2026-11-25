@@ -19,6 +19,10 @@ const meta = (patch: Partial<CardMeta>): CardMeta => ({
   type_name: "Primary Mod",
   max_rank: 10,
   augment: false,
+  exilus: false,
+  utility: false,
+  damage_types: [],
+  effect: [],
   ...patch,
 });
 

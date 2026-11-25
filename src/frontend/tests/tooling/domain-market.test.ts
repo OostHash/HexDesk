@@ -18,6 +18,7 @@ import {
   sparkline,
   visibleMods,
   modGroupCounts,
+  activeModFilterCount,
   visibleSets,
   whisper,
   type MarketFilters,
@@ -124,9 +125,42 @@ describe("mods", () => {
     lookup: new Map([["arcane_grace", "arcane_grace"]]),
     prices: new Map([["arcane_grace", { sell_median: 30 }]]),
     meta: {
-      "/serration": { rarity: "Uncommon", polarity: "madurai", compat: "Rifle", type_name: "Primary Mod", max_rank: 10, augment: false },
-      "/grace": { rarity: "Legendary", polarity: null, compat: null, type_name: "Warframe Arcane", max_rank: 5, augment: false },
-      "/riven": { rarity: null, polarity: null, compat: null, type_name: "Rifle Riven Mod", max_rank: 8, augment: false },
+      "/serration": {
+        rarity: "Uncommon",
+        polarity: "madurai",
+        compat: "Rifle",
+        type_name: "Primary Mod",
+        max_rank: 10,
+        augment: false,
+        exilus: false,
+        utility: false,
+        damage_types: [],
+        effect: [],
+      },
+      "/grace": {
+        rarity: "Legendary",
+        polarity: null,
+        compat: null,
+        type_name: "Warframe Arcane",
+        max_rank: 5,
+        augment: false,
+        exilus: false,
+        utility: false,
+        damage_types: [],
+        effect: [],
+      },
+      "/riven": {
+        rarity: null,
+        polarity: null,
+        compat: null,
+        type_name: "Rifle Riven Mod",
+        max_rank: 8,
+        augment: false,
+        exilus: false,
+        utility: false,
+        damage_types: [],
+        effect: [],
+      },
     },
   };
 
@@ -146,6 +180,16 @@ describe("mods", () => {
     expect(names({ group: "mod-warframe" })).toEqual([]);
     expect(names({ owned: "notowned" })).toEqual(["Arcane Grace"]);
     expect(names({ sort: "plat" })).toEqual(["Arcane Grace", "Serration"]);
+  });
+
+  it("filters by rarity, polarity, traits and owned rank", () => {
+    const names = (patch: Partial<typeof DEFAULT_MOD_FILTERS>) => visibleMods(catalog, { ...DEFAULT_MOD_FILTERS, ...patch }, ctx).map((i) => i.name);
+    expect(names({ rarity: ["Legendary"] })).toEqual(["Arcane Grace"]);
+    expect(names({ polarity: ["madurai"] })).toEqual(["Serration"]);
+    expect(names({ traits: ["augment"] })).toEqual([]);
+    expect(names({ ranks: [10] })).toEqual(["Serration"]);
+    expect(names({ ranks: [5] })).toEqual([]);
+    expect(activeModFilterCount({ ...DEFAULT_MOD_FILTERS, rarity: ["Rare"], ranks: [10, "unranked"] })).toBe(3);
   });
 
   it("leaves riven placeholders out and counts each navigator group", () => {

@@ -9,6 +9,9 @@ import { useCardMeta } from "../../api/items";
 import { useSaveSettings, useSettings } from "../../api/settings";
 import { openItemInfo } from "../../state/itemInfo";
 import { ItemCard } from "./ItemCard";
+import { ModFiltersPopover } from "./ModFiltersPopover";
+import { availableRanks } from "../../domain/inventory";
+import { matchMod } from "../../domain/modSearch";
 import { Card, EmptyState, Skeleton } from "../../primitives/display";
 import { RadioGroup, SearchInput, Select } from "../../primitives/forms";
 import { Pagination, SidebarItem } from "../../primitives/navigation";
@@ -60,6 +63,7 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
     () => visibleMods(all, filters, { own, mods, lookup, prices, meta: cardMeta }),
     [all, filters, own, mods, lookup, prices, cardMeta],
   );
+  const ranks = useMemo(() => availableRanks(mods), [mods]);
   const counts = useMemo(() => modGroupCounts(all, { own, mods, meta: cardMeta }), [all, own, mods, cardMeta]);
   const ownedCount = counts.owned[filters.group] ?? 0;
   const totalCount = counts.total[filters.group] ?? 0;
@@ -105,7 +109,7 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <SearchInput
                 label="Search mods and arcanes"
-                placeholder="Search mods & arcanes…"
+                placeholder="Name, element, polarity, effect…"
                 value={filters.search}
                 onValueChange={(search) => {
                   set({ search });
@@ -113,6 +117,7 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
                 size="sm"
                 className="w-64"
               />
+              <ModFiltersPopover filters={filters} ranks={ranks} onChange={set} />
               <RadioGroup
                 legend="Ownership"
                 hideLegend
@@ -194,6 +199,7 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
                       imageName={imageName}
                       baseUrl={baseUrl}
                       subline={cardSubline(item.category, meta)}
+                      note={filters.search ? matchMod(filters.search, item.name, meta).reason : null}
                       rarity={meta?.rarity}
                       count={count === 0 ? "—" : fmt(count)}
                       countLabel={count === 0 ? "Not owned" : `${fmt(count)} owned`}

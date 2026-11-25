@@ -96,8 +96,18 @@ impl RawItem {
         drops
     }
 
+    /// Damage types named anywhere in the per-rank text or the description.
+    fn damage_types(&self) -> Vec<String> {
+        let stats = self
+            .level_stats
+            .iter()
+            .flat_map(|l| l.stats.iter().map(String::as_str));
+        text::damage_types(stats.chain(self.description.as_deref()))
+    }
+
     fn into_details(self, kind: Kind) -> ItemDetails {
         let max_rank = self.max_rank();
+        let damage_types = self.damage_types();
         let levels = self.levels();
         let description = self
             .description
@@ -123,6 +133,7 @@ impl RawItem {
                 augment: self.is_augment,
                 exilus: self.is_exilus,
                 utility: self.is_utility,
+                damage_types,
                 tradable: self.tradable,
                 drops,
                 wiki_url: self.wikia_url,
@@ -134,6 +145,7 @@ impl RawItem {
                 rarity: self.rarity,
                 max_rank,
                 stats_by_rank: stats,
+                damage_types,
                 tradable: self.tradable,
                 drops,
                 wiki_url: self.wikia_url,
@@ -300,6 +312,26 @@ mod tests {
     fn bodies_that_do_not_parse_count_as_missing() {
         let index = Index::from_bodies(Some("not json"), None);
         assert!(index.is_empty());
+    }
+
+    #[test]
+    fn card_facts_carry_damage_types_and_the_max_rank_effect() {
+        let cryo = json!({
+            "uniqueName": "/Lotus/Upgrades/Mods/Rifle/WeaponFreezeDamageMod",
+            "name": "Cryo Rounds",
+            "category": "Mods",
+            "type": "Primary Mod",
+            "fusionLimit": 1,
+            "levelStats": [
+                {"stats": ["+15% <DT_FREEZE_COLOR>Cold"]},
+                {"stats": ["+30% <DT_FREEZE_COLOR>Cold"]}
+            ],
+            "isExilus": false
+        });
+        let index = Index::from_values(Some(&json!([cryo])), None);
+        let meta = &index.card_metas()["/Lotus/Upgrades/Mods/Rifle/WeaponFreezeDamageMod"];
+        assert_eq!(meta.damage_types, vec!["Cold"]);
+        assert_eq!(meta.effect, vec!["+30% Cold"]);
     }
 
     #[test]

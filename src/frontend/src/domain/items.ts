@@ -11,6 +11,12 @@ export type CardMeta = {
   type_name: string;
   max_rank: number;
   augment: boolean;
+  exilus: boolean;
+  utility: boolean;
+  /** Damage types the effect names ("Cold", "Viral"), from the game's damage-type tags. */
+  damage_types: string[];
+  /** The effect at the max rank, one entry per line. */
+  effect: string[];
 };
 
 export type RankStats = {
@@ -43,6 +49,7 @@ export type ModDetails = {
   augment: boolean;
   exilus: boolean;
   utility: boolean;
+  damage_types: string[];
   tradable: boolean;
   drops: Drop[];
   wiki_url: string | null;
@@ -56,6 +63,7 @@ export type ArcaneDetails = {
   rarity: string | null;
   max_rank: number;
   stats_by_rank: RankStats[];
+  damage_types: string[];
   tradable: boolean;
   drops: Drop[];
   wiki_url: string | null;
