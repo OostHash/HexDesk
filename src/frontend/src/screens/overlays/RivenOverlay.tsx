@@ -328,7 +328,7 @@ export function RivenOverlay() {
             {analysis?.notes && <p className="border-t border-border pt-1.5 text-xs text-muted italic">{analysis.notes}</p>}
             {!analysis && result.ocrRaw && (
               <details className="mt-1 text-xs text-muted">
-                <summary className="cursor-pointer">Raw OCR</summary>
+                <summary>Raw OCR</summary>
                 <pre className="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap">{result.ocrRaw}</pre>
               </details>
             )}

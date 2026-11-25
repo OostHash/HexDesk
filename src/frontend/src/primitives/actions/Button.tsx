@@ -12,7 +12,7 @@ import { strings } from "../strings";
  */
 export const buttonVariants = cva(
   "inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap select-none " +
-    "transition-colors motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50 " +
+    "transition-colors motion-reduce:transition-none disabled:opacity-50 " +
     "aria-busy:cursor-progress aria-busy:opacity-100",
   {
     variants: {

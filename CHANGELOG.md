@@ -76,6 +76,9 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   "Or instead", since a roll only needs one. Each rolled stat is listed once
   with what it means (good, not needed, harmless or harmful), and a
   comparison says whether the new or the original roll has more good stats.
+- The mouse cursor shows what you can click: a hand on buttons, chips, tabs,
+  menu items, links and the clickable bars, and a not-allowed sign on
+  controls that are switched off.
 
 ### Fixed
 

@@ -78,7 +78,7 @@ export function Menu({
                 textValue={item.label}
                 onAction={item.onAction}
                 className={cn(
-                  "flex h-control-sm cursor-default items-center gap-2 rounded-md px-2 outline-none",
+                  "flex h-control-sm items-center gap-2 rounded-md px-2 outline-none",
                   "data-disabled:opacity-50 data-focused:bg-hover",
                   item.danger ? "text-danger" : "text-text",
                 )}

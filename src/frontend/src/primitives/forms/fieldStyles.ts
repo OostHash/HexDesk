@@ -11,8 +11,7 @@ export const FIELD_FOCUS = "focus-visible:border-accent focus-visible:outline-of
  * Disabled field: a dashed border and no fill, so it does not read as an
  * empty field with a placeholder. The value stays readable in muted text.
  */
-export const FIELD_DISABLED =
-  "disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-muted disabled:hover:border-border";
+export const FIELD_DISABLED = "disabled:border-dashed disabled:bg-transparent disabled:text-muted disabled:hover:border-border";
 
 /** Shared look of text-like controls (Input, SearchInput, Select, Textarea). */
 export const fieldVariants = cva(

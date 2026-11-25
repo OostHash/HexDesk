@@ -74,7 +74,7 @@ export function ComboBox({
             <ListBoxItem
               id={item.id}
               textValue={item.label}
-              className="flex h-control-sm cursor-default items-center rounded-md px-2 outline-none data-focused:bg-hover data-selected:text-accent"
+              className="flex h-control-sm items-center rounded-md px-2 outline-none data-focused:bg-hover data-selected:text-accent"
             >
               {item.label}
             </ListBoxItem>
