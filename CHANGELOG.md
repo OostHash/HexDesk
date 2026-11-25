@@ -7,6 +7,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-26
+
 ### Added
 
 - Your own rivens in Mods & Arcanes → Rivens: every riven you own gets a card
@@ -62,7 +64,6 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   polarity, augment or exilus, and owned rank.
 - Mods & Arcanes shows everything by default; the Owned chip limits it to what
   you own, and Incomplete to mods you own with no copy at the max rank yet.
-
 - New HexDesk colours: graphite surfaces in the dark theme, warm stone in the
   light theme and a copper-amber accent. The title bar, header, navigation and
   input fields each have their own surface colour, and warnings are ochre so
