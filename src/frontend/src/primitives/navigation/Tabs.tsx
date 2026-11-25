@@ -44,14 +44,14 @@ const APPEARANCE = {
   underline: {
     list: "flex gap-1 border-b border-border",
     tab:
-      "-mb-px flex h-control-md cursor-default items-center gap-2 border-b-2 border-transparent px-3 text-sm text-muted outline-none " +
+      "-mb-px flex h-control-md items-center gap-2 border-b-2 border-transparent px-3 text-sm text-muted outline-none " +
       "data-hovered:text-text data-selected:border-accent data-selected:text-text " +
       "data-focus-visible:outline-2 data-focus-visible:outline-focus data-disabled:opacity-50",
   },
   pills: {
     list: "flex gap-1",
     tab:
-      "flex h-control-sm cursor-default items-center gap-1 rounded-md border border-border px-2 text-xs text-muted outline-none " +
+      "flex h-control-sm items-center gap-1 rounded-md border border-border px-2 text-xs text-muted outline-none " +
       "data-hovered:bg-hover data-hovered:text-text data-selected:border-accent data-selected:bg-selected data-selected:text-text " +
       "data-focus-visible:outline-2 data-focus-visible:outline-focus data-disabled:opacity-50",
   },

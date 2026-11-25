@@ -74,7 +74,7 @@ export function AccentRow() {
               key={accent}
               title={ACCENT_LABEL[accent]}
               className={cn(
-                "inline-flex size-5 cursor-pointer items-center justify-center rounded-full text-on-accent forced-color-adjust-none",
+                "inline-flex size-5 items-center justify-center rounded-full text-on-accent forced-color-adjust-none",
                 "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus",
                 checked && "ring-2 ring-text ring-offset-2 ring-offset-surface",
               )}

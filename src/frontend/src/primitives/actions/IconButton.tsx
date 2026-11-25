@@ -5,8 +5,7 @@ import { cn } from "../cn";
 import { Icon } from "../display/Icon";
 
 const iconButtonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center rounded-md transition-colors motion-reduce:transition-none " +
-    "disabled:cursor-not-allowed disabled:opacity-50",
+  "inline-flex shrink-0 items-center justify-center rounded-md transition-colors motion-reduce:transition-none " + "disabled:opacity-50",
   {
     variants: {
       variant: {
