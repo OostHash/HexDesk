@@ -3,16 +3,17 @@ import type { Ownership } from "../../src/domain/completionist.ts";
 import {
   buildSets,
   buildWfmLookup,
-  DEFAULT_MARKET_FILTERS,
+  DEFAULT_SET_FILTERS,
   DEFAULT_MOD_FILTERS,
   ducatTotals,
-  marketPresetCodec,
   median48h,
   modQty,
   prefillPrice,
   queueOrder,
   rankCopies,
   requiredCounts,
+  setGroup,
+  setGroupCounts,
   setName,
   setParts,
   sparkline,
@@ -21,9 +22,10 @@ import {
   activeModFilterCount,
   visibleSets,
   whisper,
-  type MarketFilters,
+  type SetFilters,
   type SetContext,
 } from "../../src/domain/market.ts";
+import { DEFAULT_SELL_FROM } from "../../src/domain/inventory.ts";
 import type { CatalogItem } from "../../src/domain/relics.ts";
 
 const own = (quantities: Record<string, number> = {}): Ownership => ({ quantities, mastery: {}, subsumed: new Set() });
@@ -74,6 +76,7 @@ describe("prime sets", () => {
   ]);
   const ctx = (quantities: Record<string, number>): SetContext => ({
     own: own(quantities),
+    sellFrom: DEFAULT_SELL_FROM,
     required: requiredCounts(recipes),
     lookup,
     prices: new Map([
@@ -81,7 +84,7 @@ describe("prime sets", () => {
       ["aksomati_prime_set", { sell_median: 120 }],
     ]),
   });
-  const f = (patch: Partial<MarketFilters>) => ({ ...DEFAULT_MARKET_FILTERS, ...patch });
+  const f = (patch: Partial<SetFilters>): SetFilters => ({ ...DEFAULT_SET_FILTERS, ...patch });
   const names = (rows: ReturnType<typeof visibleSets>) => rows.map((r) => r.set.name);
 
   it("maps Blueprint names to slugs without the suffix", () => {
@@ -89,25 +92,81 @@ describe("prime sets", () => {
     expect(setParts(ashSet(), ctx({})).find((p) => p.label === "Chassis Blueprint")?.slug).toBe("ash_prime_chassis");
   });
 
+  it("lists parts in the game's order and marks parts better for ducats", () => {
+    expect(setParts(ashSet(), ctx({})).map((p) => p.label)).toEqual(["Blueprint", "Chassis Blueprint", "Systems Blueprint"]);
+    const aks = sets.find((s) => s.name === "Aksomati Prime");
+    if (!aks) throw new Error("no Aksomati Prime set");
+    const priced: SetContext = {
+      ...ctx({}),
+      prices: new Map([
+        ["aksomati_prime_barrel", { sell_median: 4 }],
+        ["aksomati_prime_blueprint", { sell_median: 50 }],
+      ]),
+    };
+    // A 45-ducat part sells from 5p by default, a 15-ducat part from 2p.
+    expect(setParts(aks, priced).map((p) => [p.label, p.better])).toEqual([
+      ["Blueprint", "plat"],
+      ["Barrel", "ducats"],
+    ]);
+    expect(setParts(aks, { ...priced, sellFrom: { ...DEFAULT_SELL_FROM, 45: 4 } }).map((p) => p.better)).toEqual(["plat", "plat"]);
+    expect(setParts(aks, ctx({})).every((p) => p.better === null)).toBe(true);
+  });
+
   it("counts duplicates against the recipe (two barrels are not a dupe)", () => {
     const c = ctx({ "/aks/barrel": 2, "/ash/bp": 2 });
-    expect(names(visibleSets(sets, f({ conditions: ["dupes"] }), c))).toEqual(["Ash Prime"]);
+    expect(names(visibleSets(sets, f({ dupes: true }), c))).toEqual(["Ash Prime"]);
     expect(ducatTotals(sets, c)).toEqual({ total: 2 * 45 + 2 * 45, dupes: 45 });
   });
 
-  it("filters on the built item, full sets and vault status", () => {
+  it("filters on the built item, parts, complete sets and vault status", () => {
     const c = ctx({ "/aks": 1, "/ash/bp": 1, "/ash/chassisbp": 1, "/ash/systemsbp": 1 });
-    expect(names(visibleSets(sets, f({ ownership: ["owned"] }), c))).toEqual(["Aksomati Prime"]);
-    expect(names(visibleSets(sets, f({ ownership: ["owned", "notowned"] }), c))).toHaveLength(2);
-    expect(names(visibleSets(sets, f({ conditions: ["fullset"] }), c))).toEqual(["Ash Prime"]);
+    expect(names(visibleSets(sets, f({ built: ["owned"] }), c))).toEqual(["Aksomati Prime"]);
+    expect(names(visibleSets(sets, f({ built: ["owned", "notowned"] }), c))).toHaveLength(2);
+    expect(names(visibleSets(sets, f({ hasParts: true }), c))).toEqual(["Ash Prime"]);
+    expect(names(visibleSets(sets, f({ complete: true }), c))).toEqual(["Ash Prime"]);
     expect(names(visibleSets(sets, f({ vault: ["vaulted"] }), c))).toEqual(["Ash Prime"]);
   });
 
-  it("sorts by set price, ducats and name", () => {
+  it("finds sets one part short of complete", () => {
+    const c = ctx({ "/ash/bp": 1, "/ash/chassisbp": 1, "/aks/bp": 1 });
+    expect(names(visibleSets(sets, f({ missingOne: true }), c))).toEqual(["Aksomati Prime", "Ash Prime"]);
+    expect(names(visibleSets(sets, f({ missingOne: true }), ctx({ "/ash/bp": 1 })))).toEqual([]);
+  });
+
+  it("groups sets by the built item's category, else Other", () => {
+    expect(setGroup(ashSet())).toBe("Warframes");
+    expect(setGroup({ name: "Kavasa Prime", parent: null, parts: [] })).toBe("other");
+    expect(names(visibleSets(sets, f({ group: "Secondary" }), ctx({})))).toEqual(["Aksomati Prime"]);
+    const counts = setGroupCounts(sets, own({ "/ash/bp": 1 }));
+    expect(counts.total).toEqual({ all: 2, Warframes: 1, Secondary: 1 });
+    expect(counts.withParts).toEqual({ all: 1, Warframes: 1 });
+  });
+
+  it("sorts by best value, set price, ducats and name", () => {
     const c = ctx({ "/ash/systemsbp": 1 });
-    expect(names(visibleSets(sets, f({ sortMode: "plat" }), c))).toEqual(["Aksomati Prime", "Ash Prime"]);
-    expect(names(visibleSets(sets, f({ sortMode: "ducats" }), c))).toEqual(["Ash Prime", "Aksomati Prime"]);
-    expect(names(visibleSets(sets, f({ sortMode: "za" }), c))).toEqual(["Ash Prime", "Aksomati Prime"]);
+    expect(names(visibleSets(sets, f({ sort: "plat" }), c))).toEqual(["Aksomati Prime", "Ash Prime"]);
+    expect(names(visibleSets(sets, f({ sort: "ducats" }), c))).toEqual(["Ash Prime", "Aksomati Prime"]);
+    expect(names(visibleSets(sets, f({ sort: "za" }), c))).toEqual(["Ash Prime", "Aksomati Prime"]);
+    const full = ctx({ "/aks/barrel": 2, "/aks/bp": 1 });
+    expect(names(visibleSets(sets, f({ sort: "value" }), full))).toEqual(["Aksomati Prime", "Ash Prime"]);
+  });
+
+  it("compares one set's worth of parts with the set price", () => {
+    const priced = (quantities: Record<string, number>): SetContext => ({
+      ...ctx(quantities),
+      prices: new Map([
+        ["aksomati_prime_set", { sell_median: 120 }],
+        ["aksomati_prime_barrel", { sell_median: 40 }],
+        ["aksomati_prime_blueprint", { sell_median: 50 }],
+      ]),
+    });
+    const value = (quantities: Record<string, number>) => visibleSets(sets, f({ group: "Secondary" }), priced(quantities))[0]?.value;
+    // Three barrels: the recipe needs two, the third is a dupe and is left out.
+    expect(value({ "/aks/barrel": 3, "/aks/bp": 1 })).toEqual({ set: 120, parts: 130, ducats: 2 * 45 + 15, best: "parts", top: 130 });
+    expect(value({ "/aks/barrel": 2 })).toEqual({ set: 120, parts: 80, ducats: 90, best: null, top: 80 });
+    // A part without a price makes the parts value unknown, not lower.
+    const ash = visibleSets(sets, f({ group: "Warframes" }), priced({ "/ash/bp": 1, "/ash/chassisbp": 1, "/ash/systemsbp": 1 }))[0]?.value;
+    expect(ash).toMatchObject({ parts: null, best: null });
   });
 
   it("queues owned sets first, set slug before parts", () => {
@@ -213,15 +272,5 @@ describe("item window", () => {
   it("prefills the best order, else the median, in whole platinum", () => {
     expect(prefillPrice("sell", { sell: [order], buy: [] }, 30)).toBe(25);
     expect(prefillPrice("buy", { sell: [order], buy: [] }, 30.6)).toBe(31);
-  });
-});
-
-describe("market presets", () => {
-  it("leaves the open tab out and validates stored presets", () => {
-    const codec = marketPresetCodec("mods");
-    const stored = codec.encode({ ...DEFAULT_MARKET_FILTERS, vault: ["vaulted"] });
-    expect(stored).not.toHaveProperty("activeMarketTab");
-    expect(codec.decode(stored)).toEqual({ ...DEFAULT_MARKET_FILTERS, vault: ["vaulted"], activeMarketTab: "mods" });
-    expect(codec.decode({ ...(stored as object), sortMode: "cheapest" })).toBeNull();
   });
 });

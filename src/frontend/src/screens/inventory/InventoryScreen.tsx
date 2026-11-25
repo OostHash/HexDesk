@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { DEFAULT_MARKET_FILTERS, type MarketFilters } from "../../domain/market";
 import { ScreenTabBar } from "../../patterns/ScreenTabBar";
 import { Tab, TabList, TabPanel, Tabs } from "../../primitives/navigation";
 import { useInventoryFilters } from "../../state/inventoryFilters";
@@ -13,7 +12,6 @@ type InventoryTab = "items" | "sets" | "mods";
 /** Inventory: your items by category, prime sets and mods & arcanes (these open the market item window). */
 export function InventoryScreen() {
   const [tab, setTab] = useState<InventoryTab>("items");
-  const [setFilters, setSetFilters] = useState<MarketFilters>({ ...DEFAULT_MARKET_FILTERS, activeMarketTab: "sets" });
 
   // The changelog dock opens Inventory on an item by setting the item filters:
   // show the Items tab then, also when Prime Sets or Mods was open.
@@ -37,7 +35,7 @@ export function InventoryScreen() {
         <ItemsTab />
       </TabPanel>
       <TabPanel id="sets" className="flex min-h-0 flex-1 flex-col">
-        <SetsTab filters={setFilters} setFilters={setSetFilters} onOpen={openItemWindow} />
+        <SetsTab onOpen={openItemWindow} />
       </TabPanel>
       <TabPanel id="mods" className="flex min-h-0 flex-1 flex-col">
         <ModsTab onOpen={openItemWindow} />

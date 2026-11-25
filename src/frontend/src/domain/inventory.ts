@@ -79,6 +79,44 @@ export const DEFAULT_INVENTORY_FILTERS: InventoryFilters = {
   sortMode: "qty-desc",
 };
 
+/** Ducats per platinum; null unless both are known and above zero. */
+export const ducatsPerPlat = (ducats: number | null | undefined, plat: number | null | undefined): number | null =>
+  ducats != null && plat != null && ducats > 0 && plat > 0 ? ducats / plat : null;
+
+/** The ducat values prime parts have: common 15 and 25, uncommon 45 and 65, rare 100. */
+export const DUCAT_TIERS = [15, 25, 45, 65, 100] as const;
+export type DucatTier = (typeof DUCAT_TIERS)[number];
+
+/** Per ducat value, the price from which a part is better sold than traded for ducats. */
+export type SellFrom = Readonly<Record<DucatTier, number>>;
+
+/**
+ * Ten ducats per platinum, rounded up: a common rule of thumb among traders
+ * for when Baro Ki'Teer beats warframe.market.
+ */
+export const DEFAULT_SELL_FROM: SellFrom = { 15: 2, 25: 3, 45: 5, 65: 7, 100: 10 };
+
+export const SELL_FROM_RANGE = { min: 1, max: 999 } as const;
+
+/** A price typed or stored for one ducat value: a whole number in range, else `fallback`. */
+export function sellFromPrice(v: unknown, fallback: number): number {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(SELL_FROM_RANGE.max, Math.max(SELL_FROM_RANGE.min, Math.round(n)));
+}
+
+/** The stored `sellFrom` setting (ducat value → platinum), with defaults for what is missing or invalid. */
+export function sellFromSetting(v: unknown): SellFrom {
+  const stored = typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+  return Object.fromEntries(DUCAT_TIERS.map((t) => [t, sellFromPrice(stored[String(t)], DEFAULT_SELL_FROM[t])])) as Record<DucatTier, number>;
+}
+
+/** The price from which a part of this ducat value is better sold; the nearest tier for other values. */
+export function sellFromFor(ducats: number, table: SellFrom): number {
+  const tier = DUCAT_TIERS.reduce((best, t) => (Math.abs(t - ducats) < Math.abs(best - ducats) ? t : best));
+  return table[tier];
+}
+
 export const needsPrices = (s: SortMode) => s.startsWith("plat") || s.startsWith("ducat-ratio");
 
 /** Catalogue item with the fields only Inventory reads. */
@@ -149,7 +187,7 @@ export function visibleItems(f: InventoryFilters, ctx: InventoryContext, fallbac
     rows.push({ item, qty, plat, ducats, mastery: ctx.own.mastery[item.unique_name] ?? 0 });
   }
   const byName = (a: InventoryRow, b: InventoryRow) => a.item.name.localeCompare(b.item.name);
-  const ratio = (r: InventoryRow) => (r.ducats ?? 0) / (r.plat ?? 1);
+  const ratio = (r: InventoryRow) => ducatsPerPlat(r.ducats, r.plat) ?? 0;
   rows.sort((a, b) => {
     switch (sort) {
       case "plat-asc":

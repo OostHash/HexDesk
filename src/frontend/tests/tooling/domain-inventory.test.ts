@@ -14,6 +14,10 @@ import {
   availableRanks,
   categoryCounts,
   DEFAULT_INVENTORY_FILTERS,
+  ducatsPerPlat,
+  DEFAULT_SELL_FROM,
+  sellFromFor,
+  sellFromSetting,
   inventoryPresetCodec,
   formatAge,
   lastChangedMap,
@@ -113,6 +117,15 @@ describe("recent window", () => {
     expect(recentWindowFrom(undefined)).toBe("session");
     expect(recentWindowFrom("month")).toBe("session");
     expect(recentWindowFrom("week")).toBe("week");
+  });
+
+  it("reads the sell-from price per ducat value, with defaults for what is missing", () => {
+    expect(sellFromSetting(undefined)).toEqual(DEFAULT_SELL_FROM);
+    expect(sellFromSetting({ "15": 4, "45": "abc", "100": 2000, "65": 0 })).toEqual({ 15: 4, 25: 3, 45: 5, 65: 1, 100: 999 });
+    // Values between the tiers use the nearest one.
+    expect([15, 20, 50, 90].map((d) => sellFromFor(d, DEFAULT_SELL_FROM))).toEqual([2, 2, 5, 10]);
+    expect(ducatsPerPlat(45, 4)).toBe(11.25);
+    expect([ducatsPerPlat(45, null), ducatsPerPlat(null, 4), ducatsPerPlat(45, 0)]).toEqual([null, null, null]);
   });
 
   it("formats a badge age in minutes, hours or days", () => {

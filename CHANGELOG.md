@@ -19,6 +19,13 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - An item info window: click an item card to see what it is and does. For mods
   and arcanes it shows the stats at any rank, drain and polarity, your copies
   per rank and where the item drops, with links to the market and the wiki.
+- Prime Sets shows what selling a set is worth: the set price, the owned parts
+  sold one by one and their ducats, with the better way to sell marked on a
+  complete set. Sort by Most platinum to see what fetches the most, filter on
+  sets that miss one part, and see which of your relics drop a missing part.
+  Parts are listed in the game's order, and each part marks whether its price
+  or its ducats is the better deal. In Settings → Filters you set, per ducat
+  value (15, 25, 45, 65 and 100), from which price a part is worth selling.
 
 ### Changed
 
@@ -79,6 +86,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - The mouse cursor shows what you can click: a hand on buttons, chips, tabs,
   menu items, links and the clickable bars, and a not-allowed sign on
   controls that are switched off.
+- Prime Sets has a navigator by category (Warframes, Primary, Secondary,
+  Melee, Companions, Archwing and Other) with how many sets you have parts
+  of. The toolbar has Has parts, Complete and Dupes; the built item and vault
+  filters moved to a Filters menu, and vaulted sets have a badge. Prime Sets
+  no longer has filter presets.
 
 ### Fixed
 
