@@ -46,7 +46,7 @@ export const cardGridStyle = (baseRem: number, scale: number): CSSProperties =>
 
 const stepButton =
   "inline-flex h-full w-7 items-center justify-center text-muted transition-colors motion-reduce:transition-none hover:bg-hover hover:text-text " +
-  "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
+  "disabled:opacity-50 disabled:hover:bg-transparent";
 
 /** "− 100% +" stepper for a screen's toolbar, next to Per page. */
 export function CardScaleStepper({ value, onChange }: { value: number; onChange: (scale: number) => void }) {

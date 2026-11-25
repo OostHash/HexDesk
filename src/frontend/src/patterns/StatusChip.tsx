@@ -13,7 +13,7 @@ const chip = cva("inline-flex h-control-sm shrink-0 items-center gap-1.5 rounded
       disabled: "border-border",
     },
     interactive: {
-      true: "cursor-pointer transition-colors hover:bg-hover motion-reduce:transition-none",
+      true: "transition-colors hover:bg-hover motion-reduce:transition-none",
       false: "",
     },
   },

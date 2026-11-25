@@ -45,7 +45,7 @@ export function RadioGroup<T extends string>({
             className={cn(
               "inline-flex items-center gap-2 text-sm text-text has-disabled:opacity-50",
               segmented &&
-                "h-control-sm cursor-pointer rounded-md border border-border px-2 text-xs text-muted hover:bg-hover hover:text-text " +
+                "h-control-sm rounded-md border border-border px-2 text-xs text-muted hover:bg-hover hover:text-text " +
                   "has-checked:border-accent has-checked:bg-selected has-checked:text-text has-focus-visible:outline-2 has-focus-visible:outline-focus",
             )}
           >

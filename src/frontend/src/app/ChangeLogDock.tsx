@@ -333,7 +333,7 @@ export function ChangeLogDock({ onOpenInventory }: Props) {
           aria-label="Changelog"
           aria-expanded={expanded}
           aria-controls={listId}
-          className="absolute inset-0 cursor-pointer"
+          className="absolute inset-0"
           onClick={() => {
             setExpanded((v) => !v);
             setFeed(null);
