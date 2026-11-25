@@ -17,7 +17,7 @@ import { FissureAlerts } from "./FissureAlerts";
 import { Header } from "./Header";
 import { MainNav, type NavScreen } from "./MainNav";
 import { ModularDock } from "./ModularDock";
-import { NAV_ICONS } from "./navIcons";
+import { NAV_ICONS } from "../patterns/navIcons";
 import { RelicOverlayController } from "./RelicOverlayController";
 import { TestReportNotices } from "./TestReportNotices";
 import { ScreenBoundary } from "./ScreenBoundary";
