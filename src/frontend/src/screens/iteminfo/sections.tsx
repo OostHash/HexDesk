@@ -30,6 +30,7 @@ function modTraits(mod: ModDetails): string | null {
 const overview: InfoSection = {
   id: "overview",
   title: "Overview",
+  tab: "info",
   appliesTo: ({ details }) => details?.kind === "mod",
   render: ({ details, rank }) => {
     if (details?.kind !== "mod") return null;
@@ -48,6 +49,7 @@ const overview: InfoSection = {
 const stats: InfoSection = {
   id: "stats",
   title: "Stats",
+  tab: "info",
   appliesTo: ({ details }) => (details?.stats_by_rank.length ?? 0) > 0,
   render: ({ details, rank }) => {
     const entry = details?.stats_by_rank[Math.min(rank, details.stats_by_rank.length - 1)];
@@ -70,6 +72,7 @@ const stats: InfoSection = {
 const copies: InfoSection = {
   id: "copies",
   title: "Your copies",
+  tab: "info",
   appliesTo: ({ details, copies }) => details !== null && Object.values(copies ?? {}).some((n) => n > 0),
   render: ({ details, copies, rank, setRank }) => {
     const ranks = Object.entries(copies ?? {})
@@ -139,6 +142,7 @@ function DropList({ details }: { details: ItemDetails }) {
 const drops: InfoSection = {
   id: "drops",
   title: "Where to get it",
+  tab: "drops",
   appliesTo: ({ details }) => (details?.drops.length ?? 0) > 0,
   render: ({ details }) => (details ? <DropList details={details} /> : null),
 };
@@ -193,6 +197,7 @@ function RelicList({ sources }: { sources: readonly RelicSource[] }) {
 const relics: InfoSection = {
   id: "relics",
   title: "Relics",
+  tab: "relics",
   appliesTo: ({ relics }) => relics.length > 0,
   render: ({ relics }) => <RelicList sources={relics} />,
 };

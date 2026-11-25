@@ -26,11 +26,14 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   Parts are listed in the game's order, and each part marks whether its price
   or its ducats is the better deal. In Settings → Filters you set, per ducat
   value (15, 25, 45, 65 and 100), from which price a part is worth selling.
-- The item info window for prime sets and their parts. Click a set for its
-  parts and what selling it is worth; click a part, here or in Items, for
-  every relic that drops it, its rarity there, how many of each relic you own
-  per refinement and whether the relic is vaulted. Both have the market and
-  the wiki one click away.
+- One item window for every item, with Market, Info, and Relics or Drops
+  tabs, instead of a separate info window and market window. It opens on the
+  tab you used last. For a prime set or one of its parts, a strip under the
+  title switches between the set and each part and keeps the tab. A set's
+  Info shows what selling it is worth and its Relics which parts each relic
+  gives; a part's Info says whether to sell it or trade it for ducats, and
+  its Relics lists every relic that drops it, how many of each you own per
+  refinement and whether the relic is vaulted.
 
 ### Changed
 

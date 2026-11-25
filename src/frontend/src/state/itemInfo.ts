@@ -1,11 +1,9 @@
-import { useSyncExternalStore, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { ItemDetails } from "../domain/items";
 import type { RelicSource } from "../domain/relics";
+import { closeItemWindow, showItem, type ItemWindowTab } from "./itemWindow";
 
-/**
- * The item info window for the whole window. Item cards open it; the app
- * shell shows it once, next to the market item window (state/itemWindow.ts).
- */
+/** A catalogue item to show in the item window (state/itemWindow.ts). */
 export type ItemInfoTarget = {
   uniqueName: string;
   name: string;
@@ -15,28 +13,12 @@ export type ItemInfoTarget = {
   set?: string;
 };
 
-let current: ItemInfoTarget | null = null;
-const listeners = new Set<() => void>();
-
+/** Opens the item window on a catalogue item, on the tab used last; closes it with null. */
 export function openItemInfo(target: ItemInfoTarget | null) {
-  current = target;
-  for (const listener of listeners) listener();
+  showItem(target ? { item: target, market: null, tab: null } : null);
 }
 
-export const closeItemInfo = () => {
-  openItemInfo(null);
-};
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-export function useItemInfoTarget(): ItemInfoTarget | null {
-  return useSyncExternalStore(subscribe, () => current);
-}
+export const closeItemInfo = closeItemWindow;
 
 /** What every section gets to work with. */
 export type SectionContext = {
@@ -52,13 +34,14 @@ export type SectionContext = {
 };
 
 /**
- * One block of the item info window. The window shows every section whose
- * `appliesTo` holds, in the order of SECTIONS, so adding information for a
- * kind of item is a new entry here, not a change to the window.
+ * One block of the item window. The window shows every section whose
+ * `appliesTo` holds on its `tab`, in the order given, so adding information
+ * for a kind of item is a new entry, not a change to the window.
  */
 export type InfoSection = {
   id: string;
   title: string;
+  tab: Exclude<ItemWindowTab, "market">;
   appliesTo: (ctx: SectionContext) => boolean;
   render: (ctx: SectionContext) => ReactNode;
 };

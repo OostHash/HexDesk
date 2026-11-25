@@ -2,9 +2,8 @@ import { useCallback, useState, type ComponentType } from "react";
 import { useSettings } from "../api/settings";
 import { cn } from "../primitives/cn";
 import { FoundryScreen } from "../screens/foundry/FoundryScreen";
-import { ItemInfoHost } from "../screens/iteminfo/ItemInfoWindow";
 import { SET_INFO_SECTIONS } from "../screens/inventory/SetParts";
-import { ItemWindowHost } from "../screens/market/ItemWindow";
+import { ItemWindowHost } from "./ItemWindowHost";
 import { MarketScreen } from "../screens/market/MarketScreen";
 import { RivensScreen } from "../screens/rivens/RivensScreen";
 import { SettingsScreen, type SettingsTab } from "../screens/settings/SettingsScreen";
@@ -121,8 +120,7 @@ export function AppShell() {
         </div>
       </div>
       {/* Outside the screens: React Aria renders Tabs children in a detached collection pass, where showModal() fails. */}
-      <ItemInfoHost extraSections={SET_INFO_SECTIONS} />
-      <ItemWindowHost />
+      <ItemWindowHost extraSections={SET_INFO_SECTIONS} />
     </div>
   );
 }
