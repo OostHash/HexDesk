@@ -4,7 +4,7 @@ import { useImageBaseUrl } from "../../api/catalog";
 import { useModCounts, useOwnership } from "../../api/inventory";
 import { prioritisePrice, useCatalogList, useLivePrices, useQueuePrices, useWfmLookup } from "../../api/market";
 import { DEFAULT_MOD_FILTERS, modGroupCounts, modQty, normalizeForWfm, priceOf, slugFor, visibleMods, type ModFilters } from "../../domain/market";
-import { cardSubline, limitRows, MOD_GROUPS, rankRows } from "../../domain/items";
+import { cardSubline, limitRows, MOD_GROUPS, modDisplayName, rankRows } from "../../domain/items";
 import { useCardMeta } from "../../api/items";
 import { useSaveSettings, useSettings } from "../../api/settings";
 import { openItemInfo } from "../../state/itemInfo";
@@ -12,8 +12,8 @@ import { ItemCard } from "./ItemCard";
 import { ModFiltersPopover } from "./ModFiltersPopover";
 import { availableRanks } from "../../domain/inventory";
 import { matchMod } from "../../domain/modSearch";
-import { Card, EmptyState, Skeleton } from "../../primitives/display";
-import { RadioGroup, SearchInput, Select } from "../../primitives/forms";
+import { Card, Chip, EmptyState, Skeleton } from "../../primitives/display";
+import { SearchInput, Select } from "../../primitives/forms";
 import { Pagination, SidebarItem } from "../../primitives/navigation";
 import { CARD_GRID, cardGridStyle, useCardScale } from "../../patterns/CardScale";
 import { ItemImagesContext } from "../../patterns/ItemImage";
@@ -117,21 +117,25 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
                 size="sm"
                 className="w-64"
               />
+              <div role="group" aria-label="Show" className="flex flex-wrap gap-1">
+                <Chip
+                  active={filters.owned}
+                  onActiveChange={(owned) => {
+                    set({ owned });
+                  }}
+                >
+                  Owned
+                </Chip>
+                <Chip
+                  active={filters.incomplete}
+                  onActiveChange={(incomplete) => {
+                    set({ incomplete });
+                  }}
+                >
+                  Incomplete
+                </Chip>
+              </div>
               <ModFiltersPopover filters={filters} ranks={ranks} onChange={set} />
-              <RadioGroup
-                legend="Ownership"
-                hideLegend
-                appearance="segmented"
-                value={filters.owned}
-                onValueChange={(owned) => {
-                  set({ owned });
-                }}
-                options={[
-                  { value: "all", label: "Owned or not" },
-                  { value: "owned", label: "Owned" },
-                  { value: "notowned", label: "Not owned" },
-                ]}
-              />
               <label className="flex items-center gap-2 text-xs text-muted">
                 Sort
                 <Select
@@ -195,11 +199,11 @@ export function ModsTab({ onOpen }: { onOpen: (target: MarketTarget) => void }) 
                   return (
                     <ItemCard
                       key={item.unique_name}
-                      name={item.name}
+                      name={modDisplayName(item)}
                       imageName={imageName}
                       baseUrl={baseUrl}
                       subline={cardSubline(item.category, meta)}
-                      note={filters.search ? matchMod(filters.search, item.name, meta).reason : null}
+                      note={filters.search ? matchMod(filters.search, modDisplayName(item), meta).reason : null}
                       rarity={meta?.rarity}
                       count={count === 0 ? "—" : fmt(count)}
                       countLabel={count === 0 ? "Not owned" : `${fmt(count)} owned`}

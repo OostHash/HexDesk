@@ -149,18 +149,6 @@ describe("mods", () => {
         damage_types: [],
         effect: [],
       },
-      "/riven": {
-        rarity: null,
-        polarity: null,
-        compat: null,
-        type_name: "Rifle Riven Mod",
-        max_rank: 8,
-        augment: false,
-        exilus: false,
-        utility: false,
-        damage_types: [],
-        effect: [],
-      },
     },
   };
 
@@ -178,7 +166,8 @@ describe("mods", () => {
     expect(names({ group: "arcanes" })).toEqual(["Arcane Grace"]);
     expect(names({ group: "mod-primary" })).toEqual(["Serration"]);
     expect(names({ group: "mod-warframe" })).toEqual([]);
-    expect(names({ owned: "notowned" })).toEqual(["Arcane Grace"]);
+    expect(names({ owned: true })).toEqual(["Serration"]);
+    expect(names({ incomplete: true })).toEqual([]);
     expect(names({ sort: "plat" })).toEqual(["Arcane Grace", "Serration"]);
   });
 
@@ -192,11 +181,14 @@ describe("mods", () => {
     expect(activeModFilterCount({ ...DEFAULT_MOD_FILTERS, rarity: ["Rare"], ranks: [10, "unranked"] })).toBe(3);
   });
 
-  it("leaves riven placeholders out and counts each navigator group", () => {
-    const withRiven = [...catalog, { unique_name: "/riven", name: "Rifle Riven Mod", category: "Mods" }];
-    expect(visibleMods(withRiven, DEFAULT_MOD_FILTERS, ctx).map((i) => i.name)).not.toContain("Rifle Riven Mod");
+  it("lists rivens in their own group and counts each navigator group", () => {
+    const riven = { unique_name: "/Lotus/Upgrades/Mods/Randomized/RawRifleRandomMod", name: "Rifle Riven Mod", category: "Mods" };
+    const withRiven = [...catalog, riven];
+    const names = (group: string) => visibleMods(withRiven, { ...DEFAULT_MOD_FILTERS, group }, ctx).map((i) => i.name);
+    expect(names("mod-riven")).toEqual(["Rifle Riven Mod"]);
+    expect(names("mod-primary")).toEqual(["Serration"]);
     const counts = modGroupCounts(withRiven, ctx);
-    expect(counts.total).toEqual({ all: 2, mods: 1, "mod-primary": 1, arcanes: 1, "arcane-warframe": 1 });
+    expect(counts.total).toEqual({ all: 3, mods: 2, "mod-primary": 1, "mod-riven": 1, arcanes: 1, "arcane-warframe": 1 });
     expect(counts.owned).toEqual({ all: 1, mods: 1, "mod-primary": 1 });
   });
 });

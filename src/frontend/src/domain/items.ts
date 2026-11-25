@@ -159,6 +159,7 @@ export const MOD_GROUPS: readonly ModGroup[] = [
   { id: "mod-companion", label: "Companion", section: "mods" },
   { id: "mod-archwing", label: "Archwing & Necramech", section: "mods" },
   { id: "mod-railjack", label: "Railjack", section: "mods" },
+  { id: "mod-riven", label: "Rivens", section: "mods" },
   { id: "mod-other", label: "Other", section: "mods" },
   { id: "arcanes", label: "All arcanes", section: "arcanes" },
   { id: "arcane-warframe", label: "Warframe", section: "arcanes" },
@@ -193,24 +194,40 @@ const MOD_TYPE_GROUP: Readonly<Record<string, string>> = {
   "Amp Arcane": "arcane-operator",
 };
 
+/** A catalogue item as the navigator sees it. */
+type GroupItem = { category: string; unique_name: string };
+
 /** The navigator group of a mod or arcane; an unknown type is "Other" of its kind. */
-export function modGroup(category: string, meta: CardMeta | undefined): string {
+export function modGroup(item: GroupItem, meta: CardMeta | undefined): string {
+  if (isRiven(item.unique_name)) return "mod-riven";
+  const { category } = item;
   const group = meta ? MOD_TYPE_GROUP[meta.type_name] : undefined;
   if (group) return group;
   return category === "Arcanes" ? "arcane-other" : "mod-other";
 }
 
 /** Whether an item belongs in a navigator entry. */
-export function inModGroup(groupId: string, category: string, meta: CardMeta | undefined): boolean {
+export function inModGroup(groupId: string, item: GroupItem, meta: CardMeta | undefined): boolean {
   if (groupId === "all") return true;
-  if (groupId === "mods") return category === "Mods";
-  if (groupId === "arcanes") return category === "Arcanes";
-  return modGroup(category, meta) === groupId;
+  if (groupId === "mods") return item.category === "Mods";
+  if (groupId === "arcanes") return item.category === "Arcanes";
+  return modGroup(item, meta) === groupId;
 }
 
+/** Riven mods: the game keeps every riven type under this path. */
+export const isRiven = (uniqueName: string): boolean => uniqueName.includes("/Upgrades/Mods/Randomized/");
+
 /**
- * Riven entries in the catalogue are placeholders for a whole riven type
- * ("Rifle Riven Mod"), not mods anyone owns as such; rivens have their own
- * screen.
+ * The name a mod card shows. The catalogue names a veiled riven and an
+ * unveiled one of the same type alike; veiled ones sit under ".../Randomized/Raw...".
  */
-export const isRivenPlaceholder = (meta: CardMeta | undefined): boolean => meta?.type_name.includes("Riven") ?? false;
+export function modDisplayName(item: { name: string; unique_name: string }): string {
+  return item.unique_name.includes("/Upgrades/Mods/Randomized/Raw") ? `${item.name} (Veiled)` : item.name;
+}
+
+/** Owned, and no copy at the max rank yet. Unknown without the max rank. */
+export function isIncomplete(byRank: Readonly<Record<string, number>> | undefined, maxRank: number | undefined): boolean {
+  if (maxRank === undefined || maxRank === 0) return false;
+  const ranks = Object.entries(byRank ?? {}).filter(([, n]) => n > 0);
+  return ranks.length > 0 && !ranks.some(([r]) => Number(r) >= maxRank);
+}
