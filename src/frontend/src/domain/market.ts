@@ -3,7 +3,7 @@ import type { PresetCodec } from "./filterPresets.ts";
 import type { RecipeComponent } from "./foundry.ts";
 import type { ModCounts, ModRankFilter } from "./inventory.ts";
 import { matchMod } from "./modSearch.ts";
-import { inModGroup, isIncomplete, modDisplayName, modGroup, type CardMeta } from "./items.ts";
+import { inModGroup, isExilusMod, isIncomplete, modDisplayName, modGroups, type CardMeta } from "./items.ts";
 import type { CatalogItem } from "./relics.ts";
 import { matchesTerms, splitSearchTerms } from "./relics.ts";
 
@@ -299,8 +299,7 @@ export function modGroupCounts(
   for (const i of catalog) {
     if (!isModOrArcane(i)) continue;
     const has = modQty(ctx.own, ctx.mods, i.unique_name) > 0;
-    const keys = ["all", i.category === "Arcanes" ? "arcanes" : "mods", modGroup(i, ctx.meta[i.unique_name])];
-    for (const key of keys) {
+    for (const key of modGroups(i, ctx.meta[i.unique_name])) {
       total[key] = (total[key] ?? 0) + 1;
       if (has) owned[key] = (owned[key] ?? 0) + 1;
     }
@@ -330,7 +329,7 @@ export function visibleMods(
       if (q && !matchMod(q, modDisplayName(i), meta).matched) return false;
       if (f.rarity.length > 0 && !f.rarity.includes(meta?.rarity ?? "")) return false;
       if (f.polarity.length > 0 && !f.polarity.includes(meta?.polarity ?? "")) return false;
-      if (f.traits.length > 0 && !f.traits.some((t) => meta?.[t] === true)) return false;
+      if (f.traits.length > 0 && !f.traits.some((t) => (t === "exilus" ? isExilusMod(meta) : meta?.augment === true))) return false;
       if (f.ranks.length > 0) {
         const byRank = ctx.mods[i.unique_name]?.by_rank ?? {};
         if (!f.ranks.some((r) => (byRank[r === "unranked" ? "0" : String(r)] ?? 0) > 0)) return false;

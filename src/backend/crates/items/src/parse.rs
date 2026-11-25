@@ -127,7 +127,7 @@ impl RawItem {
                 type_name: self.type_name,
                 rarity: self.rarity,
                 polarity: self.polarity,
-                compat: self.compat_name,
+                compat: self.compat_name.as_deref().map(text::compat_name),
                 max_rank,
                 stats_by_rank: stats,
                 augment: self.is_augment,

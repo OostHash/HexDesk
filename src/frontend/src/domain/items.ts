@@ -146,18 +146,27 @@ export function formatDrain(drain: number): string {
 export type ModGroup = { id: string; label: string; section: "all" | "mods" | "arcanes" };
 
 /**
- * Navigator entries, grouped from WFCD's mod and arcane types. "mods" and
- * "arcanes" hold every item of their kind; the others hold one group.
+ * Navigator entries, grouped from WFCD's mod and arcane types in the order of
+ * the game's mod filters. "mods" and "arcanes" hold every item of their kind.
+ * Exilus overlaps: an exilus mod is also in its own type's entry.
  */
 export const MOD_GROUPS: readonly ModGroup[] = [
   { id: "all", label: "All", section: "all" },
   { id: "mods", label: "All mods", section: "mods" },
   { id: "mod-warframe", label: "Warframe", section: "mods" },
+  { id: "mod-aura", label: "Aura", section: "mods" },
+  { id: "mod-exilus", label: "Exilus", section: "mods" },
   { id: "mod-primary", label: "Primary", section: "mods" },
   { id: "mod-secondary", label: "Secondary", section: "mods" },
   { id: "mod-melee", label: "Melee", section: "mods" },
+  { id: "mod-stance", label: "Stance", section: "mods" },
   { id: "mod-companion", label: "Companion", section: "mods" },
-  { id: "mod-archwing", label: "Archwing & Necramech", section: "mods" },
+  { id: "mod-archwing", label: "Archwing", section: "mods" },
+  { id: "mod-archgun", label: "Arch-Gun", section: "mods" },
+  { id: "mod-archmelee", label: "Arch-Melee", section: "mods" },
+  { id: "mod-necramech", label: "Necramech", section: "mods" },
+  { id: "mod-parazon", label: "Parazon", section: "mods" },
+  { id: "mod-kdrive", label: "K-Drive", section: "mods" },
   { id: "mod-railjack", label: "Railjack", section: "mods" },
   { id: "mod-riven", label: "Rivens", section: "mods" },
   { id: "mod-other", label: "Other", section: "mods" },
@@ -174,12 +183,14 @@ const MOD_TYPE_GROUP: Readonly<Record<string, string>> = {
   "Shotgun Mod": "mod-primary",
   "Secondary Mod": "mod-secondary",
   "Melee Mod": "mod-melee",
-  "Stance Mod": "mod-melee",
+  "Stance Mod": "mod-stance",
   "Companion Mod": "mod-companion",
   "Archwing Mod": "mod-archwing",
-  "Arch-Gun Mod": "mod-archwing",
-  "Arch-Melee Mod": "mod-archwing",
-  "Necramech Mod": "mod-archwing",
+  "Arch-Gun Mod": "mod-archgun",
+  "Arch-Melee Mod": "mod-archmelee",
+  "Necramech Mod": "mod-necramech",
+  "Parazon Mod": "mod-parazon",
+  "K-Drive Mod": "mod-kdrive",
   "Plexus Mod": "mod-railjack",
   "Railjack Mod": "mod-railjack",
   "Warframe Arcane": "arcane-warframe",
@@ -197,21 +208,31 @@ const MOD_TYPE_GROUP: Readonly<Record<string, string>> = {
 /** A catalogue item as the navigator sees it. */
 type GroupItem = { category: string; unique_name: string };
 
-/** The navigator group of a mod or arcane; an unknown type is "Other" of its kind. */
+/** Auras are warframe mods in WFCD; the game keeps them under this path. */
+const isAura = (uniqueName: string) => uniqueName.includes("/Upgrades/Mods/Aura/");
+
+/** Mods that fit an exilus slot. WFCD calls that "utility"; its own exilus flag covers warframe mods only. */
+export const isExilusMod = (meta: CardMeta | undefined) => meta !== undefined && (meta.utility || meta.exilus);
+
+/** The navigator entry of a mod or arcane's type; an unknown type is "Other" of its kind. */
 export function modGroup(item: GroupItem, meta: CardMeta | undefined): string {
   if (isRiven(item.unique_name)) return "mod-riven";
-  const { category } = item;
+  if (isAura(item.unique_name)) return "mod-aura";
   const group = meta ? MOD_TYPE_GROUP[meta.type_name] : undefined;
   if (group) return group;
-  return category === "Arcanes" ? "arcane-other" : "mod-other";
+  return item.category === "Arcanes" ? "arcane-other" : "mod-other";
+}
+
+/** Every navigator entry an item is in: "all", its kind, its type, and Exilus where it fits. */
+export function modGroups(item: GroupItem, meta: CardMeta | undefined): string[] {
+  const groups = ["all", item.category === "Arcanes" ? "arcanes" : "mods", modGroup(item, meta)];
+  if (item.category === "Mods" && isExilusMod(meta)) groups.push("mod-exilus");
+  return groups;
 }
 
 /** Whether an item belongs in a navigator entry. */
 export function inModGroup(groupId: string, item: GroupItem, meta: CardMeta | undefined): boolean {
-  if (groupId === "all") return true;
-  if (groupId === "mods") return item.category === "Mods";
-  if (groupId === "arcanes") return item.category === "Arcanes";
-  return modGroup(item, meta) === groupId;
+  return modGroups(item, meta).includes(groupId);
 }
 
 /** Riven mods: the game keeps every riven type under this path. */

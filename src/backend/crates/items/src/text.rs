@@ -39,6 +39,28 @@ pub fn damage_types<'a>(texts: impl IntoIterator<Item = &'a str>) -> Vec<String>
         .collect()
 }
 
+/// A compatibility name as a card shows it. WFCD writes a few in capitals
+/// ("AURA", "PRIMARY"); those become "Aura" and "Primary". Anything else
+/// stays as it is, weapon names such as "AX-52" included.
+pub fn compat_name(raw: &str) -> String {
+    if !raw.chars().all(|c| c.is_ascii_uppercase() || c == ' ') {
+        return raw.to_string();
+    }
+    raw.split(' ')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => first
+                    .to_uppercase()
+                    .chain(chars.flat_map(char::to_lowercase))
+                    .collect(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(" ")
+}
+
 /// One string of effect text as lines, without markup or empty lines.
 pub fn lines(raw: &str) -> Vec<String> {
     let broken = raw
@@ -126,6 +148,14 @@ mod tests {
             "+60% <DT_FREEZE_COLOR>Cold",
         ];
         assert_eq!(damage_types(texts), vec!["Cold", "Magnetic", "Viral"]);
+    }
+
+    #[test]
+    fn capital_compat_names_are_tidied() {
+        assert_eq!(compat_name("AURA"), "Aura");
+        assert_eq!(compat_name("PRIMARY"), "Primary");
+        assert_eq!(compat_name("Heavy Blade"), "Heavy Blade");
+        assert_eq!(compat_name("AX-52"), "AX-52");
     }
 
     #[test]

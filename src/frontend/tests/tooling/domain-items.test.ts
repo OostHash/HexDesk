@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cardSubline,
+  modGroups,
   formatChance,
   formatDrain,
   inModGroup,
@@ -90,13 +91,14 @@ describe("info window values", () => {
 describe("mod groups", () => {
   it("groups WFCD types into navigator entries", () => {
     expect(modGroup({ category: "Mods", unique_name: "/x" }, meta({ type_name: "Shotgun Mod" }))).toBe("mod-primary");
-    expect(modGroup({ category: "Mods", unique_name: "/x" }, meta({ type_name: "Stance Mod" }))).toBe("mod-melee");
+    expect(modGroup({ category: "Mods", unique_name: "/x" }, meta({ type_name: "Stance Mod" }))).toBe("mod-stance");
     expect(modGroup({ category: "Mods", unique_name: "/x" }, meta({ type_name: "Plexus Mod" }))).toBe("mod-railjack");
     expect(modGroup({ category: "Arcanes", unique_name: "/x" }, meta({ type_name: "Amp Arcane" }))).toBe("arcane-operator");
   });
 
   it("puts unknown types under Other of their kind", () => {
-    expect(modGroup({ category: "Mods", unique_name: "/x" }, meta({ type_name: "Parazon Mod" }))).toBe("mod-other");
+    expect(modGroup({ category: "Mods", unique_name: "/x" }, meta({ type_name: "Parazon Mod" }))).toBe("mod-parazon");
+    expect(modGroup({ category: "Mods", unique_name: "/x" }, meta({ type_name: "Focus Way" }))).toBe("mod-other");
     expect(modGroup({ category: "Arcanes", unique_name: "/x" }, undefined)).toBe("arcane-other");
   });
 
@@ -123,5 +125,19 @@ describe("rivens and incomplete mods", () => {
     expect(isIncomplete({ "0": 3, "10": 1 }, 10)).toBe(false);
     expect(isIncomplete({}, 10)).toBe(false);
     expect(isIncomplete({ "0": 1 }, undefined)).toBe(false);
+  });
+});
+
+describe("game-style mod groups", () => {
+  it("puts auras in Aura, not Warframe", () => {
+    const aura = { category: "Mods", unique_name: "/Lotus/Upgrades/Mods/Aura/PlayerMeleeAuraMod" };
+    expect(modGroup(aura, meta({ type_name: "Warframe Mod", compat: "Aura" }))).toBe("mod-aura");
+  });
+
+  it("lists exilus mods in Exilus as well as their own type", () => {
+    const item = { category: "Mods", unique_name: "/Lotus/Upgrades/Mods/Rifle/Exilus" };
+    expect(modGroups(item, meta({ type_name: "Primary Mod", utility: true }))).toEqual(["all", "mods", "mod-primary", "mod-exilus"]);
+    expect(modGroups(item, meta({ type_name: "Warframe Mod", exilus: true }))).toContain("mod-exilus");
+    expect(modGroups(item, meta({ type_name: "Primary Mod" }))).not.toContain("mod-exilus");
   });
 });
