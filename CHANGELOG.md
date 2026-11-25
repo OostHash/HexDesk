@@ -110,6 +110,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
   that misses part of the inventory now updates everything it did read and
   keeps the rest, instead of being ignored until a complete scan comes in.
 - Foundry shows again which of your relics drop a missing part.
+- A window no longer closes when a press starts inside it and ends outside,
+  such as when selecting text or switching to a shorter tab.
 - A newly released prime set lists all its parts with their ducats, also
   before the public game data catches up. Citrine Prime showed only its
   blueprint and counted as complete.

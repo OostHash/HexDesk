@@ -154,6 +154,7 @@ export function ItemWindowHost({ extraSections = NO_SECTIONS }: { extraSections?
       open={request !== null}
       onClose={closeItemWindow}
       size="xl"
+      placement="top"
       title={
         request && (
           <span className="flex items-center gap-2">

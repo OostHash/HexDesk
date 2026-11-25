@@ -87,6 +87,24 @@ describe("Modal", () => {
     await expect.element(trigger).toHaveFocus();
   });
 
+  it("closes on a backdrop click, not on a press that starts inside and ends outside", async () => {
+    const screen = await render(<ModalHarness />);
+    await userEvent.click(screen.getByRole("button", { name: "Open modal" }));
+    const dialog = page.getByRole("dialog", { name: "Recipe" });
+    const element = dialog.element();
+    // Content that shrinks under the pointer: the press starts on the content
+    // and the click lands on the <dialog>, their common ancestor.
+    screen
+      .getByText("Content")
+      .element()
+      .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await expect.element(dialog).toBeVisible();
+    element.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await expect.element(dialog).not.toBeInTheDocument();
+  });
+
   it("Escape closes a popover inside the modal first, then the modal", async () => {
     const screen = await render(<ModalHarness withPopover />);
     await userEvent.click(screen.getByRole("button", { name: "Open modal" }));
