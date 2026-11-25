@@ -32,6 +32,7 @@ describe("FoundryScreen — equipment", () => {
     localStorage.removeItem("ff-view-foundry");
     localStorage.removeItem("ff-recipes-foundry");
     localStorage.removeItem("ff-page-size-foundry");
+    localStorage.removeItem("ff-sort-foundry");
     sessionStorage.removeItem("ff-mock-settings");
   });
   afterEach(() => {
@@ -47,6 +48,8 @@ describe("FoundryScreen — equipment", () => {
     await expect.element(excalibur.getByText("Vaulted")).toBeVisible();
 
     await expect.element(card("Braton Prime").getByText("Ready to build")).toBeVisible();
+    // A–Z puts these on page 2 of the fixture.
+    await userEvent.fill(search(), "volt, rhino, forma");
     const volt = card("Volt");
     await expect.element(volt.getByText("Mastered")).toBeVisible();
     await expect.element(volt.getByText("Forma ×3")).toBeVisible();
@@ -87,6 +90,17 @@ describe("FoundryScreen — equipment", () => {
     await expect.element(excalibur.getByRole("list", { name: "Parts of Excalibur Prime" })).not.toBeInTheDocument();
     await expect.element(card("Braton Prime").getByText("Ready to build")).toBeVisible();
     expect(localStorage.getItem("ff-recipes-foundry")).toBe("off");
+  });
+
+  it("sorts the items and remembers the order", async () => {
+    const screen = await renderScreen();
+    const headings = screen.getByRole("article").getByRole("heading");
+    await expect.element(headings.first()).toBeVisible();
+    const firstName = () => headings.first().element().textContent;
+    const before = firstName();
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Sort" }), "name-desc");
+    await expect.poll(firstName).not.toBe(before);
+    expect(localStorage.getItem("ff-sort-foundry")).toBe("name-desc");
   });
 
   it("picks the page size in the toolbar and remembers it", async () => {
