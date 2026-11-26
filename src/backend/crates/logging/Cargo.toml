@@ -14,7 +14,7 @@ name = "hexdesk_logging"
 # Same versions and features as the backend crate, so the lock file gains no
 # new packages.
 [dependencies]
-dirs = "5"
+dirs = "7"
 hexdesk-diag = { path = "../diag" }
 tracing = "0.1"
 tracing-appender = "0.2"
