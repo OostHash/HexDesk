@@ -48,7 +48,14 @@ pub(crate) fn set_model_dir(dir: PathBuf) {
 }
 
 fn valid_model(bytes: &[u8], model: &ModelFile) -> bool {
-    bytes.len() == model.bytes && format!("{:x}", Sha256::digest(bytes)) == model.sha256
+    bytes.len() == model.bytes && sha256_hex(bytes) == model.sha256
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
 /// Writes to a `.tmp` file and renames it when complete, so a cut-off
@@ -190,4 +197,17 @@ pub(crate) fn recognize(bmp: &[u8], width: u32, height: u32) -> Result<TextRead,
         height,
         lines,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sha256_hex_is_lower_case_hex() {
+        assert_eq!(
+            sha256_hex(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
 }
