@@ -16,7 +16,7 @@ const anonymousFields = (page: Page) =>
       .filter((el) => !el.id && !el.getAttribute("name"))
       .map(
         (el) =>
-          `${el.tagName.toLowerCase()}[type=${el.getAttribute("type") ?? ""}] ${el.getAttribute("aria-label") ?? el.closest("label")?.textContent?.trim() ?? ""}`,
+          `${el.tagName.toLowerCase()}[type=${el.getAttribute("type") ?? ""}] ${el.getAttribute("aria-label") ?? el.closest("label")?.textContent.trim() ?? ""}`,
       ),
   );
 

@@ -13,7 +13,7 @@ fn get_lang() -> &'static std::collections::HashMap<String, String> {
         ureq::get("https://raw.githubusercontent.com/WFCD/warframe-worldstate-data/master/data/languages.json")
             .call()
             .ok()
-            .and_then(|r| r.into_json::<serde_json::Value>().ok())
+            .and_then(|mut r| r.body_mut().read_json::<serde_json::Value>().ok())
             .and_then(|v| v.as_object().map(|obj| {
                 obj.iter().filter_map(|(k, val)| {
                     let text = val.get("value")?.as_str()?;
@@ -50,7 +50,7 @@ fn get_sol_nodes() -> &'static std::collections::HashMap<String, SolNode> {
         ureq::get("https://raw.githubusercontent.com/WFCD/warframe-worldstate-data/master/data/solNodes.json")
             .call()
             .ok()
-            .and_then(|r| r.into_json::<serde_json::Value>().ok())
+            .and_then(|mut r| r.body_mut().read_json::<serde_json::Value>().ok())
             .and_then(|v| v.as_object().map(|obj| {
                 obj.iter().filter_map(|(k, val)| {
                     let display = val.get("value")?.as_str()?.to_string();
@@ -885,11 +885,14 @@ pub(crate) async fn fetch_worldstate(
             return Ok((result, None));
         }
         let raw = ureq::get("https://api.warframe.com/cdn/worldState.php")
-            .set("User-Agent", concat!("HexDesk/", env!("CARGO_PKG_VERSION")))
-            .timeout(std::time::Duration::from_secs(20))
+            .header("User-Agent", concat!("HexDesk/", env!("CARGO_PKG_VERSION")))
+            .config()
+            .timeout_global(Some(std::time::Duration::from_secs(20)))
+            .build()
             .call()
             .map_err(|e| format!("worldstate fetch failed: {}", e))?
-            .into_json::<serde_json::Value>()
+            .body_mut()
+            .read_json::<serde_json::Value>()
             .map_err(|e| format!("worldstate parse failed: {}", e))?;
         let mut result = parse_worldstate_value(&raw, now_ms, &catalog);
 
@@ -898,11 +901,13 @@ pub(crate) async fn fetch_worldstate(
         let news: Vec<serde_json::Value> = ureq::get(
             "https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=230410&count=10&maxlength=500&format=json"
         )
-            .set("User-Agent", concat!("HexDesk/", env!("CARGO_PKG_VERSION")))
-            .timeout(std::time::Duration::from_secs(10))
+            .header("User-Agent", concat!("HexDesk/", env!("CARGO_PKG_VERSION")))
+            .config()
+            .timeout_global(Some(std::time::Duration::from_secs(10)))
+            .build()
             .call()
             .ok()
-            .and_then(|r| r.into_json::<serde_json::Value>().ok())
+            .and_then(|mut r| r.body_mut().read_json::<serde_json::Value>().ok())
             .and_then(|v| v["appnews"]["newsitems"].as_array().cloned())
             .unwrap_or_default()
             .into_iter()

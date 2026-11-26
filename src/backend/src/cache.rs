@@ -221,36 +221,44 @@ const MAX_BODY_BYTES: u64 = 256 * 1024 * 1024;
 /// GET `url`, asking the server to skip the body when `etag` still matches.
 pub fn get_conditional(url: &str, etag: Option<&str>) -> Result<Fetched<String>, String> {
     let mut req = ureq::get(url)
-        .set(
+        .header(
             "User-Agent",
             concat!("HexDesk/", env!("CARGO_PKG_VERSION")),
         )
         // Generous because of the body sizes, but bounded: ureq has no default
         // timeout, and a black-holed connection here would otherwise hang the
         // caller, and with it the refresh lock, forever.
-        .timeout(std::time::Duration::from_secs(300));
+        .config()
+        .timeout_global(Some(std::time::Duration::from_secs(300)))
+        .build();
     if let Some(tag) = etag {
-        req = req.set("If-None-Match", tag);
+        req = req.header("If-None-Match", tag);
     }
     match req.call() {
         // ureq hands back 3xx it did not follow as a success, so a confirmed
         // copy arrives here rather than in the error arm below.
         Ok(resp) if resp.status() == 304 => Ok(Fetched::NotModified),
         Ok(resp) => {
-            let etag = resp.header("etag").map(str::to_string);
-            // Not `into_string()`: ureq caps that at 10 MB.
+            let header = |name: &str| {
+                resp.headers()
+                    .get(name)
+                    .and_then(|v| v.to_str().ok())
+                    .map(str::to_string)
+            };
+            let etag = header("etag");
+            // Not `read_to_string()`: ureq caps that at 10 MB.
             use std::io::Read;
             // Capped so a lying Content-Length cannot make us allocate the
             // whole cap up front.
-            let hint = resp
-                .header("content-length")
+            let hint = header("content-length")
                 .and_then(|v| v.parse::<usize>().ok())
                 .unwrap_or(0)
                 .min(64 * 1024 * 1024);
             let mut body = Vec::with_capacity(hint);
             // One byte past the cap so a body of exactly the cap's size is
             // distinguishable from a truncated one.
-            resp.into_reader()
+            resp.into_body()
+                .into_reader()
                 .take(MAX_BODY_BYTES + 1)
                 .read_to_end(&mut body)
                 .map_err(|e| e.to_string())?;
@@ -262,7 +270,6 @@ pub fn get_conditional(url: &str, etag: Option<&str>) -> Result<Fetched<String>,
             let body = String::from_utf8(body).map_err(|e| e.to_string())?;
             Ok(Fetched::New(body, etag))
         }
-        Err(ureq::Error::Status(304, _)) => Ok(Fetched::NotModified),
         Err(e) => Err(e.to_string()),
     }
 }

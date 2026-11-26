@@ -22,6 +22,86 @@ use hexdesk_diag::{debug, info, DiagError, Kind, Source};
 const API_BASE: &str = "https://api.warframe.market";
 const USER_AGENT: &str = concat!("HexDesk/", env!("CARGO_PKG_VERSION"));
 
+/// An answered warframe.market request.
+type Response = ureq::http::Response<ureq::Body>;
+
+/// A warframe.market request that failed.
+#[derive(Debug)]
+enum HttpError {
+    /// The site answered with an error status.
+    Status {
+        code: u16,
+        url: String,
+        body: String,
+    },
+    /// No answer came: DNS, connection, TLS or a timeout.
+    Transport { url: String, error: ureq::Error },
+}
+
+/// Agent for warframe.market. Error statuses come back as responses, so
+/// [`finish`] can keep their body for the log.
+fn agent() -> &'static ureq::Agent {
+    static AGENT: std::sync::OnceLock<ureq::Agent> = std::sync::OnceLock::new();
+    AGENT.get_or_init(|| {
+        ureq::Agent::config_builder()
+            .http_status_as_error(false)
+            .build()
+            .into()
+    })
+}
+
+/// Turns an error status into [`HttpError::Status`] with the body the site
+/// sent, and a transport failure into [`HttpError::Transport`].
+fn finish(url: &str, result: Result<Response, ureq::Error>) -> Result<Response, HttpError> {
+    match result {
+        Ok(mut resp) if resp.status().as_u16() >= 400 => Err(HttpError::Status {
+            code: resp.status().as_u16(),
+            url: strip_query(url).to_string(),
+            body: resp.body_mut().read_to_string().unwrap_or_default(),
+        }),
+        Ok(resp) => Ok(resp),
+        Err(error) => Err(HttpError::Transport {
+            url: strip_query(url).to_string(),
+            error,
+        }),
+    }
+}
+
+/// Reads a response body as JSON or text.
+trait ReadBody {
+    fn into_json<T: serde::de::DeserializeOwned>(self) -> Result<T, ureq::Error>;
+    fn into_string(self) -> Result<String, ureq::Error>;
+}
+
+impl ReadBody for Response {
+    fn into_json<T: serde::de::DeserializeOwned>(mut self) -> Result<T, ureq::Error> {
+        self.body_mut().read_json()
+    }
+
+    fn into_string(mut self) -> Result<String, ureq::Error> {
+        self.body_mut().read_to_string()
+    }
+}
+
+/// The headers every authenticated warframe.market API request carries.
+fn api_headers<B>(req: ureq::RequestBuilder<B>, auth_header: &str) -> ureq::RequestBuilder<B> {
+    req.header("Authorization", auth_header)
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json")
+        .header("language", "en")
+        .header("platform", "pc")
+        .header("User-Agent", USER_AGENT)
+}
+
+/// A request builder for a method that carries a body.
+fn with_body(method: &str, url: &str) -> ureq::RequestBuilder<ureq::typestate::WithBody> {
+    match method {
+        "PUT" => agent().put(url),
+        "PATCH" => agent().patch(url),
+        _ => agent().post(url),
+    }
+}
+
 // ==============================================================================
 // Wire types
 // ==============================================================================
@@ -202,31 +282,15 @@ impl Wfm {
 
     // ── Request building (internal) ───────────────────────────────────────────
 
-    fn request(&self, method: &str, path: &str, auth_header: &str) -> ureq::Request {
+    fn call(&self, method: &str, path: &str, auth_header: &str) -> Result<Response, HttpError> {
         let url = format!("{}{}", API_BASE, path);
-        let req = match method {
-            "POST" => ureq::post(&url),
-            "PUT" => ureq::put(&url),
-            "PATCH" => ureq::patch(&url),
-            "DELETE" => ureq::delete(&url),
-            _ => ureq::get(&url),
-        };
-        req.set("Authorization", auth_header)
-            .set("Content-Type", "application/json")
-            .set("Accept", "application/json")
-            .set("language", "en")
-            .set("platform", "pc")
-            .set("User-Agent", USER_AGENT)
-    }
-
-    fn call(
-        &self,
-        method: &str,
-        path: &str,
-        auth_header: &str,
-    ) -> Result<ureq::Response, ureq::Error> {
         let started = Instant::now();
-        let result = self.request(method, path, auth_header).call();
+        let result = match method {
+            "GET" => api_headers(agent().get(&url), auth_header).call(),
+            "DELETE" => api_headers(agent().delete(&url), auth_header).call(),
+            _ => api_headers(with_body(method, &url), auth_header).send_empty(),
+        };
+        let result = finish(&url, result);
         log_request(method, path, started, &result);
         result
     }
@@ -237,9 +301,11 @@ impl Wfm {
         path: &str,
         auth_header: &str,
         body: impl serde::Serialize,
-    ) -> Result<ureq::Response, ureq::Error> {
+    ) -> Result<Response, HttpError> {
+        let url = format!("{}{}", API_BASE, path);
         let started = Instant::now();
-        let result = self.request(method, path, auth_header).send_json(body);
+        let result = api_headers(with_body(method, &url), auth_header).send_json(body);
+        let result = finish(&url, result);
         log_request(method, path, started, &result);
         result
     }
@@ -346,12 +412,15 @@ impl Wfm {
         err_ctx: &'static str,
     ) -> Result<serde_json::Value, DiagError> {
         self.wait();
-        ureq::get(&format!("{}/v2/me", API_BASE))
-            .set("Authorization", &format!("Bearer {}", access_token))
-            .set("language", "en")
-            .set("platform", "pc")
-            .set("User-Agent", USER_AGENT)
-            .call()
+        let url = format!("{}/v2/me", API_BASE);
+        let result = agent()
+            .get(&url)
+            .header("Authorization", &format!("Bearer {}", access_token))
+            .header("language", "en")
+            .header("platform", "pc")
+            .header("User-Agent", USER_AGENT)
+            .call();
+        finish(&url, result)
             .map_err(fail(err_ctx))?
             .into_json()
             .map_err(unreadable)
@@ -408,15 +477,19 @@ impl Wfm {
     pub fn login(&self, email: &str, password: &str) -> Result<String, DiagError> {
         let body = serde_json::json!({ "email": email, "password": password });
         self.wait();
-        let resp = ureq::post(&format!("{}/v1/auth/signin", API_BASE))
-            .set("Content-Type", "application/json")
-            .set("Authorization", "JWT")
-            .set("User-Agent", USER_AGENT)
-            .send_string(&body.to_string())
-            .map_err(fail("Sign-in failed"))?;
+        let url = format!("{}/v1/auth/signin", API_BASE);
+        let result = agent()
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .header("Authorization", "JWT")
+            .header("User-Agent", USER_AGENT)
+            .send(body.to_string());
+        let resp = finish(&url, result).map_err(fail("Sign-in failed"))?;
 
         let token = resp
-            .header("set-cookie")
+            .headers()
+            .get("set-cookie")
+            .and_then(|h| h.to_str().ok())
             .and_then(|h| h.split(';').next())
             .and_then(|s| s.strip_prefix("JWT="))
             .map(|s| s.to_string())
@@ -468,10 +541,13 @@ impl Wfm {
             "refreshToken": refresh_token,
         });
         self.wait();
-        let json: serde_json::Value = ureq::post(&format!("{}/auth/refresh", API_BASE))
-            .set("Content-Type", "application/json")
-            .set("User-Agent", USER_AGENT)
-            .send_string(&body.to_string())
+        let url = format!("{}/auth/refresh", API_BASE);
+        let result = agent()
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .header("User-Agent", USER_AGENT)
+            .send(body.to_string());
+        let json: serde_json::Value = finish(&url, result)
             .map_err(fail("Session could not be refreshed"))?
             .into_json()
             .map_err(unreadable)?;
@@ -501,16 +577,18 @@ impl Wfm {
         if jwt.is_empty() {
             return None;
         }
-        let resp = ureq::get("https://warframe.market/")
-            .set("Cookie", &format!("JWT={}", jwt))
-            .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-            .set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        let url = "https://warframe.market/";
+        let resp = agent()
+            .get(url)
+            .header("Cookie", &format!("JWT={}", jwt))
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
             .call();
-        let html = match resp {
+        let html = match finish(url, resp) {
             Ok(r) => {
                 debug!(
                     market,
-                    status = r.status(),
+                    status = r.status().as_u16(),
                     "warframe.market page loaded for the CSRF token"
                 );
                 r.into_string().ok()?
@@ -690,15 +768,16 @@ impl Wfm {
     ) -> Result<serde_json::Value, DiagError> {
         let auth = self.auth_opt();
         self.wait();
-        let mut req = ureq::get(&format!("{}/v2/orders/item/{}", API_BASE, url_name))
-            .set("language", "en")
-            .set("platform", "pc")
-            .set("User-Agent", USER_AGENT);
+        let url = format!("{}/v2/orders/item/{}", API_BASE, url_name);
+        let mut req = agent()
+            .get(&url)
+            .header("language", "en")
+            .header("platform", "pc")
+            .header("User-Agent", USER_AGENT);
         if let Some(ref h) = auth {
-            req = req.set("Authorization", h);
+            req = req.header("Authorization", h);
         }
-        let json: serde_json::Value = req
-            .call()
+        let json: serde_json::Value = finish(&url, req.call())
             .map_err(fail("Item orders could not be loaded"))?
             .into_json()
             .map_err(unreadable)?;
@@ -762,15 +841,16 @@ impl Wfm {
     pub fn item_statistics(&self, url_name: &str) -> Result<serde_json::Value, DiagError> {
         let auth = self.auth_opt();
         self.wait();
-        let mut req = ureq::get(&format!("{}/v1/items/{}/statistics", API_BASE, url_name))
-            .set("language", "en")
-            .set("platform", "pc")
-            .set("User-Agent", USER_AGENT);
+        let url = format!("{}/v1/items/{}/statistics", API_BASE, url_name);
+        let mut req = agent()
+            .get(&url)
+            .header("language", "en")
+            .header("platform", "pc")
+            .header("User-Agent", USER_AGENT);
         if let Some(ref h) = auth {
-            req = req.set("Authorization", h);
+            req = req.header("Authorization", h);
         }
-        let json: serde_json::Value = req
-            .call()
+        let json: serde_json::Value = finish(&url, req.call())
             .map_err(fail("Item statistics could not be loaded"))?
             .into_json()
             .map_err(unreadable)?;
@@ -1106,8 +1186,8 @@ impl Wfm {
     /// The full warframe.market item list (v2; v1 /items 404s).
     pub fn items(&self) -> Result<Vec<WfmItem>, DiagError> {
         self.wait();
-        let json: serde_json::Value = ureq::get(&format!("{}/v2/items", API_BASE))
-            .call()
+        let url = format!("{}/v2/items", API_BASE);
+        let json: serde_json::Value = finish(&url, agent().get(&url).call())
             .map_err(fail("Item list could not be loaded"))?
             .into_json()
             .map_err(unreadable)?;
@@ -1135,7 +1215,7 @@ impl Wfm {
     pub fn price_for_slug(&self, slug: &str) -> Result<Option<u32>, DiagError> {
         self.wait();
         let url = format!("{}/v1/items/{}/statistics", API_BASE, slug);
-        match ureq::get(&url).call() {
+        match finish(&url, agent().get(&url).call()) {
             Ok(resp) => {
                 let json: serde_json::Value = resp.into_json().map_err(unreadable)?;
                 let h48 = json["payload"]["statistics_closed"]["48hours"].as_array();
@@ -1151,7 +1231,7 @@ impl Wfm {
                 Ok(p.or_else(|| d90.and_then(|arr| trimmed_median_from_stats(arr))))
             }
             // 404 = item not on WFM, not a transient error — treat as unlisted.
-            Err(ureq::Error::Status(404, _)) => Ok(None),
+            Err(HttpError::Status { code: 404, .. }) => Ok(None),
             Err(e) => Err(market_error("Price could not be loaded", e).log()),
         }
     }
@@ -1175,12 +1255,13 @@ impl Wfm {
     pub fn stats_7day(&self, slug: &str) -> Option<(u32, f64)> {
         self.wait();
         let url = format!("{}/v1/items/{}/statistics", API_BASE, slug);
-        let json: serde_json::Value = ureq::get(&url)
-            .timeout(Duration::from_secs(10))
-            .call()
-            .ok()?
-            .into_json()
-            .ok()?;
+        let result = agent()
+            .get(&url)
+            .config()
+            .timeout_global(Some(Duration::from_secs(10)))
+            .build()
+            .call();
+        let json: serde_json::Value = finish(&url, result).ok()?.into_json().ok()?;
         let days = json["payload"]["statistics_closed"]["90days"].as_array()?;
         if days.is_empty() {
             return None;
@@ -1225,11 +1306,15 @@ impl Wfm {
 
     fn fetch_prime_sets(&self) -> Vec<(String, String)> {
         self.wait();
-        let resp = ureq::get(&format!("{}/v2/items", API_BASE))
-            .set("User-Agent", USER_AGENT)
-            .timeout(Duration::from_secs(15))
+        let url = format!("{}/v2/items", API_BASE);
+        let resp = agent()
+            .get(&url)
+            .header("User-Agent", USER_AGENT)
+            .config()
+            .timeout_global(Some(Duration::from_secs(15)))
+            .build()
             .call();
-        let json: serde_json::Value = match resp {
+        let json: serde_json::Value = match finish(&url, resp) {
             Ok(r) => match r.into_json() {
                 Ok(v) => v,
                 Err(_) => return Vec::new(),
@@ -1464,18 +1549,13 @@ const MAX_BODY_IN_LOG: usize = 300;
 /// Logs a request made through `call` / `send_json`. Reads are debug entries;
 /// requests that change something on warframe.market (an order, an auction)
 /// are info, so they show in the console by default.
-fn log_request(
-    method: &str,
-    path: &str,
-    started: Instant,
-    result: &Result<ureq::Response, ureq::Error>,
-) {
+fn log_request(method: &str, path: &str, started: Instant, result: &Result<Response, HttpError>) {
     let elapsed_ms = started.elapsed().as_millis() as u64;
     let path = strip_query(path);
     let status = match result {
-        Ok(resp) => Some(resp.status()),
-        Err(ureq::Error::Status(code, _)) => Some(*code),
-        Err(ureq::Error::Transport(_)) => None,
+        Ok(resp) => Some(resp.status().as_u16()),
+        Err(HttpError::Status { code, .. }) => Some(*code),
+        Err(HttpError::Transport { .. }) => None,
     };
     let changes_something = method != "GET";
     match (status, changes_something) {
@@ -1494,9 +1574,9 @@ fn strip_query(url: &str) -> &str {
 /// The error for a failed warframe.market request: the HTTP status and the
 /// start of the response body when the site answered, the transport error
 /// when it did not.
-fn market_error(what: &str, e: ureq::Error) -> DiagError {
+fn market_error(what: &str, e: HttpError) -> DiagError {
     match e {
-        ureq::Error::Status(code, resp) => {
+        HttpError::Status { code, url, body } => {
             let kind = match code {
                 401 | 403 => Kind::Denied,
                 404 => Kind::NotFound,
@@ -1504,8 +1584,6 @@ fn market_error(what: &str, e: ureq::Error) -> DiagError {
                 500..=599 => Kind::Unavailable,
                 _ => Kind::Invalid,
             };
-            let url = strip_query(resp.get_url()).to_string();
-            let body = resp.into_string().unwrap_or_default();
             let body = body.trim();
             // The UI text keeps "answered 401": the frontend refreshes the
             // session when it sees that status.
@@ -1522,24 +1600,36 @@ fn market_error(what: &str, e: ureq::Error) -> DiagError {
                 err.caused_by_text(format!("response: {}", describe_body(body)))
             }
         }
-        ureq::Error::Transport(t) => {
-            let text = t.to_string();
-            let kind = if text.contains("timed out") {
+        HttpError::Transport { url, error } => {
+            let text = error.to_string();
+            let kind = if matches!(error, ureq::Error::Timeout(_)) || text.contains("timed out") {
                 Kind::Timeout
             } else {
                 Kind::Network
             };
-            let mut err = DiagError::new(
+            DiagError::new(
                 Source::Market,
                 kind,
                 format!("{what}: no answer from warframe.market"),
             )
-            .with("transport", format!("{:?}", t.kind()));
-            if let Some(url) = t.url() {
-                err = err.with("url", strip_query(url.as_str()));
-            }
-            err.caused_by_text(text)
+            .with("transport", transport_kind(&error))
+            .with("url", url)
+            .caused_by_text(text)
         }
+    }
+}
+
+/// The kind of transport failure, for the log.
+fn transport_kind(error: &ureq::Error) -> &'static str {
+    match error {
+        ureq::Error::Timeout(_) => "Timeout",
+        ureq::Error::HostNotFound => "HostNotFound",
+        ureq::Error::ConnectionFailed => "ConnectionFailed",
+        ureq::Error::Io(_) => "Io",
+        ureq::Error::TooManyRedirects | ureq::Error::RedirectFailed => "Redirect",
+        ureq::Error::BadUri(_) => "BadUri",
+        ureq::Error::Protocol(_) => "Protocol",
+        _ => "Other",
     }
 }
 
@@ -1569,7 +1659,7 @@ fn describe_body(body: &str) -> String {
 
 /// `map_err` adapter: logs the failed request and returns the message the UI
 /// shows.
-fn fail(what: &'static str) -> impl FnOnce(ureq::Error) -> DiagError {
+fn fail(what: &'static str) -> impl FnOnce(HttpError) -> DiagError {
     move |e| market_error(what, e).log()
 }
 
@@ -1680,9 +1770,12 @@ mod tests {
         assert!(rl.try_acquire().is_some());
     }
 
-    fn status_error(code: u16, body: &str) -> ureq::Error {
-        let resp = ureq::Response::new(code, "status", body).unwrap();
-        ureq::Error::Status(code, resp)
+    fn status_error(code: u16, body: &str) -> HttpError {
+        HttpError::Status {
+            code,
+            url: "https://api.warframe.market/v2/order".to_string(),
+            body: body.to_string(),
+        }
     }
 
     #[test]

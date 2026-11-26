@@ -118,8 +118,12 @@ pub fn find_warframe_pid() -> Option<u32> {
                 if Process32First(snapshot, &mut entry) != 0 {
                     loop {
                         let name_len = entry.szExeFile.iter().position(|&b| b == 0).unwrap_or(260);
-                        let name =
-                            String::from_utf8_lossy(&entry.szExeFile[..name_len]).to_lowercase();
+                        // szExeFile holds ANSI bytes typed as C `char`, which is i8.
+                        let bytes: Vec<u8> = entry.szExeFile[..name_len]
+                            .iter()
+                            .map(|&b| b as u8)
+                            .collect();
+                        let name = String::from_utf8_lossy(&bytes).to_lowercase();
                         if is_game_process(&name) {
                             found = Some(entry.th32ProcessID);
                             break;
@@ -157,7 +161,7 @@ fn is_game_process(name: &str) -> bool {
 // ─── Process Handle ──────────────────────────────────────────────────────────
 
 pub struct WindowsProcessHandle {
-    handle: isize,
+    handle: windows_sys::Win32::Foundation::HANDLE,
 }
 
 impl Drop for WindowsProcessHandle {
@@ -263,7 +267,7 @@ pub fn open_process(pid: u32) -> Result<Box<dyn ProcessHandle>, String> {
 
     unsafe {
         let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 0, pid);
-        if handle == 0 {
+        if handle.is_null() {
             let err = windows_sys::Win32::Foundation::GetLastError();
             return Err(format!("OpenProcess failed (error {})", err));
         }
@@ -280,7 +284,7 @@ pub fn is_elevated() -> Option<bool> {
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
     unsafe {
-        let mut token: HANDLE = 0;
+        let mut token: HANDLE = std::ptr::null_mut();
         if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) == 0 {
             return None;
         }
@@ -326,7 +330,7 @@ pub fn get_warframe_window_rect() -> Result<[i32; 4], String> {
 
     let title: Vec<u16> = "Warframe\0".encode_utf16().collect();
     let hwnd = unsafe { FindWindowW(std::ptr::null(), title.as_ptr()) };
-    if hwnd == 0 {
+    if hwnd.is_null() {
         return Err("Warframe window not found".into());
     }
 

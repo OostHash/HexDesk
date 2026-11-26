@@ -76,7 +76,7 @@ pub(crate) fn fetch_relics_run_data() -> (HashMap<String, u32>, HashMap<String, 
     let name_to_slug: HashMap<String, String> = ureq::get(&format!("{}/items.json", PRICING_BASE))
         .call()
         .ok()
-        .and_then(|r| r.into_json::<Vec<serde_json::Value>>().ok())
+        .and_then(|mut r| r.body_mut().read_json::<Vec<serde_json::Value>>().ok())
         .unwrap_or_default()
         .into_iter()
         .filter_map(|v| {
@@ -90,7 +90,7 @@ pub(crate) fn fetch_relics_run_data() -> (HashMap<String, u32>, HashMap<String, 
         ureq::get(&format!("{}/price_history_latest.json", PRICING_BASE))
             .call()
             .ok()
-            .and_then(|r| r.into_json().ok())
+            .and_then(|mut r| r.body_mut().read_json().ok())
             .unwrap_or_default();
 
     let mut by_name: HashMap<String, u32> = HashMap::new();
