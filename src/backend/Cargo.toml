@@ -27,7 +27,7 @@ serde_json = "1"
 rusqlite = { version = "0.43", features = ["bundled"] }
 regex = "1"
 chrono = { version = "0.4", features = ["serde"] }
-dirs = "5"
+dirs = "7"
 memchr = "2"
 ureq = { version = "3", features = ["json"] }
 tungstenite = { version = "0.30", features = ["native-tls"] }
