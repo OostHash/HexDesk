@@ -107,7 +107,7 @@ pub(crate) fn spawn_reward_watcher_thread(deps: RewardWatcherDeps) {
 
             // Use FindFirstChangeNotificationW so we wake the instant EE.log is
             // written to disk instead of sleeping 200 ms between checks.
-            let change_handle: isize = {
+            let change_handle = {
                 use windows_sys::Win32::Storage::FileSystem::{
                     FindFirstChangeNotificationW, FILE_NOTIFY_CHANGE_LAST_WRITE,
                 };
@@ -125,7 +125,7 @@ pub(crate) fn spawn_reward_watcher_thread(deps: RewardWatcherDeps) {
                     )
                 }
             };
-            let use_notify = change_handle != -1isize; // -1 = INVALID_HANDLE_VALUE
+            let use_notify = change_handle != windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
 
             loop {
                 // Poll fast (50 ms) whenever a reward screen is up OR the log has

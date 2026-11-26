@@ -117,8 +117,10 @@ fn start_hook(app: tauri::AppHandle) {
     std::thread::spawn(|| {
         // A low-level hook runs on the thread that installed it, and only
         // while that thread pumps messages.
-        let hook = unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_proc), 0, 0) };
-        if hook == 0 {
+        let hook = unsafe {
+            SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_proc), std::ptr::null_mut(), 0)
+        };
+        if hook.is_null() {
             let _ = hexdesk_diag::DiagError::new(
                 hexdesk_diag::Source::OverlayKey,
                 hexdesk_diag::Kind::Internal,
@@ -129,7 +131,7 @@ fn start_hook(app: tauri::AppHandle) {
             return;
         }
         let mut msg: MSG = unsafe { std::mem::zeroed() };
-        while unsafe { GetMessageW(&mut msg, 0, 0, 0) } > 0 {}
+        while unsafe { GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) } > 0 {}
     });
 }
 
@@ -161,7 +163,7 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
             }
         }
     }
-    CallNextHookEx(0, code, wparam, lparam)
+    CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
 }
 
 fn on_key(app: &tauri::AppHandle, press: &str) {

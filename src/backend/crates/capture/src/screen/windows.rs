@@ -6,6 +6,7 @@
 //! reads the monitor the game is on.
 
 use crate::frame::Frame;
+use windows_sys::Win32::Foundation::HWND;
 
 /// Below this average brightness a frame is black. The darkest game screens
 /// average about 40.
@@ -45,7 +46,7 @@ fn game_window_center() -> Option<(i32, i32)> {
     let title: Vec<u16> = "Warframe\0".encode_utf16().collect();
     unsafe {
         let hwnd = FindWindowW(std::ptr::null(), title.as_ptr());
-        if hwnd == 0 {
+        if hwnd.is_null() {
             return None;
         }
         let mut rect = RECT {
@@ -67,7 +68,8 @@ pub fn capture_window(hwnd: isize) -> Result<Frame, String> {
     if hwnd == 0 {
         return Err("Window not found".to_string());
     }
-    print_window(hwnd)
+    // Callers pass the handle as an integer; windows-sys models it as a pointer.
+    print_window(hwnd as HWND)
 }
 
 /// How long a DXGI capture waits for the GPU to finish copying the frame.
@@ -112,29 +114,30 @@ pub fn capture_game() -> Result<Capture, String> {
 }
 
 /// Finds the Warframe window by its title.
-fn game_window() -> Option<isize> {
+fn game_window() -> Option<HWND> {
     use windows_sys::Win32::UI::WindowsAndMessaging::FindWindowW;
 
     let title: Vec<u16> = "Warframe\0".encode_utf16().collect();
     let hwnd = unsafe { FindWindowW(std::ptr::null(), title.as_ptr()) };
-    (hwnd != 0).then_some(hwnd)
+    (!hwnd.is_null()).then_some(hwnd)
 }
 
 /// Captures a window's client area through GDI PrintWindow, which works for
 /// windowed and borderless windowed content.
-fn print_window(hwnd: isize) -> Result<Frame, String> {
+fn print_window(hwnd: HWND) -> Result<Frame, String> {
     use std::mem;
     use windows_sys::Win32::{
         Foundation::RECT,
         Graphics::Gdi::{
             CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits,
-            ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, RGBQUAD,
+            ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HDC,
+            RGBQUAD,
         },
         UI::WindowsAndMessaging::GetClientRect,
     };
     #[link(name = "user32")]
     extern "system" {
-        fn PrintWindow(hwnd: isize, hdcblt: isize, nflags: u32) -> i32;
+        fn PrintWindow(hwnd: HWND, hdcblt: HDC, nflags: u32) -> i32;
     }
     const PW_RENDERFULLCONTENT: u32 = 2;
 
