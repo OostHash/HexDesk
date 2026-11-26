@@ -265,7 +265,7 @@ fn dxgi(at: (i32, i32)) -> Option<Frame> {
             if D3D11CreateDevice(
                 Some(&adapter_iface),
                 D3D_DRIVER_TYPE_UNKNOWN,
-                None,
+                windows::Win32::Foundation::HMODULE::default(),
                 Default::default(),
                 None,
                 7,

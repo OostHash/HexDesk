@@ -60,22 +60,22 @@ pub(crate) fn recognize(bmp: &[u8], width: u32, height: u32) -> Result<TextRead,
     let stream = step("stream-create", InMemoryRandomAccessStream::new())?;
     let writer = step("writer-create", DataWriter::CreateDataWriter(&stream))?;
     step("write-bytes", writer.WriteBytes(bmp))?;
-    step("store", writer.StoreAsync().and_then(|op| op.get()))?;
-    step("flush", writer.FlushAsync().and_then(|op| op.get()))?;
+    step("store", writer.StoreAsync().and_then(|op| op.join()))?;
+    step("flush", writer.FlushAsync().and_then(|op| op.join()))?;
     step("detach-stream", writer.DetachStream())?;
     step("seek", stream.Seek(0))?;
     let decoder = step(
         "decoder",
-        BitmapDecoder::CreateAsync(&stream).and_then(|op| op.get()),
+        BitmapDecoder::CreateAsync(&stream).and_then(|op| op.join()),
     )?;
     let bitmap = step(
         "bitmap",
-        decoder.GetSoftwareBitmapAsync().and_then(|op| op.get()),
+        decoder.GetSoftwareBitmapAsync().and_then(|op| op.join()),
     )?;
     let engine = engine().ok_or(EngineError::NoEngine)?;
     let result = step(
         "recognize",
-        engine.RecognizeAsync(&bitmap).and_then(|op| op.get()),
+        engine.RecognizeAsync(&bitmap).and_then(|op| op.join()),
     )?;
 
     let (w, h) = (width.max(1) as f32, height.max(1) as f32);

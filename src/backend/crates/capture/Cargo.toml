@@ -31,7 +31,7 @@ windows-sys = { version = "0.61", features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_Graphics_Gdi",
 ] }
-windows = { version = "0.58", features = [
+windows = { version = "0.62", features = [
     "Media_Ocr",
     "Graphics_Imaging",
     "Storage_Streams",
