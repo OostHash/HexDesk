@@ -239,10 +239,10 @@ fn load_riven_csv_from_url() -> Result<HashMap<String, RivenEntry>, String> {
             RIVEN_SHEET_ID, gid
         );
         match ureq::get(&url)
-            .set("User-Agent", concat!("HexDesk/", env!("CARGO_PKG_VERSION")))
+            .header("User-Agent", concat!("HexDesk/", env!("CARGO_PKG_VERSION")))
             .call()
             .map_err(|e| e.to_string())
-            .and_then(|r| r.into_string().map_err(|e| e.to_string()))
+            .and_then(|mut r| r.body_mut().read_to_string().map_err(|e| e.to_string()))
         {
             Ok(csv) => {
                 combined.extend(parse_riven_csv(&csv));

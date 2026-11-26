@@ -17,7 +17,7 @@ name = "hexdesk_capture"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
-ureq = "2"
+ureq = "3"
 sha2 = "0.11"
 # Pure-Rust OCR, used where Windows OCR is missing (no language pack, other
 # platforms). Its models are downloaded on first use.

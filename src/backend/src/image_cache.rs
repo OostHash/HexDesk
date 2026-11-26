@@ -184,9 +184,10 @@ pub(crate) async fn prewarm_image_cache(state: tauri::State<'_, AppState>) -> Re
         }
         debug!(count = names.len(), "prewarming images in background");
 
-        let agent = ureq::AgentBuilder::new()
-            .timeout(std::time::Duration::from_secs(10))
-            .build();
+        let agent: ureq::Agent = ureq::Agent::config_builder()
+            .timeout_global(Some(std::time::Duration::from_secs(10)))
+            .build()
+            .into();
 
         for chunk in names.chunks(8) {
             let handles: Vec<_> = chunk
@@ -201,6 +202,7 @@ pub(crate) async fn prewarm_image_cache(state: tauri::State<'_, AppState>) -> Re
                             let mut buf = Vec::new();
                             // Limit to 5 MB to prevent memory exhaustion from malformed responses
                             if resp
+                                .into_body()
                                 .into_reader()
                                 .take(5 * 1024 * 1024)
                                 .read_to_end(&mut buf)

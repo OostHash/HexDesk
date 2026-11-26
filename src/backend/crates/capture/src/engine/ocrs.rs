@@ -70,6 +70,7 @@ fn download(model: &ModelFile, dest: &Path) -> Result<(), String> {
     ureq::get(model.url)
         .call()
         .map_err(|e| format!("download {}: {e}", model.url))?
+        .into_body()
         .into_reader()
         .read_to_end(&mut body)
         .map_err(|e| format!("read {}: {e}", model.url))?;
