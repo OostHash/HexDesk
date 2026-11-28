@@ -49,6 +49,7 @@ mod resolver;
 mod reward_watcher;
 mod rivens;
 mod settings;
+mod single_instance;
 mod stats;
 mod syndicates;
 mod testing;
@@ -281,6 +282,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
     diagnostics::forward_entries_to(app.handle().clone());
+    single_instance::listen(app.handle());
     diagnostics::remove_old_debug_files(&paths::cache_dir(), &std::env::temp_dir());
 
     match paths::root() {
@@ -449,6 +451,12 @@ async fn start_monitor(app: tauri::AppHandle, state: State<'_, AppState>) -> Res
 // ─── App entry point ──────────────────────────────────────────────────────────
 
 pub fn run() {
+    // First of all: a second start must not touch files, the database or
+    // windows the running instance owns.
+    if !single_instance::claim() {
+        return;
+    }
+
     // Before any path is read: decides which root the whole run lives in.
     paths::init_root();
 

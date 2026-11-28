@@ -39,6 +39,7 @@ hexdesk-items = { path = "crates/items" }
 hexdesk-logging = { path = "crates/logging" }
 hexdesk-overlays = { path = "crates/overlays" }
 hexdesk-persist = { path = "crates/persist" }
+hexdesk-platform = { path = "crates/platform" }
 hexdesk-player = { path = "crates/player" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
