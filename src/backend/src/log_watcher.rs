@@ -149,7 +149,7 @@ fn parse_trade_dialog(raw: &str) -> Option<ParsedTrade> {
     } else {
         "trade"
     };
-    let now = chrono::Utc::now();
+    let now = hexdesk_diag::time::now_utc();
 
     Some(ParsedTrade {
         with_player,
@@ -158,8 +158,8 @@ fn parse_trade_dialog(raw: &str) -> Option<ParsedTrade> {
         offered_plat,
         received_items,
         received_plat,
-        session_id: now.format("%Y%m%dT%H%M%S%3f").to_string(),
-        timestamp: now.to_rfc3339(),
+        session_id: now.strftime("%Y%m%dT%H%M%S%3f").to_string(),
+        timestamp: hexdesk_diag::time::rfc3339(&now),
     })
 }
 
@@ -555,7 +555,7 @@ pub(crate) fn parse_and_emit_wfm_whisper(app: &tauri::AppHandle, log_line: &str)
             "message": raw.trim(),
             "item": item,
             "price": price,
-            "timestamp": chrono::Local::now().format("%H:%M:%S").to_string(),
+            "timestamp": jiff::ZonedDateTime::now().strftime("%H:%M:%S").to_string(),
         }),
     );
 }

@@ -130,7 +130,7 @@ fn save(visit: VisitId, prefix: &str, bmp: &[u8], json: Option<&[u8]>) {
     let sequence = FILE_SEQUENCE.fetch_add(1, Ordering::Relaxed);
     let stem = format!(
         "{prefix}-{}-{sequence}",
-        chrono::Local::now().format("%Y%m%d-%H%M%S-%3f")
+        jiff::ZonedDateTime::now().strftime("%Y%m%d-%H%M%S-%3f")
     );
     let result = std::fs::create_dir_all(&dir).and_then(|()| {
         files.iter().try_for_each(|(extension, bytes)| {
@@ -268,7 +268,7 @@ impl SampleStore for FsStore {
         std::fs::create_dir_all(&output_dir).map_err(|error| error.to_string())?;
         let output = output_dir.join(format!(
             "hexdesk-test-report-{}.zip",
-            chrono::Local::now().format("%Y-%m-%d-%H%M%S")
+            jiff::ZonedDateTime::now().strftime("%Y-%m-%d-%H%M%S")
         ));
         let mut bundle = hexdesk_diag::Bundle::new();
         bundle.add_text(

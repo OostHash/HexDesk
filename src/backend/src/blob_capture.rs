@@ -109,7 +109,7 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
         // inventory data without waiting for the scan to finish.
         {
             let game_found = memory_scanner::find_warframe_pid_pub().is_some();
-            let now_pre = chrono::Utc::now().timestamp();
+            let now_pre = jiff::Timestamp::now().as_second();
             let mut initial_qty = known.clone();
             for k in unique_stable.keys() {
                 initial_qty.entry(k.clone()).or_insert(1);
@@ -182,11 +182,11 @@ pub(crate) fn spawn_blob_capture_thread(deps: BlobCaptureDeps, catalog: monitor:
                 }
             }
 
-            let now = chrono::Utc::now().timestamp();
+            let now = jiff::Timestamp::now().as_second();
 
             // Process any incoming blob (non-blocking)
             while let Ok(read) = blob_rx.try_recv() {
-                let outcome = scan_state.apply(&read, chrono::Utc::now().timestamp_millis());
+                let outcome = scan_state.apply(&read, jiff::Timestamp::now().as_millisecond());
                 log_scan_outcome(&read, &outcome, &mut last_unread_keys);
                 if !outcome.changed() {
                     debug!(scanner, "Account blob unchanged since the last one");
@@ -598,7 +598,7 @@ fn process_blob(
     );
 
     // Daily snapshots
-    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    let today = jiff::Timestamp::now().strftime("%Y-%m-%d").to_string();
     if *last_snapshot_date != today {
         *last_snapshot_date = today.clone();
         if let Ok(tracked) = db::get_tracked_items(conn) {

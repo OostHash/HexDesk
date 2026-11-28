@@ -367,7 +367,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                         .await
                         .unwrap_or_default();
                     if !data.0.is_empty() {
-                        let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+                        let today = jiff::ZonedDateTime::now().strftime("%Y-%m-%d").to_string();
                         let j = serde_json::json!({ "date": today, "by_name": &data.0, "by_slug": &data.1 });
                         if let Ok(s) = serde_json::to_string(&j) {
                             let _ = std::fs::write(&state.relics_run_prices_cache_path, s);

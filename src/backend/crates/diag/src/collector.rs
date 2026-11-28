@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 use std::io::Write;
 use std::sync::{Mutex, RwLock};
 
-use chrono::{DateTime, Local};
+use jiff::{SignedDuration, ZonedDateTime};
 
 use crate::entry::{Entry, Repeat};
 
@@ -13,18 +13,18 @@ pub struct Config {
     pub capacity: usize,
     /// An entry only counts as a repeat if the same entry was seen less than
     /// this long ago. Rare events are always written in full.
-    pub repeat_window: chrono::Duration,
+    pub repeat_window: SignedDuration,
     /// Pending repeat counts are written at least this often, so a long run
     /// of repeats still shows up in the log while it is going on.
-    pub repeat_flush: chrono::Duration,
+    pub repeat_flush: SignedDuration,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             capacity: 2000,
-            repeat_window: chrono::Duration::seconds(60),
-            repeat_flush: chrono::Duration::minutes(5),
+            repeat_window: SignedDuration::from_secs(60),
+            repeat_flush: SignedDuration::from_mins(5),
         }
     }
 }
@@ -56,9 +56,9 @@ struct Inner {
 
 struct Seen {
     entry: Entry,
-    last_seen: DateTime<Local>,
+    last_seen: ZonedDateTime,
     pending: Option<Repeat>,
-    pending_since: Option<DateTime<Local>>,
+    pending_since: Option<ZonedDateTime>,
 }
 
 /// More distinct entries than this per source without a repeat resets the
@@ -127,9 +127,9 @@ impl Collector {
             let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
             let mut out = Vec::new();
             let keys: Vec<String> = inner.sources.keys().cloned().collect();
-            let now = Local::now();
+            let now = ZonedDateTime::now();
             for source in keys {
-                inner.flush_source(&source, &mut out, now);
+                inner.flush_source(&source, &mut out, &now);
             }
             out
         };
@@ -173,31 +173,32 @@ impl Collector {
 impl Inner {
     fn record(&mut self, entry: Entry, config: &Config) -> Vec<Entry> {
         let mut out = Vec::new();
-        let now = entry.time;
+        let now = entry.time.clone();
         let source = entry.source.clone();
 
         // Write counts that have been pending too long.
         if let Some(seen) = self.sources.get(&source) {
             if seen.iter().any(|s| {
                 s.pending_since
-                    .is_some_and(|t| now - t >= config.repeat_flush)
+                    .as_ref()
+                    .is_some_and(|t| now.duration_since(t) >= config.repeat_flush)
             }) {
-                self.flush_source(&source, &mut out, now);
+                self.flush_source(&source, &mut out, &now);
             }
         }
 
         let seen = self.sources.entry(source.clone()).or_default();
         if let Some(s) = seen.iter_mut().find(|s| s.entry.same_as(&entry)) {
-            if now - s.last_seen < config.repeat_window {
-                s.last_seen = now;
+            if now.duration_since(&s.last_seen) < config.repeat_window {
+                s.last_seen = now.clone();
                 let pending = s.pending.get_or_insert(Repeat {
                     of: s.entry.id,
                     count: 0,
-                    until: now,
+                    until: now.clone(),
                     last_op: None,
                 });
                 pending.count += 1;
-                pending.until = now;
+                pending.until = now.clone();
                 pending.last_op = entry.op;
                 s.pending_since.get_or_insert(now);
                 return out;
@@ -208,7 +209,7 @@ impl Inner {
         // what was counted for this source, then start over.
         let had_pending = seen.iter().any(|s| s.pending.is_some());
         if had_pending {
-            self.flush_source(&source, &mut out, now);
+            self.flush_source(&source, &mut out, &now);
         }
         let seen = self.sources.entry(source.clone()).or_default();
         if had_pending || seen.len() >= MAX_SEEN_PER_SOURCE {
@@ -228,7 +229,7 @@ impl Inner {
         out
     }
 
-    fn flush_source(&mut self, source: &str, out: &mut Vec<Entry>, now: DateTime<Local>) {
+    fn flush_source(&mut self, source: &str, out: &mut Vec<Entry>, now: &ZonedDateTime) {
         let Some(seen) = self.sources.get_mut(source) else {
             return;
         };
@@ -237,7 +238,7 @@ impl Inner {
             if let Some(repeat) = s.pending.take() {
                 s.pending_since = None;
                 let mut entry = s.entry.clone();
-                entry.time = now;
+                entry.time = now.clone();
                 entry.fields.clear();
                 entry.causes.clear();
                 entry.op = None;

@@ -131,7 +131,9 @@ pub struct SnapshotPoint {
 }
 
 pub fn add_tracked_item(conn: &Connection, unique_name: &str, display_name: &str) -> Result<()> {
-    let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+    let now = jiff::Timestamp::now()
+        .strftime("%Y-%m-%dT%H:%M:%SZ")
+        .to_string();
     conn.execute(
         "INSERT OR IGNORE INTO tracked_items (unique_name, display_name, added_at)
          VALUES (?1, ?2, ?3)",
@@ -349,7 +351,7 @@ pub fn add_quantity_change(
     new_qty: i64,
     rank: Option<u8>,
 ) -> Result<()> {
-    let ts = chrono::Utc::now().timestamp();
+    let ts = jiff::Timestamp::now().as_second();
     conn.execute(
         "INSERT INTO quantity_changes (unique_name, item_name, old_qty, new_qty, delta, timestamp, rank)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -396,7 +398,7 @@ pub fn detect_quantity_changes(
     if prev_all.is_empty() {
         return changes;
     }
-    let ts = chrono::Utc::now().timestamp();
+    let ts = jiff::Timestamp::now().as_second();
     let all_keys: std::collections::HashSet<&String> =
         prev_all.keys().chain(emit_qty.keys()).collect();
     for key in all_keys {
@@ -438,7 +440,7 @@ pub fn detect_mod_rank_changes(
     if prev_mods.is_empty() {
         return changes;
     }
-    let ts = chrono::Utc::now().timestamp();
+    let ts = jiff::Timestamp::now().as_second();
     let all_paths: std::collections::HashSet<&String> =
         prev_mods.keys().chain(known_mods.keys()).collect();
     for path in all_paths {
