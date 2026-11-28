@@ -8,12 +8,8 @@ use std::sync::{mpsc, Once, OnceLock};
 
 use hexdesk_overlays::title::screen_from_title;
 use hexdesk_overlays::{HideBy, Screen, Signal};
+use hexdesk_platform::keyboard_hook::{self, Key, Verdict};
 use tauri::Manager;
-use windows_sys::Win32::Foundation::{LPARAM, LRESULT, WPARAM};
-use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, GetMessageW, SetWindowsHookExW, HC_ACTION, KBDLLHOOKSTRUCT, MSG,
-    WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
-};
 
 use crate::app_state::AppState;
 use crate::overlays::{self, window};
@@ -114,54 +110,40 @@ fn start_hook(app: tauri::AppHandle) {
             }
         }
     });
-    std::thread::spawn(|| {
-        // A low-level hook runs on the thread that installed it, and only
-        // while that thread pumps messages.
-        let hook = unsafe {
-            SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_proc), std::ptr::null_mut(), 0)
-        };
-        if hook.is_null() {
-            let _ = hexdesk_diag::DiagError::new(
-                hexdesk_diag::Source::OverlayKey,
-                hexdesk_diag::Kind::Internal,
-                "Overlay key unavailable: the keyboard hook could not be installed",
-            )
-            .caused_by(&std::io::Error::last_os_error())
-            .log();
-            return;
-        }
-        let mut msg: MSG = unsafe { std::mem::zeroed() };
-        while unsafe { GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) } > 0 {}
-    });
+    if let Err(error) = keyboard_hook::install(on_hook_key) {
+        let _ = hexdesk_diag::DiagError::new(
+            hexdesk_diag::Source::OverlayKey,
+            hexdesk_diag::Kind::Internal,
+            "Overlay key unavailable: the keyboard hook could not be installed",
+        )
+        .caused_by(&error)
+        .log();
+    }
 }
 
-unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    let key_down = wparam == WM_KEYDOWN as WPARAM || wparam == WM_SYSKEYDOWN as WPARAM;
-    let key_up = wparam == WM_KEYUP as WPARAM || wparam == WM_SYSKEYUP as WPARAM;
-    if code == HC_ACTION as i32 && (key_down || key_up) {
-        let info = &*(lparam as *const KBDLLHOOKSTRUCT);
-        let feedback = feedback_answer(
-            info.vkCode,
-            CORRECT_KEY.load(Ordering::Relaxed),
-            WRONG_KEY.load(Ordering::Relaxed),
-        );
-        if crate::testing::prompt_visible() && feedback.is_some() {
-            if key_down {
-                if let (Some(sender), Some(correct)) = (PRESSED.get(), feedback) {
-                    let _ = sender.send(Press::TestingFeedback { correct });
-                }
+/// Runs on the hook thread for every key, so it only hands presses on.
+fn on_hook_key(key: Key) -> Verdict {
+    let feedback = feedback_answer(
+        key.vk,
+        CORRECT_KEY.load(Ordering::Relaxed),
+        WRONG_KEY.load(Ordering::Relaxed),
+    );
+    if crate::testing::prompt_visible() && feedback.is_some() {
+        if key.down {
+            if let (Some(sender), Some(correct)) = (PRESSED.get(), feedback) {
+                let _ = sender.send(Press::TestingFeedback { correct });
             }
-            // While the prompt is visible these keys belong to HexDesk, not
-            // the game. Suppress both halves of the key press.
-            return 1;
         }
-        if is_overlay_key(info.vkCode, KEY.load(Ordering::Relaxed)) && key_down {
-            if let Some(sender) = PRESSED.get() {
-                let _ = sender.send(Press::Overlay);
-            }
+        // While the prompt is visible these keys belong to HexDesk, not
+        // the game. Suppress both halves of the key press.
+        return Verdict::Suppress;
+    }
+    if is_overlay_key(key.vk, KEY.load(Ordering::Relaxed)) && key.down {
+        if let Some(sender) = PRESSED.get() {
+            let _ = sender.send(Press::Overlay);
         }
     }
-    CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
+    Verdict::Pass
 }
 
 fn on_key(app: &tauri::AppHandle, press: &str) {

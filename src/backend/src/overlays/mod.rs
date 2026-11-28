@@ -801,24 +801,20 @@ fn screenshot(app: &tauri::AppHandle, overlay: Overlay, visit: VisitId, op: Span
     }
 }
 
-#[cfg(windows)]
 fn capture_overlay_window(
     app: &tauri::AppHandle,
     overlay: Overlay,
 ) -> Result<hexdesk_capture::Frame, String> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
     let window = app
         .get_webview_window(window_label(overlay))
         .ok_or_else(|| format!("{} window not found", overlay.name()))?;
-    let hwnd = window.hwnd().map_err(|error| error.to_string())?;
-    hexdesk_capture::capture_window(hwnd.0 as isize)
-}
-
-#[cfg(not(windows))]
-fn capture_overlay_window(
-    _app: &tauri::AppHandle,
-    _overlay: Overlay,
-) -> Result<hexdesk_capture::Frame, String> {
-    Err("Overlay window capture is only available on Windows".to_string())
+    let handle = window.window_handle().map_err(|error| error.to_string())?;
+    match handle.as_raw() {
+        RawWindowHandle::Win32(win32) => hexdesk_capture::capture_window(win32.hwnd.get()),
+        _ => Err("Overlay window capture is only available on Windows".to_string()),
+    }
 }
 
 /// The window an overlay draws in.

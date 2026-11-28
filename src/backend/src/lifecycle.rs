@@ -18,7 +18,7 @@ pub(crate) async fn factory_reset(
 ) -> Result<(), String> {
     // Delete WFM credential silently (ignore errors — may not exist)
     {
-        use crate::platform::{CredentialStore, Platform};
+        use hexdesk_platform::{CredentialStore, Platform};
         let _ = Platform::delete_credentials("HexDesk_WFM");
     }
 

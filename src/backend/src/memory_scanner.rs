@@ -16,7 +16,7 @@ pub struct PendingRecipe {
 
 /// `true`, `false` or `unknown`: whether HexDesk runs as administrator.
 pub fn elevated_text() -> &'static str {
-    use crate::platform::{Platform, ProcessAccess};
+    use hexdesk_platform::{Platform, ProcessAccess};
     match Platform::is_elevated() {
         Some(true) => "true",
         Some(false) => "false",
@@ -25,7 +25,7 @@ pub fn elevated_text() -> &'static str {
 }
 
 pub fn find_warframe_pid_pub() -> Option<u32> {
-    use crate::platform::{Platform, ProcessAccess};
+    use hexdesk_platform::{Platform, ProcessAccess};
     Platform::find_warframe_pid()
 }
 
@@ -99,7 +99,7 @@ pub fn capture_all_blobs(blob_tx: std::sync::mpsc::Sender<BlobRead>) -> Result<(
             // Skip executable pages (code, JIT) and file-backed mappings
             // (PE image sections whose string constants false-trigger the
             // anchor check). Only anonymous heap/stack memory is useful.
-            !r.is_executable && r.backing != crate::platform::RegionBacking::File
+            !r.is_executable && r.backing != hexdesk_platform::RegionBacking::File
         })),
     )
     .map_err(|e| {
