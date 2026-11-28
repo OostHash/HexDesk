@@ -123,7 +123,7 @@ jobs:
         uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc
         with:
           toolchain: 1.97.0
-          components: rustfmt
+          components: rustfmt, clippy
           targets: x86_64-pc-windows-msvc
       - if: needs.changes.outputs.backend == 'true'
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
@@ -131,5 +131,7 @@ jobs:
         run: cargo fmt --all -- --check
       - if: needs.changes.outputs.backend == 'true'
         run: cargo check --workspace --all-targets
+      - if: needs.changes.outputs.backend == 'true'
+        run: cargo clippy --workspace --all-targets -- -D warnings
       - if: needs.changes.outputs.backend == 'true'
         run: cargo test --workspace

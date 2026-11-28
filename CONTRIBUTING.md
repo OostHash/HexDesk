@@ -99,8 +99,9 @@ Before opening a pull request:
       release pull request to `master` contains the required `Closes #…`
       references.
 - [ ] For code changes, `pnpm check` passes locally (format, lint, typecheck,
-      all tests, `cargo fmt --check`, `cargo check`). Documentation-only pull
-      requests retain the required CI checks but skip the heavy test suites.
+      all tests, `cargo fmt --check`, `cargo check`, `cargo clippy`).
+      Documentation-only pull requests retain the required CI checks but skip
+      the heavy test suites.
 - [ ] Behaviour changes have tests; UI changes were checked in the running
       app, with screenshots in the PR when the look changed.
 - [ ] User-visible changes have an entry under `## [Unreleased]` in
@@ -127,6 +128,9 @@ done.
 - Formatting is automatic: run `pnpm format` (Prettier and `cargo fmt`).
   Settings live in `.editorconfig`, the Prettier config and `rustfmt.toml`.
 - ESLint must pass with no warnings ignored without a comment explaining why.
+- Clippy runs with its default lints and `-D warnings`, so every warning fails
+  the check. Allow a lint only on the item that needs it, with a comment
+  explaining why.
 - Do not add, remove or upgrade dependencies, or change the pinned toolchain,
   in an unrelated pull request.
 

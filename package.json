@@ -7,7 +7,7 @@
   },
   "scripts": {
     "build": "pnpm --filter @hexdesk/frontend build",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && cargo fmt --all -- --check && cargo check --workspace --all-targets",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && cargo fmt --all -- --check && cargo check --workspace --all-targets && cargo clippy --workspace --all-targets -- -D warnings",
     "dev": "pnpm --filter @hexdesk/frontend dev",
     "desktop": "pnpm --filter @hexdesk/backend tauri",
     "desktop:build": "pnpm --filter @hexdesk/backend tauri:build",

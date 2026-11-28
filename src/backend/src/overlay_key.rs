@@ -155,11 +155,9 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
             // the game. Suppress both halves of the key press.
             return 1;
         }
-        if is_overlay_key(info.vkCode, KEY.load(Ordering::Relaxed)) {
-            if key_down {
-                if let Some(sender) = PRESSED.get() {
-                    let _ = sender.send(Press::Overlay);
-                }
+        if is_overlay_key(info.vkCode, KEY.load(Ordering::Relaxed)) && key_down {
+            if let Some(sender) = PRESSED.get() {
+                let _ = sender.send(Press::Overlay);
             }
         }
     }
