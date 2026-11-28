@@ -3,7 +3,7 @@
 //! `ProcessRegions` reads regions from a running game via the platform
 //! abstraction. `RecordedRegions` replays recorded regions for tests.
 
-use crate::platform::{MemoryRegionInfo, Platform, ProcessAccess, ProcessHandle};
+use hexdesk_platform::{MemoryRegionInfo, Platform, ProcessAccess, ProcessHandle};
 use std::cell::Cell;
 
 /// Statistics from a region walk, returned by `RegionSource::stats`.

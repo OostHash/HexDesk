@@ -26,6 +26,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.43", features = ["bundled"] }
 regex = "1"
+# Same version as Tauri uses, for window handles that work on every platform.
+raw-window-handle = "0.6"
 jiff = "1"
 dirs = "7"
 memchr = "2"
@@ -46,20 +48,3 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2.14.1"
 tauri-plugin-snap-layout = "1"
-
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = [
-    "Win32_Foundation",
-    "Win32_System_Threading",
-    "Win32_System_Diagnostics_Debug",
-    "Win32_System_Diagnostics_ToolHelp",
-    "Win32_System_Memory",
-    "Win32_System_ProcessStatus",
-    "Win32_System_Com",
-    "Win32_UI_WindowsAndMessaging",
-    "Win32_Graphics_Gdi",
-    "Win32_Security",
-    "Win32_Security_Credentials",
-    "Win32_Storage_FileSystem",
-    "Win32_Globalization",
-] }

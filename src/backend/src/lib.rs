@@ -31,6 +31,7 @@ mod image_cache;
 mod inventory_state;
 mod item_details;
 mod lifecycle;
+mod locale;
 mod log_watcher;
 mod logging;
 mod mem_regions;
@@ -40,7 +41,6 @@ mod ocr;
 mod overlay_key;
 mod overlays;
 mod paths;
-mod platform;
 mod player;
 mod pricing;
 mod refresh;
@@ -705,7 +705,7 @@ pub fn run() {
             monitor::set_relic_reward_enabled,
             monitor::set_overlays_enabled,
             monitor::get_monitor_status,
-            platform::get_system_locale,
+            locale::get_system_locale,
             catalogue::get_current_crafting,
             overlays::window::show_relic_pick_window,
             overlays::window::park_relic_pick_window,

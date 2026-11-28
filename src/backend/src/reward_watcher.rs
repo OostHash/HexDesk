@@ -39,8 +39,7 @@ pub(crate) fn spawn_reward_watcher_thread(deps: RewardWatcherDeps) {
     let catalog_pairs = build_relic_reward_catalog(&relic_rewards);
     let catalog_pairs = Arc::new(catalog_pairs);
 
-    // EE.log path
-    let ee_log_path = dirs::data_local_dir().map(|d| d.join("Warframe").join("EE.log"));
+    let ee_log_path = hexdesk_platform::game_paths::ee_log();
 
     // Shared squad size: updated by EE.log watcher when VoidProjections sequence
     // completes, read by OCR loop for each attempt. This lets late-arriving squad
@@ -105,27 +104,11 @@ pub(crate) fn spawn_reward_watcher_thread(deps: RewardWatcherDeps) {
             log_watcher::seed_session_relics(&log_path, &mut session_relics);
             overlays::reward::set_session_relics(&session_relics);
 
-            // Use FindFirstChangeNotificationW so we wake the instant EE.log is
-            // written to disk instead of sleeping 200 ms between checks.
-            let change_handle = {
-                use windows_sys::Win32::Storage::FileSystem::{
-                    FindFirstChangeNotificationW, FILE_NOTIFY_CHANGE_LAST_WRITE,
-                };
-                let dir = log_path.parent().unwrap_or(std::path::Path::new("."));
-                let dir_wide: Vec<u16> = dir
-                    .to_string_lossy()
-                    .encode_utf16()
-                    .chain(std::iter::once(0))
-                    .collect();
-                unsafe {
-                    FindFirstChangeNotificationW(
-                        dir_wide.as_ptr(),
-                        0,
-                        FILE_NOTIFY_CHANGE_LAST_WRITE,
-                    )
-                }
-            };
-            let use_notify = change_handle != windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+            // Wake the instant EE.log is written to disk instead of sleeping
+            // 200 ms between checks.
+            let dir_watch = hexdesk_platform::dir_watch::DirWatch::new(
+                log_path.parent().unwrap_or(std::path::Path::new(".")),
+            );
 
             loop {
                 // Poll fast (50 ms) whenever a reward screen is up OR the log has
@@ -142,17 +125,10 @@ pub(crate) fn spawn_reward_watcher_thread(deps: RewardWatcherDeps) {
                 } else {
                     500
                 };
-                if use_notify {
-                    use windows_sys::Win32::Storage::FileSystem::FindNextChangeNotification;
-                    use windows_sys::Win32::System::Threading::WaitForSingleObject;
+                if let Some(watch) = &dir_watch {
                     // Block until a write lands in the EE.log directory (the timeout keeps
                     // the flag check alive even when the game isn't writing).
-                    unsafe {
-                        WaitForSingleObject(change_handle, idle_wait_ms);
-                    }
-                    unsafe {
-                        FindNextChangeNotification(change_handle);
-                    }
+                    watch.wait(std::time::Duration::from_millis(u64::from(idle_wait_ms)));
                 } else {
                     std::thread::sleep(std::time::Duration::from_millis(
                         idle_wait_ms.min(200) as u64

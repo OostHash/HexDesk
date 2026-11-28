@@ -177,7 +177,7 @@ fn show_status(app: &tauri::AppHandle, width: f64, height: f64) -> Result<(), St
 /// both exclude the window title bar and borders in windowed mode.
 #[tauri::command]
 pub(crate) fn get_warframe_window_rect() -> Result<[i32; 4], String> {
-    use crate::platform::{Platform, WindowManager};
+    use hexdesk_platform::{Platform, WindowManager};
     Platform::get_warframe_window_rect()
 }
 

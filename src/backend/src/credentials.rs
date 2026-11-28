@@ -1,6 +1,6 @@
 //! WFM credential management via the platform abstraction layer.
 
-use crate::platform::{CredentialStore, Platform};
+use hexdesk_platform::{CredentialStore, Platform};
 
 const WFM_TARGET: &str = "HexDesk_WFM";
 

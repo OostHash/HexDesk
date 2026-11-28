@@ -333,7 +333,7 @@ fn system_facts(app: &tauri::AppHandle, ocr_languages: Vec<String>) -> serde_jso
         "os": std::env::consts::OS,
         "arch": std::env::consts::ARCH,
         "hexdesk_elevated": crate::memory_scanner::elevated_text(),
-        "locale": crate::platform::get_system_locale(),
+        "locale": crate::locale::get_system_locale(),
         "webview2": tauri::webview_version().ok(),
         "warframe_running": crate::memory_scanner::find_warframe_pid_pub().is_some(),
         "monitors": monitors,

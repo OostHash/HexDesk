@@ -188,10 +188,3 @@ impl WindowManager for Platform {
         Err("Window management not supported on Linux yet".into())
     }
 }
-
-// ─── Tauri command wrapper ────────────────────────────────────────────────────
-
-#[tauri::command]
-pub(crate) fn get_system_locale() -> String {
-    <Platform as LocaleProvider>::get_system_locale()
-}

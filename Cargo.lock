@@ -1704,6 +1704,7 @@ dependencies = [
  "jiff 1.0.2",
  "lzma-rs",
  "memchr",
+ "raw-window-handle",
  "regex",
  "rusqlite",
  "serde",
@@ -1719,7 +1720,6 @@ dependencies = [
  "tracing-subscriber",
  "tungstenite",
  "ureq",
- "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1809,6 +1809,7 @@ dependencies = [
 name = "hexdesk-platform"
 version = "1.2.0"
 dependencies = [
+ "dirs",
  "windows-sys 0.61.2",
 ]
 
