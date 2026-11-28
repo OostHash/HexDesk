@@ -69,5 +69,6 @@ pub(crate) async fn install_update(app: tauri::AppHandle) -> Result<(), DiagErro
         .map_err(|e| update_error("Update install failed", Kind::Unavailable, e))?;
     info!(updater, bytes = downloaded, "Update installed, restarting");
     hexdesk_diag::flush();
+    crate::single_instance::release();
     app.restart();
 }

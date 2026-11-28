@@ -1699,6 +1699,7 @@ dependencies = [
  "hexdesk-logging",
  "hexdesk-overlays",
  "hexdesk-persist",
+ "hexdesk-platform",
  "hexdesk-player",
  "jiff 1.0.2",
  "lzma-rs",
@@ -1802,6 +1803,13 @@ version = "1.2.0"
 dependencies = [
  "serde_json",
  "tracing",
+]
+
+[[package]]
+name = "hexdesk-platform"
+version = "1.2.0"
+dependencies = [
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

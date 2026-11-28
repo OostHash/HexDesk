@@ -7,6 +7,12 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Fixed
+
+- Starting HexDesk while it is already running no longer opens a second copy
+  with duplicate overlays and hotkeys. The open window comes to the front
+  instead.
+
 ## [1.2.0] - 2026-11-26
 
 ### Added

@@ -1,0 +1,22 @@
+[package]
+name = "hexdesk-platform"
+version.workspace = true
+description = "HexDesk code that differs per operating system, behind one interface"
+authors = ["HexDesk contributors"]
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/OostHash/HexDesk"
+publish = false
+
+[lib]
+name = "hexdesk_platform"
+
+# Same version and features as the backend crate, so the lock file gains no
+# new packages.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+] }
