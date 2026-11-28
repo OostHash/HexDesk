@@ -9,6 +9,7 @@ on:
     paths:
       - "Cargo.toml"
       - "Cargo.lock"
+      - "deny.toml"
       - "**/Cargo.toml"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -48,20 +49,22 @@ jobs:
 
       - uses: taiki-e/install-action@fe3acb53a98b62c772db35de75ce0e4595e7ca8c # v2.90.8
         with:
-          tool: cargo-audit@0.23.0
+          tool: cargo-deny@0.22.2
 
       # A pull request reports the full result without blocking on advisories
       # that already exist on the base branch. Scheduled and manual runs fail.
+      # Unmaintained, unsound and yanked crates are reported as warnings.
       - name: Audit Rust dependencies
         continue-on-error: ${{ github.event_name == 'pull_request' }}
         shell: bash
         run: |
-          mapfile -t ignored < <(bash .github/scripts/dependency-exceptions.sh list cargo)
-          args=()
-          for id in "${ignored[@]}"; do
-            args+=(--ignore "$id")
-          done
-          cargo audit "${args[@]}"
+          config="$RUNNER_TEMP/deny.toml"
+          cp deny.toml "$config"
+          ignored="$(bash .github/scripts/dependency-exceptions.sh list cargo | sed 's/.*/"&"/' | paste -sd, -)"
+          echo "ignore = [$ignored]" >> "$config"
+          cargo deny --locked --config "$config" check \
+            --warn unmaintained --warn unsound --warn yanked \
+            advisories
 
   frontend:
     name: Frontend audit

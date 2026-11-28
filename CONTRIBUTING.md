@@ -117,7 +117,8 @@ done.
 - Report vulnerabilities privately as described in `SECURITY.md`; never open a
   public issue for one.
 - Dependency review checks every pull request for newly introduced advisories,
-  and a daily audit scans the locked dependencies. Keep a pull request that
+  and a daily audit scans the locked dependencies of the targets HexDesk
+  ships (see `deny.toml` and `SECURITY.md`). Keep a pull request that
   changes dependencies focused on that change so the reports stay readable.
 - Accept a known advisory only through a time-boxed entry in
   `.github/security/dependency-exceptions.txt`, and validate it with
