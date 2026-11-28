@@ -118,7 +118,7 @@ pub fn read_riven_card(texts: &RivenTexts<'_>, known: &dyn Fn(&str) -> bool) -> 
     // (there is none for a weapon the database does not know, and the
     // overlay shows that) and buys not silently grading a Kuva Nukor as the base
     // Nukor it is titled after, on a different disposition.
-    let panel_candidates = panel_weapon_candidates(&panel_for_weapon);
+    let panel_candidates = panel_weapon_candidates(panel_for_weapon);
     let weapon = panel_candidates.iter()
         .find_map(|l| find_in_db(l))
         .or_else(|| panel_candidates.last().cloned())

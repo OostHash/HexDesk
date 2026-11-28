@@ -1,0 +1,17 @@
+# cargo-deny configuration. Only the advisories check is used, by
+# .github/workflows/dependency-audit.yml.
+
+[graph]
+# Audit only the crates that are built for a target HexDesk ships. Crates that
+# exist only for other platforms, such as the GTK and D-Bus bindings Tauri uses
+# on Linux, are left out until that target is added here.
+targets = ["x86_64-pc-windows-msvc"]
+
+# Keep this section last: the audit workflow appends the time-boxed entries of
+# .github/security/dependency-exceptions.txt to it as an ignore list.
+[advisories]
+version = 2
+# Report unmaintained and unsound crates anywhere in the graph, not only direct
+# dependencies of the workspace.
+unmaintained = "all"
+unsound = "all"

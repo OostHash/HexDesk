@@ -9,6 +9,7 @@ on:
     paths:
       - "Cargo.toml"
       - "Cargo.lock"
+      - "deny.toml"
       - "**/Cargo.toml"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -48,20 +49,53 @@ jobs:
 
       - uses: taiki-e/install-action@fe3acb53a98b62c772db35de75ce0e4595e7ca8c # v2.90.8
         with:
-          tool: cargo-audit@0.23.0
+          tool: cargo-deny@0.22.2
 
       # A pull request reports the full result without blocking on advisories
       # that already exist on the base branch. Scheduled and manual runs fail.
+      # Unmaintained, unsound and yanked crates are reported as warnings.
       - name: Audit Rust dependencies
+        id: audit
         continue-on-error: ${{ github.event_name == 'pull_request' }}
         shell: bash
         run: |
-          mapfile -t ignored < <(bash .github/scripts/dependency-exceptions.sh list cargo)
-          args=()
-          for id in "${ignored[@]}"; do
-            args+=(--ignore "$id")
-          done
-          cargo audit "${args[@]}"
+          config="$RUNNER_TEMP/deny.toml"
+          cp deny.toml "$config"
+          ignored="$(bash .github/scripts/dependency-exceptions.sh list cargo | sed 's/.*/"&"/' | paste -sd, -)"
+          echo "ignore = [$ignored]" >> "$config"
+          cargo deny --locked --config "$config" check \
+            --warn unmaintained --warn unsound --warn yanked \
+            advisories
+
+      # Runs the same audit again in JSON, which the report lists by advisory.
+      - name: Write report
+        if: always()
+        shell: bash
+        env:
+          REPORT_JOB: Rust audit
+          REPORT_STEPS: >-
+            [
+            {"name": "Rust advisories", "outcome": "${{ steps.audit.outcome }}",
+             "reportOnly": ${{ github.event_name == 'pull_request' }},
+             "source": {"kind": "cargo-deny", "file": "cargo-deny.json"}},
+            {"name": "Allowed exceptions", "outcome": "info",
+             "source": {"kind": "exceptions", "type": "cargo"}}
+            ]
+        run: |
+          if [[ -f "$RUNNER_TEMP/deny.toml" ]]; then
+            cargo deny --format json --locked --config "$RUNNER_TEMP/deny.toml" check \
+              --warn unmaintained --warn unsound --warn yanked \
+              advisories 2> "$RUNNER_TEMP/cargo-deny.json" || true
+          fi
+          node .github/scripts/ci-report/job.mjs
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-report-rust-audit
+          path: ${{ runner.temp }}/ci-report/report.json
+          retention-days: 7
+          if-no-files-found: ignore
 
   frontend:
     name: Frontend audit
@@ -81,5 +115,28 @@ jobs:
       # pnpm audit reads the lockfile, so no install is needed. The script
       # applies the GHSA exceptions without rewriting pnpm-workspace.yaml.
       - name: Audit frontend dependencies
+        id: audit
         continue-on-error: ${{ github.event_name == 'pull_request' }}
-        run: node .github/scripts/frontend-audit.mjs
+        run: AUDIT_RESULT_FILE="$RUNNER_TEMP/pnpm-audit.json" node .github/scripts/frontend-audit.mjs
+
+      - name: Write report
+        if: always()
+        env:
+          REPORT_JOB: Frontend audit
+          REPORT_STEPS: >-
+            [
+            {"name": "Frontend advisories", "outcome": "${{ steps.audit.outcome }}",
+             "reportOnly": ${{ github.event_name == 'pull_request' }},
+             "source": {"kind": "pnpm-audit", "file": "pnpm-audit.json"}},
+            {"name": "Allowed exceptions", "outcome": "info",
+             "source": {"kind": "exceptions", "type": "ghsa"}}
+            ]
+        run: node .github/scripts/ci-report/job.mjs
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-report-frontend-audit
+          path: ${{ runner.temp }}/ci-report/report.json
+          retention-days: 7
+          if-no-files-found: ignore

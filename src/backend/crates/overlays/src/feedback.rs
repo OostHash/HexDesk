@@ -122,7 +122,7 @@ impl Cadence {
     fn completed(&mut self, prompting: Prompting) -> bool {
         self.completed += 1;
         let due = match prompting {
-            Prompting::EveryNFlows(n) => self.completed % n.max(1) == 0,
+            Prompting::EveryNFlows(n) => self.completed.is_multiple_of(n.max(1)),
             Prompting::OncePerRun => !self.prompted_this_run,
         };
         if due {

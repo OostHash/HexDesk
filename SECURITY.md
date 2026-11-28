@@ -45,13 +45,13 @@ ship with a Moderate or Low finding only while a reviewed exception is valid.
 
 ## Dependency checks
 
-| Check                          | When                                                                                                       | Behaviour                                                                                                                         |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Dependency review              | Every pull request                                                                                         | Fails when the pull request introduces a High or Critical advisory in a runtime, development or unknown-scope dependency.          |
-| Dependency audit               | Daily at 06:17 UTC, on manual dispatch, and on pull requests that change dependency manifests or lockfiles | Runs `cargo audit` and `pnpm audit`. Scheduled and manual runs fail on High or Critical findings; pull request runs report them.    |
-| Dependabot alerts              | Continuous                                                                                                 | Opens alerts for advisories in the dependency graph.                                                                              |
-| Dependabot security updates    | Continuous                                                                                                 | Opens pull requests that update vulnerable dependencies.                                                                          |
-| Dependabot version updates     | Weekly                                                                                                     | Opens grouped minor and patch update pull requests for Cargo and npm dependencies.                                                |
+| Check                       | When                                                                                                       | Behaviour                                                                                                                                        |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Dependency review           | Every pull request                                                                                         | Fails when the pull request introduces a High or Critical advisory in a runtime, development or unknown-scope dependency.                        |
+| Dependency audit            | Daily at 06:17 UTC, on manual dispatch, and on pull requests that change dependency manifests or lockfiles | Runs `cargo deny check advisories` and `pnpm audit`. Scheduled and manual runs fail on High or Critical findings; pull request runs report them. |
+| Dependabot alerts           | Continuous                                                                                                 | Opens alerts for advisories in the dependency graph.                                                                                             |
+| Dependabot security updates | Continuous                                                                                                 | Opens pull requests that update vulnerable dependencies.                                                                                         |
+| Dependabot version updates  | Weekly                                                                                                     | Opens grouped minor and patch update pull requests for Cargo and npm dependencies.                                                               |
 
 Dependency review is the required pull request gate on protected branches.
 Scheduled audits run against the default branch; dependency changes on a
@@ -78,7 +78,7 @@ time. It is not a way to make a failing check disappear.
   accountable for the follow-up), a review date, and a reason that names the
   blocker and the upgrade path.
 - Use `ghsa` entries for dependency review and for the frontend audit, and
-  `cargo` entries for `cargo audit`. When an advisory has both identifiers, add
+  `cargo` entries for the Rust audit. When an advisory has both identifiers, add
   both lines so every check honours the exception.
 - The review date is the last day the exception is valid. The validation step
   fails the day after, so the entry must be renewed or removed before then.
@@ -106,10 +106,15 @@ bash .github/scripts/dependency-exceptions.sh list ghsa
 
 - Dependency review only inspects dependencies changed by the pull request and
   uses the GitHub Advisory Database. It does not replace a full scan.
-- `cargo audit` uses the RustSec Advisory Database and `Cargo.lock`. It fails on
-  vulnerabilities and reports unmaintained, unsound and yanked crates as
-  warnings. Those warnings are reviewed during dependency updates but do not
-  fail the audit.
+- The Rust audit runs `cargo deny check advisories` against the RustSec
+  Advisory Database and `Cargo.lock`. It only looks at crates that are built for
+  the targets listed under `[graph] targets` in `deny.toml`, which are the
+  targets HexDesk ships (today `x86_64-pc-windows-msvc`). Crates that exist only
+  for other platforms are not reported. Adding a target to that list audits its
+  dependencies too.
+- The Rust audit fails on vulnerabilities and reports unmaintained, unsound and
+  yanked crates as warnings. Those warnings are reviewed during dependency
+  updates but do not fail the audit.
 - `pnpm audit` uses the npm registry advisory endpoint and `pnpm-lock.yaml`. It
   does not inspect bundled binaries or code that is not declared as a
   dependency. The frontend audit applies the GHSA exceptions itself because

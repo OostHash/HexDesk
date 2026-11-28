@@ -99,8 +99,9 @@ Before opening a pull request:
       release pull request to `master` contains the required `Closes #…`
       references.
 - [ ] For code changes, `pnpm check` passes locally (format, lint, typecheck,
-      all tests, `cargo fmt --check`, `cargo check`). Documentation-only pull
-      requests retain the required CI checks but skip the heavy test suites.
+      all tests, `cargo fmt --check`, `cargo check`, `cargo clippy`).
+      Documentation-only pull requests retain the required CI checks but skip
+      the heavy test suites.
 - [ ] Behaviour changes have tests; UI changes were checked in the running
       app, with screenshots in the PR when the look changed.
 - [ ] User-visible changes have an entry under `## [Unreleased]` in
@@ -111,12 +112,34 @@ Before opening a pull request:
 Pull requests are merged by the maintainer once CI is green and the review is
 done.
 
+### CI report
+
+Every job of the CI, dependency audit and dependency review workflows writes a
+short report in its job summary: one line per step, whether it ran, and its
+result, such as the number of tests or the advisories found. A job that skips
+its checks because the pull request does not touch its part says so.
+
+After each of these workflows finishes, the CI report workflow combines the
+reports, and the status of CodeQL, into one comment on the pull request and
+updates it on every push. The comment is the place to look first; the job
+summaries and logs have the details.
+
+The report scripts live in `.github/scripts/ci-report`. Test them with
+`node --test ".github/scripts/ci-report/*.test.mjs"`, and preview the comment
+for a commit without posting it:
+
+```bash
+GITHUB_TOKEN="$(gh auth token)" GITHUB_REPOSITORY=OostHash/HexDesk \
+  HEAD_SHA=<commit> DRY_RUN=1 node .github/scripts/ci-report/pull-request.mjs
+```
+
 ## Security
 
 - Report vulnerabilities privately as described in `SECURITY.md`; never open a
   public issue for one.
 - Dependency review checks every pull request for newly introduced advisories,
-  and a daily audit scans the locked dependencies. Keep a pull request that
+  and a daily audit scans the locked dependencies of the targets HexDesk
+  ships (see `deny.toml` and `SECURITY.md`). Keep a pull request that
   changes dependencies focused on that change so the reports stay readable.
 - Accept a known advisory only through a time-boxed entry in
   `.github/security/dependency-exceptions.txt`, and validate it with
@@ -127,6 +150,9 @@ done.
 - Formatting is automatic: run `pnpm format` (Prettier and `cargo fmt`).
   Settings live in `.editorconfig`, the Prettier config and `rustfmt.toml`.
 - ESLint must pass with no warnings ignored without a comment explaining why.
+- Clippy runs with its default lints and `-D warnings`, so every warning fails
+  the check. Allow a lint only on the item that needs it, with a comment
+  explaining why.
 - Do not add, remove or upgrade dependencies, or change the pinned toolchain,
   in an unrelated pull request.
 

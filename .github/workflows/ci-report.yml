@@ -1,0 +1,39 @@
+name: CI report
+
+# Combines the reports of the pull request checks into one comment on the pull
+# request. workflow_run runs this file from the default branch with a token
+# that may comment, also for pull requests from forks and Dependabot. The
+# pull request's own code is never checked out or run here: its runs only
+# provide report.json artifacts, which .github/scripts/ci-report/report.mjs
+# reads as plain data.
+on:
+  workflow_run:
+    workflows: [CI, Dependency audit, Dependency review]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: ci-report-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  comment:
+    name: Pull request report
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Update the pull request comment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: node .github/scripts/ci-report/pull-request.mjs
