@@ -141,7 +141,7 @@ fn save_files(
     let dir = dir();
     let stem = format!(
         "{prefix}-{}",
-        chrono::Local::now().format("%Y%m%d-%H%M%S-%3f")
+        jiff::ZonedDateTime::now().strftime("%Y%m%d-%H%M%S-%3f")
     );
     let name = format!("{stem}.bmp");
     let written = std::fs::create_dir_all(&dir)

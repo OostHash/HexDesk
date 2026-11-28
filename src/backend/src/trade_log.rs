@@ -33,7 +33,7 @@ pub(crate) fn add_trade(state: State<AppState>, params: AddTradeParams) -> Resul
         id: 0,
         timestamp: params
             .timestamp
-            .unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
+            .unwrap_or_else(|| hexdesk_diag::time::rfc3339(&hexdesk_diag::time::now_utc())),
         with_player: params.with_player,
         direction: params.direction,
         item_name: params.item_name,

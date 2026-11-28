@@ -75,7 +75,7 @@ impl Testing {
     pub(crate) fn new(app: tauri::AppHandle, config: Config) -> Testing {
         // Run ids only need to differ from runs an earlier session may have
         // left on disk.
-        let first_run = chrono::Utc::now().timestamp_millis().max(1) as u64;
+        let first_run = jiff::Timestamp::now().as_millisecond().max(1) as u64;
         let testing = Testing {
             app,
             feedback: Feedback::new(store::FsStore::new(), config, first_run),

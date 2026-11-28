@@ -23,7 +23,7 @@ pub(crate) async fn refresh_bulk_prices(
         return Err("Failed to fetch bulk prices — check your internet connection.".to_string());
     }
 
-    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let today = jiff::ZonedDateTime::now().strftime("%Y-%m-%d").to_string();
     let j = serde_json::json!({ "date": today, "by_name": &by_name, "by_slug": &by_slug });
     if let Ok(s) = serde_json::to_string(&j) {
         let _ = std::fs::write(&state.relics_run_prices_cache_path, s);
@@ -55,7 +55,7 @@ pub(crate) fn load_relics_run_cache(
 ) -> Option<(HashMap<String, u32>, HashMap<String, u32>)> {
     let s = std::fs::read_to_string(path).ok()?;
     let v: serde_json::Value = serde_json::from_str(&s).ok()?;
-    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let today = jiff::ZonedDateTime::now().strftime("%Y-%m-%d").to_string();
     if v.get("date").and_then(|d| d.as_str()) != Some(today.as_str()) {
         return None;
     }
@@ -128,7 +128,7 @@ pub fn refresh_bulk_prices_task(app: &tauri::AppHandle, _force: bool) -> Result<
     if by_name.is_empty() {
         return Err("bulk prices fetch returned no data".to_string());
     }
-    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let today = jiff::ZonedDateTime::now().strftime("%Y-%m-%d").to_string();
     let j = serde_json::json!({ "date": today, "by_name": &by_name, "by_slug": &by_slug });
     if let Ok(s) = serde_json::to_string(&j) {
         let _ = std::fs::write(&path, s);

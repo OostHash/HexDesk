@@ -188,7 +188,7 @@ pub(crate) async fn export_diagnostics(
     })?;
     let path = dir.join(format!(
         "{FILE_PREFIX}{}.zip",
-        chrono::Local::now().format("%Y-%m-%d-%H%M%S")
+        jiff::ZonedDateTime::now().strftime("%Y-%m-%d-%H%M%S")
     ));
 
     let mut bundle = Bundle::new();
@@ -338,7 +338,7 @@ fn system_facts(app: &tauri::AppHandle, ocr_languages: Vec<String>) -> serde_jso
         "warframe_running": crate::memory_scanner::find_warframe_pid_pub().is_some(),
         "monitors": monitors,
         "ocr_languages": ocr_languages,
-        "exported_at": chrono::Local::now().to_rfc3339(),
+        "exported_at": hexdesk_diag::time::rfc3339(&jiff::ZonedDateTime::now()),
     })
 }
 

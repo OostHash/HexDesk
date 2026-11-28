@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local};
+use jiff::ZonedDateTime;
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 
@@ -43,7 +43,8 @@ impl From<&tracing::Level> for Level {
 pub struct Repeat {
     pub of: u64,
     pub count: u64,
-    pub until: DateTime<Local>,
+    #[serde(serialize_with = "crate::time::serialize_rfc3339")]
+    pub until: ZonedDateTime,
     pub last_op: Option<u64>,
 }
 
@@ -53,7 +54,8 @@ pub struct Repeat {
 pub struct Entry {
     /// Increasing number within a session; 0 until the collector assigns it.
     pub id: u64,
-    pub time: DateTime<Local>,
+    #[serde(serialize_with = "crate::time::serialize_rfc3339")]
+    pub time: ZonedDateTime,
     pub level: Level,
     /// A [`crate::Source`] name, or the module or crate name for code that
     /// does not log through a source yet.
@@ -95,7 +97,7 @@ impl Entry {
         let op = self.op.map(|id| format!("#{id}")).unwrap_or_default();
         let prefix = format!(
             "{} {:<5} {:<sw$} {:<ow$} ",
-            self.time.format("%Y-%m-%d %H:%M:%S%.3f %:z"),
+            self.time.strftime("%Y-%m-%d %H:%M:%S%.3f %:z"),
             self.level.as_str(),
             self.source,
             op,
@@ -110,7 +112,7 @@ impl Entry {
                     " … repeated {} {} until {}",
                     r.count,
                     if r.count == 1 { "time" } else { "times" },
-                    r.until.format("%H:%M:%S")
+                    r.until.strftime("%H:%M:%S")
                 ));
                 if let Some(op) = r.last_op {
                     line.push_str(&format!(", last in #{op}"));
@@ -198,10 +200,15 @@ fn quote(value: &str) -> String {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use chrono::TimeZone;
+    use jiff::civil::date;
+    use jiff::tz::TimeZone;
 
-    pub(crate) fn at(h: u32, m: u32, s: u32) -> DateTime<Local> {
-        Local.with_ymd_and_hms(2026, 11, 18, h, m, s).unwrap()
+    pub(crate) fn at(h: u32, m: u32, s: u32) -> ZonedDateTime {
+        let part = |v: u32| i8::try_from(v).unwrap();
+        date(2026, 11, 18)
+            .at(part(h), part(m), part(s), 0)
+            .to_zoned_datetime(TimeZone::system())
+            .unwrap()
     }
 
     pub(crate) fn entry(message: &str) -> Entry {
@@ -217,6 +224,27 @@ pub(crate) mod tests {
             op: None,
             repeat: None,
         }
+    }
+
+    #[test]
+    fn json_times_are_rfc3339_with_z_for_utc() {
+        let mut e = entry("Blob not found");
+        e.time = date(2026, 11, 18)
+            .at(15, 3, 12, 481_000_000)
+            .to_zoned_datetime(TimeZone::fixed(jiff::tz::Offset::constant(1)))
+            .unwrap();
+        e.repeat = Some(Repeat {
+            of: 1,
+            count: 2,
+            until: date(2026, 11, 18)
+                .at(14, 4, 0, 0)
+                .to_zoned_datetime(TimeZone::UTC)
+                .unwrap(),
+            last_op: None,
+        });
+        let json = serde_json::to_value(&e).unwrap();
+        assert_eq!(json["time"], "2026-11-18T15:03:12.481+01:00");
+        assert_eq!(json["repeat"]["until"], "2026-11-18T14:04:00Z");
     }
 
     #[test]

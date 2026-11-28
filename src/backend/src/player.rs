@@ -112,13 +112,13 @@ pub(crate) fn inventory(app: &tauri::AppHandle) -> Inventory {
 
 /// A time of day for log lines: "13:05:42".
 pub(crate) fn time_of_day(at: Millis) -> String {
-    chrono::DateTime::from_timestamp_millis(at)
+    jiff::Timestamp::from_millisecond(at)
         .map(|t| {
-            t.with_timezone(&chrono::Local)
-                .format("%H:%M:%S")
+            t.to_zoned_datetime(jiff::tz::TimeZone::system())
+                .strftime("%H:%M:%S")
                 .to_string()
         })
-        .unwrap_or_else(|| at.to_string())
+        .unwrap_or_else(|_| at.to_string())
 }
 
 /// The Relic Reward cards for reward paths ("?:text" is OCR text that

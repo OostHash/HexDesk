@@ -2,7 +2,7 @@ use std::fmt::Write as _;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use chrono::Local;
+use jiff::ZonedDateTime;
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id, Record};
 use tracing::{Event, Subscriber};
@@ -137,7 +137,7 @@ where
         drop(ext);
         self.collector.record(Entry {
             id: 0,
-            time: Local::now(),
+            time: ZonedDateTime::now(),
             level: meta.level().into(),
             source: source_of(meta.target()),
             code: None,
@@ -164,7 +164,7 @@ where
 
         let mut entry = Entry {
             id: 0,
-            time: Local::now(),
+            time: ZonedDateTime::now(),
             level: meta.level().into(),
             source: source_of(target),
             code: None,

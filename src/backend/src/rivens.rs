@@ -539,7 +539,9 @@ pub(crate) fn save_riven_roll(
             .unwrap_or_default()
             .as_nanos()
     );
-    let saved_at = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+    let saved_at = jiff::ZonedDateTime::now()
+        .strftime("%Y-%m-%dT%H:%M:%S")
+        .to_string();
     let riven = crate::db::SavedRiven {
         id: id.clone(),
         weapon,

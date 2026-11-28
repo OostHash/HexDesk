@@ -50,6 +50,7 @@ mod layer;
 mod macros;
 pub mod redact;
 mod source;
+pub mod time;
 
 pub use collector::{Collector, Config};
 pub use entry::{Entry, Level, Repeat};
