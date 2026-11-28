@@ -7,7 +7,7 @@
 // check must not rewrite, so the report is filtered here instead.
 
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -121,7 +121,29 @@ for (const { id, advisory } of blockingFindings) {
   );
 }
 
-const lowerSeverity = remaining.length - blockingFindings.length;
+const lowerFindings = remaining.filter(
+  ({ advisory }) => !blocking.has(advisory.severity),
+);
+
+// The CI report (.github/scripts/ci-report/job.mjs) lists the findings by id.
+if (process.env.AUDIT_RESULT_FILE) {
+  const entry = ({ id, advisory }) => ({
+    id,
+    module: advisory.module_name,
+    severity: advisory.severity,
+    title: advisory.title,
+  });
+  writeFileSync(
+    process.env.AUDIT_RESULT_FILE,
+    JSON.stringify({
+      blocking: blockingFindings.map(entry),
+      lower: lowerFindings.map(entry),
+      excepted: excepted.map(entry),
+    }),
+  );
+}
+
+const lowerSeverity = lowerFindings.length;
 if (lowerSeverity > 0) {
   console.log(
     `${lowerSeverity} advisory/advisories below High are reported by pnpm but do not fail this check.`,

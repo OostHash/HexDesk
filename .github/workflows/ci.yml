@@ -69,6 +69,10 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     steps:
+      # Checked out before anything else, so the report can be written even
+      # when the checks are skipped or an early step fails.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: Require successful change detection
         if: needs.changes.result != 'success'
         run: exit 1
@@ -78,8 +82,6 @@ jobs:
         run: echo "No frontend changes; frontend checks are not needed."
 
       - if: needs.changes.outputs.frontend == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - if: needs.changes.outputs.frontend == 'true'
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 11.25.0
@@ -88,20 +90,58 @@ jobs:
         with:
           node-version-file: .node-version
           cache: pnpm
-      - if: needs.changes.outputs.frontend == 'true'
+      - id: install
+        if: needs.changes.outputs.frontend == 'true'
         run: pnpm install --frozen-lockfile
-      - if: needs.changes.outputs.frontend == 'true'
+      - id: browsers
+        if: needs.changes.outputs.frontend == 'true'
         run: pnpm --filter @hexdesk/frontend exec playwright install --with-deps chromium
-      - if: needs.changes.outputs.frontend == 'true'
+      - id: format
+        if: needs.changes.outputs.frontend == 'true'
         run: pnpm format:check
-      - if: needs.changes.outputs.frontend == 'true'
+      - id: lint
+        if: needs.changes.outputs.frontend == 'true'
         run: pnpm lint
-      - if: needs.changes.outputs.frontend == 'true'
+      - id: typecheck
+        if: needs.changes.outputs.frontend == 'true'
         run: pnpm typecheck
-      - if: needs.changes.outputs.frontend == 'true'
-        run: pnpm test:frontend
-      - if: needs.changes.outputs.frontend == 'true'
+      - id: test
+        if: needs.changes.outputs.frontend == 'true'
+        run: >-
+          pnpm test:frontend --reporter=default --reporter=github-actions
+          --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
+      - id: build
+        if: needs.changes.outputs.frontend == 'true'
         run: pnpm build
+
+      - name: Write report
+        if: always()
+        env:
+          REPORT_JOB: Frontend
+          REPORT_SKIPPED: >-
+            ${{ needs.changes.result != 'success' && 'Change detection failed, so no checks ran.'
+            || needs.changes.outputs.frontend != 'true' && 'This pull request changes no frontend or shared files.'
+            || '' }}
+          REPORT_STEPS: >-
+            [
+            {"name": "Install dependencies", "outcome": "${{ steps.install.outcome }}"},
+            {"name": "Install Chromium", "outcome": "${{ steps.browsers.outcome }}"},
+            {"name": "Format", "outcome": "${{ steps.format.outcome }}"},
+            {"name": "Lint", "outcome": "${{ steps.lint.outcome }}"},
+            {"name": "Typecheck", "outcome": "${{ steps.typecheck.outcome }}"},
+            {"name": "Unit tests", "outcome": "${{ steps.test.outcome }}",
+             "source": {"kind": "vitest", "file": "vitest.json"}},
+            {"name": "Build", "outcome": "${{ steps.build.outcome }}"}
+            ]
+        run: node .github/scripts/ci-report/job.mjs
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-report-frontend
+          path: ${{ runner.temp }}/ci-report/report.json
+          retention-days: 7
+          if-no-files-found: ignore
 
   backend:
     name: Backend
@@ -109,6 +149,10 @@ jobs:
     if: ${{ always() }}
     runs-on: windows-latest
     steps:
+      # Checked out before anything else, so the report can be written even
+      # when the checks are skipped or an early step fails.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: Require successful change detection
         if: needs.changes.result != 'success'
         run: exit 1
@@ -118,8 +162,6 @@ jobs:
         run: echo "No backend changes; backend checks are not needed."
 
       - if: needs.changes.outputs.backend == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - if: needs.changes.outputs.backend == 'true'
         uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc
         with:
           toolchain: 1.97.0
@@ -127,11 +169,43 @@ jobs:
           targets: x86_64-pc-windows-msvc
       - if: needs.changes.outputs.backend == 'true'
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - if: needs.changes.outputs.backend == 'true'
+      - id: fmt
+        if: needs.changes.outputs.backend == 'true'
         run: cargo fmt --all -- --check
-      - if: needs.changes.outputs.backend == 'true'
+      - id: check
+        if: needs.changes.outputs.backend == 'true'
         run: cargo check --workspace --all-targets
-      - if: needs.changes.outputs.backend == 'true'
+      - id: clippy
+        if: needs.changes.outputs.backend == 'true'
         run: cargo clippy --workspace --all-targets -- -D warnings
-      - if: needs.changes.outputs.backend == 'true'
-        run: cargo test --workspace
+      - id: test
+        if: needs.changes.outputs.backend == 'true'
+        shell: bash
+        run: cargo test --workspace 2>&1 | tee "$RUNNER_TEMP/cargo-test.log"
+
+      - name: Write report
+        if: always()
+        shell: bash
+        env:
+          REPORT_JOB: Backend
+          REPORT_SKIPPED: >-
+            ${{ needs.changes.result != 'success' && 'Change detection failed, so no checks ran.'
+            || needs.changes.outputs.backend != 'true' && 'This pull request changes no backend or shared files.'
+            || '' }}
+          REPORT_STEPS: >-
+            [
+            {"name": "Format", "outcome": "${{ steps.fmt.outcome }}"},
+            {"name": "Check", "outcome": "${{ steps.check.outcome }}"},
+            {"name": "Clippy", "outcome": "${{ steps.clippy.outcome }}"},
+            {"name": "Tests", "outcome": "${{ steps.test.outcome }}",
+             "source": {"kind": "cargo-test", "file": "cargo-test.log"}}
+            ]
+        run: node .github/scripts/ci-report/job.mjs
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-report-backend
+          path: ${{ runner.temp }}/ci-report/report.json
+          retention-days: 7
+          if-no-files-found: ignore

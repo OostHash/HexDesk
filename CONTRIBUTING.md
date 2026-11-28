@@ -112,6 +112,27 @@ Before opening a pull request:
 Pull requests are merged by the maintainer once CI is green and the review is
 done.
 
+### CI report
+
+Every job of the CI, dependency audit and dependency review workflows writes a
+short report in its job summary: one line per step, whether it ran, and its
+result, such as the number of tests or the advisories found. A job that skips
+its checks because the pull request does not touch its part says so.
+
+After each of these workflows finishes, the CI report workflow combines the
+reports, and the status of CodeQL, into one comment on the pull request and
+updates it on every push. The comment is the place to look first; the job
+summaries and logs have the details.
+
+The report scripts live in `.github/scripts/ci-report`. Test them with
+`node --test ".github/scripts/ci-report/*.test.mjs"`, and preview the comment
+for a commit without posting it:
+
+```bash
+GITHUB_TOKEN="$(gh auth token)" GITHUB_REPOSITORY=OostHash/HexDesk \
+  HEAD_SHA=<commit> DRY_RUN=1 node .github/scripts/ci-report/pull-request.mjs
+```
+
 ## Security
 
 - Report vulnerabilities privately as described in `SECURITY.md`; never open a

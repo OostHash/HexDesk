@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate dependency exceptions
+        id: validate
         run: bash .github/scripts/dependency-exceptions.sh check
 
       - name: Read allowed advisories
@@ -28,7 +29,8 @@ jobs:
 
       # Only blocks advisories introduced by this pull request. Existing
       # advisories are reported by the scheduled dependency audit instead.
-      - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
+      - id: review
+        uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
         with:
           fail-on-severity: high
           fail-on-scopes: runtime, development, unknown
@@ -36,3 +38,26 @@ jobs:
           show-openssf-scorecard: false
           retry-on-snapshot-warnings: true
           allow-ghsas: ${{ steps.exceptions.outputs.ghsas }}
+
+      - name: Write report
+        if: always()
+        env:
+          REPORT_JOB: Dependency review
+          REVIEW_CHANGES: ${{ steps.review.outputs.vulnerable-changes }}
+          REPORT_STEPS: >-
+            [
+            {"name": "Validate exceptions", "outcome": "${{ steps.validate.outcome }}"},
+            {"name": "Review changed dependencies", "outcome": "${{ steps.review.outcome }}",
+             "source": {"kind": "dependency-review", "env": "REVIEW_CHANGES"}},
+            {"name": "Allowed exceptions", "outcome": "info",
+             "source": {"kind": "exceptions", "type": "ghsa"}}
+            ]
+        run: node .github/scripts/ci-report/job.mjs
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-report-dependency-review
+          path: ${{ runner.temp }}/ci-report/report.json
+          retention-days: 7
+          if-no-files-found: ignore
